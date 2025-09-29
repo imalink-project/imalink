@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ImaLink Fase 1 - Bildegalleri</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <header>
+        <h1>ImaLink Fase 1</h1>
+        <p>Enkel bildehåndtering og galleri</p>
+    </header>
+
+    <main>
+        <!-- Import Section -->
+        <section class="import-section">
+            <h2>Import bilder</h2>
+            <div class="import-form">
+                <input type="text" id="importPath" placeholder="Sti til katalog med bilder (f.eks. C:\temp\bilder)" />
+                <input type="text" id="importDescription" placeholder="Beskrivelse (valgfri)" />
+                <button onclick="startImport()">Start Import</button>
+            </div>
+            <div id="importStatus" class="status-section" style="display:none;">
+                <h3>Import Status</h3>
+                <div id="importProgress"></div>
+            </div>
+        </section>
+
+        <!-- Search Section -->
+        <section class="search-section">
+            <h2>Søk i bilder</h2>
+            <div class="search-form">
+                <input type="text" id="searchQuery" placeholder="Søk i filnavn..." />
+                <input type="date" id="searchDateFrom" />
+                <input type="date" id="searchDateTo" />
+                <button onclick="searchImages()">Søk</button>
+                <button onclick="loadAllImages()">Vis alle</button>
+            </div>
+        </section>
+
+        <!-- Gallery Section -->
+        <section class="gallery-section">
+            <h2>Bildegalleri</h2>
+            <div id="imageCount" class="image-count"></div>
+            <div id="gallery" class="gallery-grid">
+                <!-- Images will be loaded here -->
+            </div>
+            <div id="loadingIndicator" class="loading" style="display:none;">
+                Laster bilder...
+            </div>
+        </section>
+    </main>
+
+    <!-- Image Modal -->
+    <div id="imageModal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <div id="modalImageContainer">
+                <!-- Image details will be shown here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
