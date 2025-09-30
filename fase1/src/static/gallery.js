@@ -1,105 +1,15 @@
-// ImaLink Fase 1 JavaScript
+// ImaLink Gallery JavaScript
 
 // API base URL
 const API_BASE = '/api';
 
 // Current images array
 let currentImages = [];
-let currentImportSession = null;
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
     loadAllImages();
 });
-
-// Import functions
-async function startImport() {
-    const path = document.getElementById('importPath').value.trim();
-    const description = document.getElementById('importDescription').value.trim() || 'Manual import';
-    
-    if (!path) {
-        alert('Vennligst skriv inn en sti til bildekatalogen');
-        return;
-    }
-    
-    try {
-        const response = await fetch(`${API_BASE}/import/start`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                source_path: path,
-                source_description: description
-            })
-        });
-        
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Import failed');
-        }
-        
-        const result = await response.json();
-        currentImportSession = result.session_id;
-        
-        // Show import status section
-        document.getElementById('importStatus').style.display = 'block';
-        
-        // Start polling for status
-        pollImportStatus();
-        
-    } catch (error) {
-        alert('Import feilet: ' + error.message);
-    }
-}
-
-async function pollImportStatus() {
-    if (!currentImportSession) return;
-    
-    try {
-        const response = await fetch(`${API_BASE}/import/status/${currentImportSession}`);
-        const status = await response.json();
-        
-        updateImportProgress(status);
-        
-        if (status.status === 'in_progress') {
-            // Continue polling every 2 seconds
-            setTimeout(pollImportStatus, 2000);
-        } else {
-            // Import finished
-            currentImportSession = null;
-            if (status.status === 'completed') {
-                setTimeout(() => {
-                    loadAllImages(); // Reload gallery
-                }, 1000);
-            }
-        }
-        
-    } catch (error) {
-        console.error('Error polling import status:', error);
-    }
-}
-
-function updateImportProgress(status) {
-    const progressContainer = document.getElementById('importProgress');
-    
-    const statusText = status.status === 'in_progress' ? 'Pågår...' : 
-                      status.status === 'completed' ? 'Ferdig!' : 'Feilet';
-    
-    progressContainer.innerHTML = `
-        <div><strong>Status:</strong> ${statusText}</div>
-        <div><strong>Filer funnet:</strong> ${status.total_files_found}</div>
-        <div><strong>Bilder importert:</strong> ${status.images_imported}</div>
-        <div><strong>Duplikater hoppet over:</strong> ${status.duplicates_skipped}</div>
-        <div><strong>RAW-filer hoppet over:</strong> ${status.raw_files_skipped || 0}</div>
-        <div><strong>Single RAW-bilder hoppet over:</strong> ${status.single_raw_skipped || 0}</div>
-        <div><strong>Feil:</strong> ${status.errors_count}</div>
-        <div class="progress-bar">
-            <div class="progress-fill" style="width: ${status.progress_percentage}%"></div>
-        </div>
-        <div>Fremdrift: ${status.progress_percentage.toFixed(1)}%</div>
-    `;
-}
 
 // Search and gallery functions
 async function searchImages() {

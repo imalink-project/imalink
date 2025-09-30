@@ -1,12 +1,14 @@
 """
 API endpoints for image operations
 """
+import os
 from typing import List, Optional
+from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy.orm import Session
 
-from ..database.connection import get_db
-from ..database.models import Image
+from database.connection import get_db
+from database.models import Image
 
 router = APIRouter()
 
@@ -28,9 +30,13 @@ async def list_images(
         .all()
     )
     
-    # Convert to simple dict format
+    # Convert to simple dict format  
     result = []
     for img in images:
+        # Compute RAW companion info dynamically
+        from services.image_service import ImageProcessor
+        raw_companion = ImageProcessor.find_raw_companion(img.file_path) if img.file_path else None
+        
         result.append({
             "id": img.id,
             "hash": img.image_hash,
@@ -41,7 +47,10 @@ async def list_images(
             "height": img.height,
             "file_size": img.file_size,
             "format": img.file_format,
-            "has_gps": img.gps_latitude is not None and img.gps_longitude is not None
+            "has_gps": img.gps_latitude is not None and img.gps_longitude is not None,
+            "user_rotation": img.user_rotation or 0,  # Include rotation info
+            "has_raw_companion": raw_companion is not None,
+            "raw_file_format": Path(raw_companion).suffix.lower().lstrip('.') if raw_companion else None
         })
     
     return result
@@ -56,6 +65,17 @@ async def get_image_details(image_id: int, db: Session = Depends(get_db)):
     
     if not image:
         raise HTTPException(status_code=404, detail="Image not found")
+    
+    # Compute RAW companion info dynamically
+    from services.image_service import ImageProcessor
+    raw_companion = ImageProcessor.find_raw_companion(str(image.file_path)) if image.file_path else None
+    raw_file_size = None
+    raw_file_format = None
+    
+    if raw_companion and os.path.exists(raw_companion):
+        raw_stat = os.stat(raw_companion)
+        raw_file_size = raw_stat.st_size
+        raw_file_format = Path(raw_companion).suffix.lower().lstrip('.')
     
     return {
         "id": image.id,
@@ -74,25 +94,41 @@ async def get_image_details(image_id: int, db: Session = Depends(get_db)):
         "description": image.description,
         "tags": image.tags,
         "rating": image.rating,
-        "import_source": image.import_source
+        "import_source": image.import_source,
+        "has_raw_companion": raw_companion is not None,
+        "raw_file_path": raw_companion,
+        "raw_file_size": raw_file_size,
+        "raw_file_format": raw_file_format
     }
 
 
 @router.get("/{image_id}/thumbnail")
 async def get_thumbnail(image_id: int, db: Session = Depends(get_db)):
     """
-    Get thumbnail image data
+    Get thumbnail image data with EXIF rotation applied retroactively
     """
     image = db.query(Image).filter(Image.id == image_id).first()
     
     if not image or image.thumbnail is None:
         raise HTTPException(status_code=404, detail="Thumbnail not found")
     
-    return Response(
-        content=image.thumbnail,
-        media_type="image/jpeg",
-        headers={"Cache-Control": "public, max-age=3600"}
-    )
+    try:
+        # Modern thumbnails (created after EXIF fix) are already correctly oriented
+        # Return thumbnail as-is without additional rotation
+        return Response(
+            content=image.thumbnail,
+            media_type="image/jpeg",
+            headers={"Cache-Control": "public, max-age=3600"}
+        )
+        
+    except Exception as e:
+        print(f"Error processing thumbnail for image {image_id}: {e}")
+        # Fallback to original thumbnail
+        return Response(
+            content=image.thumbnail,
+            media_type="image/jpeg",
+            headers={"Cache-Control": "public, max-age=3600"}
+        )
 
 
 @router.get("/search")
@@ -116,9 +152,19 @@ async def search_images(
     
     # Date range filters
     if taken_after:
-        query = query.filter(Image.taken_at >= taken_after)
+        try:
+            from datetime import datetime
+            after_date = datetime.fromisoformat(taken_after)
+            query = query.filter(Image.taken_at >= after_date)
+        except ValueError:
+            pass
     if taken_before:
-        query = query.filter(Image.taken_at <= taken_before)
+        try:
+            from datetime import datetime
+            before_date = datetime.fromisoformat(taken_before)
+            query = query.filter(Image.taken_at <= before_date)
+        except ValueError:
+            pass
     
     # GPS filter
     if has_gps is not None:
@@ -161,3 +207,42 @@ async def search_images(
         "offset": offset,
         "limit": limit
     }
+
+
+@router.post("/{image_id}/rotate")
+async def rotate_image(
+    image_id: int,
+    db: Session = Depends(get_db)
+):
+    """
+    Rotate image thumbnail 90 degrees clockwise
+    Updates ONLY thumbnail and user_rotation field - original file unchanged
+    """
+    try:
+        from services.image_service import ImageProcessor
+        
+        # Check if image exists first
+        image = db.query(Image).filter(Image.id == image_id).first()
+        if not image:
+            raise HTTPException(status_code=404, detail=f"Image with id {image_id} not found")
+        
+        # Rotate thumbnail and update user_rotation
+        updated_image = ImageProcessor.rotate_thumbnail_in_db(db, image_id)
+        
+        if not updated_image:
+            raise HTTPException(status_code=500, detail="Failed to rotate image - check server logs")
+        
+        return {
+            "success": True,
+            "image_id": image_id,
+            "user_rotation": updated_image.user_rotation,
+            "message": f"Image rotated to {updated_image.user_rotation * 90} degrees"
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Unexpected error in rotate_image: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

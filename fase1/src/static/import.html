@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import - ImaLink</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <!-- Mobile Navigation Toggle -->
+    <button class="mobile-nav-toggle" onclick="toggleSidebar()">☰</button>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="logo">
+            <h2>📸 ImaLink</h2>
+            <p>Bildehåndtering</p>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="/" class="nav-link">
+                    <span class="nav-icon">🏠</span>
+                    Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/gallery" class="nav-link">
+                    <span class="nav-icon">🖼️</span>
+                    Bildegalleri
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/import" class="nav-link active">
+                    <span class="nav-icon">📥</span>
+                    Import
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/authors" class="nav-link">
+                    <span class="nav-icon">👥</span>
+                    Fotografer
+                </a>
+            </li>
+
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Import Section -->
+            <div class="section">
+                <h2>📥 Import bilder</h2>
+                <p>Velg en mappe med bilder for å importere til galleriet.</p>
+
+                <form id="importForm" class="form-group">
+                    <div class="form-group">
+                        <label class="form-label" for="folderPath">Mappesti</label>
+                        <input type="text" id="folderPath" class="form-input" 
+                               placeholder="C:\path\to\your\images" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="authorId">Fotograf (valgfritt)</label>
+                        <select id="authorId" class="form-select">
+                            <option value="">Velg fotograf...</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Start Import</button>
+                </form>
+            </div>
+
+            <!-- Progress Section -->
+            <div id="progressSection" class="section hidden">
+                <h2>📊 Import Progresjon</h2>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <p id="progressText" class="text-center mt-2">Forbereder import...</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="section hidden">
+                <h2>✅ Import Resultater</h2>
+                <div id="importResults"></div>
+            </div>
+
+            <!-- File Processing Status -->
+            <div id="fileStatusSection" class="section hidden">
+                <h2>📂 Fil Status</h2>
+                <div id="fileStatusList"></div>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/import.js"></script>
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.querySelector('.mobile-nav-toggle');
+            
+            if (window.innerWidth <= 768 && 
+                !sidebar.contains(event.target) && 
+                !toggle.contains(event.target)) {
+                sidebar.classList.remove('open');
+            }
+        });
+
+        // Load authors when page loads
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('/api/authors/');
+                const authors = await response.json();
+                
+                const select = document.getElementById('authorId');
+                authors.forEach(author => {
+                    const option = document.createElement('option');
+                    option.value = author.id;
+                    option.textContent = author.name;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading authors:', error);
+            }
+        });
+
+        // Import form handling
+        document.getElementById('importForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const folderPath = document.getElementById('folderPath').value.trim();
+            const authorId = document.getElementById('authorId').value || null;
+            
+            if (!folderPath) {
+                alert('Vennligst angi en mappesti');
+                return;
+            }
+
+            // Show progress section
+            document.getElementById('progressSection').classList.remove('hidden');
+            document.getElementById('resultsSection').classList.add('hidden');
+            document.getElementById('fileStatusSection').classList.add('hidden');
+
+            try {
+                const response = await fetch('/api/import/start', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        source_path: folderPath,
+                        source_description: `Manual import${authorId ? ` by author ${authorId}` : ''}`
+                    })
+                });
+
+                if (response.ok) {
+                    const result = await response.json();
+                    
+                    // Start monitoring the import progress
+                    document.getElementById('progressFill').style.width = '10%';
+                    document.getElementById('progressText').textContent = 'Import startet...';
+
+                    // Show results section and start polling
+                    document.getElementById('resultsSection').classList.remove('hidden');
+                    document.getElementById('importResults').innerHTML = `
+                        <div class="info-message">
+                            <h3>Import pågår...</h3>
+                            <p><strong>Session ID:</strong> ${result.session_id}</p>
+                            <p><strong>Status:</strong> ${result.status}</p>
+                            <p id="importDetails">Initialiserer...</p>
+                        </div>
+                    `;
+                    
+                    // Start polling for progress
+                    pollImportStatus(result.session_id);
+                } else {
+                    throw new Error('Import feilet');
+                }
+            } catch (error) {
+                document.getElementById('progressText').textContent = 'Import feilet: ' + error.message;
+                document.getElementById('importResults').innerHTML = `
+                    <div class="error-message">
+                        <h3>Import feilet</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+                document.getElementById('resultsSection').classList.remove('hidden');
+            }
+        });
+
+        // Progress polling function
+        async function pollImportStatus(sessionId) {
+            let isCompleted = false;
+            
+            while (!isCompleted) {
+                try {
+                    const response = await fetch(`/api/import/status/${sessionId}`);
+                    if (response.ok) {
+                        const status = await response.json();
+                        
+                        // Update progress bar
+                        const progressPercent = Math.min(status.progress_percentage, 100);
+                        document.getElementById('progressFill').style.width = `${progressPercent}%`;
+                        document.getElementById('progressText').textContent = 
+                            `${Math.round(progressPercent)}% - ${status.status}`;
+                        
+                        // Update details
+                        const detailsElement = document.getElementById('importDetails');
+                        if (detailsElement) {
+                            detailsElement.innerHTML = `
+                                <p><strong>Filer funnet:</strong> ${status.total_files_found}</p>
+                                <p><strong>Importert:</strong> ${status.images_imported}</p>
+                                <p><strong>Duplikater:</strong> ${status.duplicates_skipped}</p>
+                                <p><strong>RAW-filer hoppet over:</strong> ${status.raw_files_skipped}</p>
+                                <p><strong>Enkle RAW-filer:</strong> ${status.single_raw_skipped}</p>
+                                <p><strong>Feil:</strong> ${status.errors_count}</p>
+                            `;
+                        }
+                        
+                        // Check if completed
+                        if (status.status === 'completed' || status.status === 'failed') {
+                            isCompleted = true;
+                            
+                            // Update final results
+                            document.getElementById('importResults').innerHTML = `
+                                <div class="${status.status === 'completed' ? 'success-message' : 'error-message'}">
+                                    <h3>Import ${status.status === 'completed' ? 'fullført' : 'feilet'}!</h3>
+                                    <p><strong>Filer funnet:</strong> ${status.total_files_found}</p>
+                                    <p><strong>Nye bilder:</strong> ${status.images_imported}</p>
+                                    <p><strong>Duplikater:</strong> ${status.duplicates_skipped}</p>
+                                    <p><strong>RAW-filer (med JPEG):</strong> ${status.raw_files_skipped}</p>
+                                    <p><strong>Enkle RAW-filer:</strong> ${status.single_raw_skipped}</p>
+                                    <p><strong>Feil:</strong> ${status.errors_count}</p>
+                                </div>
+                            `;
+                            
+                            if (status.status === 'completed') {
+                                document.getElementById('progressText').textContent = 'Import fullført!';
+                            } else {
+                                document.getElementById('progressText').textContent = 'Import feilet!';
+                            }
+                        }
+                    } else {
+                        console.error('Failed to fetch import status');
+                        isCompleted = true;
+                    }
+                } catch (error) {
+                    console.error('Error polling import status:', error);
+                    isCompleted = true;
+                }
+                
+                // Wait 2 seconds before next poll (unless completed)
+                if (!isCompleted) {
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
+        }
+    </script>
+</body>
+</html>

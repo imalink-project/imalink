@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fotografer - ImaLink</title>
+    <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+    <!-- Mobile Navigation Toggle -->
+    <button class="mobile-nav-toggle" onclick="toggleSidebar()">☰</button>
+
+    <!-- Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="logo">
+            <h2>📸 ImaLink</h2>
+            <p>Bildehåndtering</p>
+        </div>
+
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="/" class="nav-link">
+                    <span class="nav-icon">🏠</span>
+                    Dashboard
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/gallery" class="nav-link">
+                    <span class="nav-icon">🖼️</span>
+                    Bildegalleri
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/import" class="nav-link">
+                    <span class="nav-icon">📥</span>
+                    Import
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="/authors" class="nav-link active">
+                    <span class="nav-icon">👥</span>
+                    Fotografer
+                </a>
+            </li>
+
+        </ul>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container">
+            <!-- Add Author Section -->
+            <div class="section">
+                <h2>➕ Legg til ny fotograf</h2>
+                <form id="authorForm">
+                    <div class="grid grid-2">
+                        <div class="form-group">
+                            <label class="form-label" for="authorName">Navn</label>
+                            <input type="text" id="authorName" class="form-input" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="authorEmail">E-post (valgfritt)</label>
+                            <input type="email" id="authorEmail" class="form-input">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="authorBio">Biografi (valgfritt)</label>
+                        <textarea id="authorBio" class="form-textarea" rows="3"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Legg til fotograf</button>
+                </form>
+            </div>
+
+            <!-- Authors List Section -->
+            <div class="section">
+                <h2>👥 Registrerte fotografer</h2>
+                <div id="authorsList" class="grid grid-3">
+                    <!-- Authors will be loaded here -->
+                </div>
+                <div id="loadingAuthors" class="loading">
+                    Laster fotografer...
+                </div>
+                <div id="emptyAuthors" class="empty-state hidden">
+                    <p>Ingen fotografer registrert ennå. Legg til en ny fotograf ovenfor.</p>
+                </div>
+            </div>
+
+            <!-- Author Statistics -->
+            <div class="section">
+                <h2>📊 Statistikk</h2>
+                <div id="authorStats" class="grid grid-4">
+                    <!-- Stats will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Edit Author Modal -->
+    <div id="editAuthorModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Rediger fotograf</h3>
+                <button class="close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editAuthorForm">
+                    <input type="hidden" id="editAuthorId">
+                    <div class="form-group">
+                        <label class="form-label" for="editAuthorName">Navn</label>
+                        <input type="text" id="editAuthorName" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="editAuthorEmail">E-post</label>
+                        <input type="email" id="editAuthorEmail" class="form-input">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="editAuthorBio">Biografi</label>
+                        <textarea id="editAuthorBio" class="form-textarea" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeEditModal()" class="btn btn-secondary">Avbryt</button>
+                <button onclick="saveAuthor()" class="btn btn-primary">Lagre</button>
+                <button onclick="deleteAuthor()" class="btn btn-danger">Slett</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('open');
+        }
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(event) {
+            const sidebar = document.getElementById('sidebar');
+            const toggle = document.querySelector('.mobile-nav-toggle');
+            
+            if (window.innerWidth <= 768 && 
+                !sidebar.contains(event.target) && 
+                !toggle.contains(event.target)) {
+                sidebar.classList.remove('open');
+            }
+        });
+
+        let currentAuthorId = null;
+
+        // Load authors when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAuthors();
+            loadStats();
+        });
+
+        // Add author form handling
+        document.getElementById('authorForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('authorName').value.trim();
+            const email = document.getElementById('authorEmail').value.trim();
+            const bio = document.getElementById('authorBio').value.trim();
+            
+            if (!name) {
+                alert('Navn er påkrevd');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/authors/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email || null,
+                        bio: bio || null
+                    })
+                });
+
+                if (response.ok) {
+                    // Clear form
+                    document.getElementById('authorForm').reset();
+                    
+                    // Reload authors
+                    loadAuthors();
+                    loadStats();
+                    
+                    alert('Fotograf lagt til!');
+                } else {
+                    const error = await response.text();
+                    alert('Feil ved lagring: ' + error);
+                }
+            } catch (error) {
+                console.error('Error adding author:', error);
+                alert('Feil ved lagring av fotograf');
+            }
+        });
+
+        async function loadAuthors() {
+            try {
+                const response = await fetch('/api/authors/');
+                const authors = await response.json();
+                
+                const list = document.getElementById('authorsList');
+                const loading = document.getElementById('loadingAuthors');
+                const empty = document.getElementById('emptyAuthors');
+                
+                loading.classList.add('hidden');
+                
+                if (authors.length === 0) {
+                    list.innerHTML = '';
+                    empty.classList.remove('hidden');
+                } else {
+                    empty.classList.add('hidden');
+                    list.innerHTML = authors.map(author => `
+                        <div class="card">
+                            <h3>${author.name}</h3>
+                            <p class="text-muted">${author.email || 'Ingen e-post'}</p>
+                            <p class="text-muted">${author.bio || 'Ingen biografi'}</p>
+                            <div class="mt-2">
+                                <button onclick="editAuthor(${author.id})" class="btn btn-secondary">Rediger</button>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading authors:', error);
+                document.getElementById('loadingAuthors').textContent = 'Feil ved lasting av fotografer';
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const [authorsResponse, imagesResponse] = await Promise.all([
+                    fetch('/api/authors/'),
+                    fetch('/api/images/')
+                ]);
+                
+                const authors = await authorsResponse.json();
+                const images = await imagesResponse.json();
+                
+                // Count images per author
+                const authorImageCounts = {};
+                images.forEach(image => {
+                    const authorId = image.author_id || 'unknown';
+                    authorImageCounts[authorId] = (authorImageCounts[authorId] || 0) + 1;
+                });
+                
+                const totalAuthors = authors.length;
+                const totalImages = images.length;
+                const imagesWithAuthors = images.filter(img => img.author_id).length;
+                const imagesWithoutAuthors = totalImages - imagesWithAuthors;
+                
+                document.getElementById('authorStats').innerHTML = `
+                    <div class="stat-item">
+                        <span class="stat-number">${totalAuthors}</span>
+                        <span class="stat-label">Totale Fotografer</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">${imagesWithAuthors}</span>
+                        <span class="stat-label">Bilder med Fotograf</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">${imagesWithoutAuthors}</span>
+                        <span class="stat-label">Bilder uten Fotograf</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-number">${totalImages > 0 ? Math.round((imagesWithAuthors / totalImages) * 100) : 0}%</span>
+                        <span class="stat-label">Dekningsgrad</span>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function editAuthor(authorId) {
+            try {
+                const response = await fetch(`/api/authors/${authorId}/`);
+                const author = await response.json();
+                
+                currentAuthorId = authorId;
+                document.getElementById('editAuthorId').value = authorId;
+                document.getElementById('editAuthorName').value = author.name;
+                document.getElementById('editAuthorEmail').value = author.email || '';
+                document.getElementById('editAuthorBio').value = author.bio || '';
+                
+                document.getElementById('editAuthorModal').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error loading author:', error);
+                alert('Feil ved lasting av fotograf');
+            }
+        }
+
+        function closeEditModal() {
+            document.getElementById('editAuthorModal').classList.add('hidden');
+            currentAuthorId = null;
+        }
+
+        async function saveAuthor() {
+            if (!currentAuthorId) return;
+            
+            const name = document.getElementById('editAuthorName').value.trim();
+            const email = document.getElementById('editAuthorEmail').value.trim();
+            const bio = document.getElementById('editAuthorBio').value.trim();
+            
+            if (!name) {
+                alert('Navn er påkrevd');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/authors/${currentAuthorId}/`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: name,
+                        email: email || null,
+                        bio: bio || null
+                    })
+                });
+
+                if (response.ok) {
+                    closeEditModal();
+                    loadAuthors();
+                    loadStats();
+                    alert('Fotograf oppdatert!');
+                } else {
+                    const error = await response.text();
+                    alert('Feil ved oppdatering: ' + error);
+                }
+            } catch (error) {
+                console.error('Error updating author:', error);
+                alert('Feil ved oppdatering av fotograf');
+            }
+        }
+
+        async function deleteAuthor() {
+            if (!currentAuthorId) return;
+            
+            if (!confirm('Er du sikker på at du vil slette denne fotografen?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/authors/${currentAuthorId}/`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    closeEditModal();
+                    loadAuthors();
+                    loadStats();
+                    alert('Fotograf slettet!');
+                } else {
+                    const error = await response.text();
+                    alert('Feil ved sletting: ' + error);
+                }
+            } catch (error) {
+                console.error('Error deleting author:', error);
+                alert('Feil ved sletting av fotograf');
+            }
+        }
+
+        // Close modal when clicking outside
+        document.getElementById('editAuthorModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeEditModal();
+            }
+        });
+    </script>
+</body>
+</html>

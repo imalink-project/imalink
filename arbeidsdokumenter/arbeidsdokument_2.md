@@ -18,15 +18,19 @@ Jeg har gjennom årene akkumulert over hundre tusen bilder organisert i en filka
 - **Metadata:** Lite utnyttelse av tilgjengelig informasjon i bildene
 
 ### 1.3 Visjon
-**🎯 SKAL UTDYPES:** Beskriv kort og konsist hva ImaLink skal oppnå - både på kort og lang sikt.
+Imalink skal gi tilgang til alle mine bilder på PC og mobile enheter. Den skal fullt ut kunne erstatte Galleri-appen på telefonen og brukes til å vise ting til andre.
+
+På kort sikt skal jeg kunne laste opp noen hundretalls bilder fra nyere tid og demonstrere mulighetene som ligger i visning basert på en tidslinje. 
+
+På lang sikt skal jeg kunne laste opp alle bildene jeg finner på ulike medier. 
 
 ## 2. Overordnede Mål
 
 ### 2.1 Hovedmål
 ImaLink skal være en intelligent database som bedrer tilgangen til mine bilder ved å:
-- Automatisere organisering og katalogisering
+- Hjelpe til med organisering og katalogisering
 - Muliggjøre rask og fleksibel søking
-- Bevare bakoverkompatibilitet med eksisterende filstruktur
+- Bevare informasjonen som ligger i eksisterende filstruktur
 - Sikre langsiktig tilgjengelighet av bildemateriell
 
 ### 2.2 Suksesskriterier

@@ -9,9 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
-from ..database.connection import get_db
-from ..database.models import Image, ImportSession
-from ..services.image_service import create_image_record, ImageProcessor
+from database.connection import get_db
+from database.models import Image, ImportSession
+from services.image_service import create_image_record, ImageProcessor
 
 router = APIRouter()
 
@@ -27,6 +27,8 @@ class ImportStatus(BaseModel):
     total_files_found: int
     images_imported: int
     duplicates_skipped: int
+    raw_files_skipped: int
+    single_raw_skipped: int
     errors_count: int
     progress_percentage: float
 
@@ -86,7 +88,7 @@ async def get_import_status(session_id: int, db: Session = Depends(get_db)):
     
     progress = 0.0
     if session.total_files_found > 0:
-        processed = session.images_imported + session.duplicates_skipped + session.errors_count
+        processed = session.images_imported + session.duplicates_skipped + session.raw_files_skipped + session.single_raw_skipped + session.errors_count
         progress = (processed / session.total_files_found) * 100
     
     return ImportStatus(
@@ -95,6 +97,8 @@ async def get_import_status(session_id: int, db: Session = Depends(get_db)):
         total_files_found=session.total_files_found,
         images_imported=session.images_imported,
         duplicates_skipped=session.duplicates_skipped,
+        raw_files_skipped=session.raw_files_skipped or 0,
+        single_raw_skipped=session.single_raw_skipped or 0,
         errors_count=session.errors_count,
         progress_percentage=progress
     )
@@ -124,6 +128,8 @@ async def list_import_sessions(db: Session = Depends(get_db)):
             "total_files_found": session.total_files_found,
             "images_imported": session.images_imported,
             "duplicates_skipped": session.duplicates_skipped,
+            "raw_files_skipped": session.raw_files_skipped or 0,
+            "single_raw_skipped": session.single_raw_skipped or 0,
             "errors_count": session.errors_count
         })
     
@@ -134,7 +140,7 @@ def import_directory_background(session_id: int, source_path: str, source_descri
     """
     Background task to import all images from a directory
     """
-    from ..database.connection import get_db_sync
+    from database.connection import get_db_sync
     
     db = get_db_sync()
     
@@ -146,27 +152,48 @@ def import_directory_background(session_id: int, source_path: str, source_descri
         
         source_path_obj = Path(source_path)
         
-        # Find all image files
+        # Find all image files (including RAW formats)
         image_files = []
-        for ext in ImageProcessor.SUPPORTED_FORMATS:
+        for ext in ImageProcessor.ALL_FORMATS:
             pattern = f"**/*{ext}"
             image_files.extend(source_path_obj.rglob(pattern))
             # Also search uppercase extensions
             pattern = f"**/*{ext.upper()}"
             image_files.extend(source_path_obj.rglob(pattern))
         
+        # WORKAROUND: Remove duplicates caused by case-insensitive filesystems
+        # On Windows, a file named "image.jpg" will be found by both "**/*.jpg" 
+        # and "**/*.JPG" patterns, causing each file to be counted twice.
+        # This deduplication ensures accurate file counts during import.
+        image_files = list(set(image_files))
+        
         # Update session with total files found
         session.total_files_found = len(image_files)
         db.commit()
         
-        # Process each file
+        # Process each file with proper categorization
         imported_count = 0
         duplicates_count = 0
+        raw_files_count = 0        # RAW files with JPEG companions
+        single_raw_count = 0       # Single RAW files (no JPEG companion)
         errors_count = 0
         errors_log = []
         
         for file_path in image_files:
             try:
+                # Check if this is a RAW file
+                if ImageProcessor.is_raw_format(str(file_path)):
+                    jpeg_companion = ImageProcessor.find_jpeg_companion(str(file_path))
+                    if jpeg_companion:
+                        raw_files_count += 1
+                        print(f"Skipping RAW file {file_path} - JPEG companion found: {jpeg_companion}")
+                        continue
+                    else:
+                        single_raw_count += 1
+                        print(f"Skipping single RAW file {file_path} - no JPEG companion (will add RAW processing later)")
+                        continue
+                
+                # Try to import the file
                 image_record = create_image_record(
                     str(file_path),
                     source_description,
@@ -174,7 +201,7 @@ def import_directory_background(session_id: int, source_path: str, source_descri
                 )
                 
                 if image_record is None:
-                    # This could be a duplicate or unsupported file
+                    # This is a true duplicate (same hash)
                     duplicates_count += 1
                 else:
                     db.add(image_record)
@@ -188,15 +215,19 @@ def import_directory_background(session_id: int, source_path: str, source_descri
                 print(f"Error importing {file_path}: {e}")
             
             # Update session progress periodically
-            if (imported_count + duplicates_count + errors_count) % 10 == 0:
+            if (imported_count + duplicates_count + raw_files_count + single_raw_count + errors_count) % 10 == 0:
                 session.images_imported = imported_count
                 session.duplicates_skipped = duplicates_count
+                session.raw_files_skipped = raw_files_count
+                session.single_raw_skipped = single_raw_count
                 session.errors_count = errors_count
                 db.commit()
         
-        # Final update
+        # Final update with correct statistics
         session.images_imported = imported_count
         session.duplicates_skipped = duplicates_count
+        session.raw_files_skipped = raw_files_count
+        session.single_raw_skipped = single_raw_count
         session.errors_count = errors_count
         session.completed_at = datetime.utcnow()
         session.status = "completed"
@@ -228,7 +259,7 @@ async def test_single_image(file_path: str, db: Session = Depends(get_db)):
     if not os.path.exists(file_path):
         raise HTTPException(status_code=400, detail="File does not exist")
     
-    if not ImageProcessor.is_supported_image(file_path):
+    if not ImageProcessor.is_any_supported_format(file_path):
         raise HTTPException(status_code=400, detail="Unsupported file format")
     
     try:

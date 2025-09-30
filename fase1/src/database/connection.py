@@ -10,7 +10,9 @@ from sqlalchemy.pool import StaticPool
 from .models import Base
 
 # Database configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./imalink.db")
+# Use fixed path in C:\temp directory
+db_path = r"C:\temp\imalink.db"
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{db_path}")
 
 # SQLite specific configuration for better performance
 engine = create_engine(

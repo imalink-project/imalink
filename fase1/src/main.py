@@ -15,6 +15,7 @@ load_dotenv()
 from database.connection import init_database
 from api.images import router as images_router
 from api.import_api import router as import_router
+from api.authors import router as authors_router
 
 # Initialize database
 init_database()
@@ -29,6 +30,7 @@ app = FastAPI(
 # Include API routers
 app.include_router(images_router, prefix="/api/images", tags=["images"])
 app.include_router(import_router, prefix="/api/import", tags=["import"])
+app.include_router(authors_router, prefix="/api/authors", tags=["authors"])
 
 # Serve static files
 static_dir = Path(__file__).parent / "static"
@@ -38,25 +40,49 @@ if static_dir.exists():
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """Serve the main gallery page"""
+    """Serve the main dashboard page"""
+    return serve_static_file("index.html")
+
+
+@app.get("/gallery", response_class=HTMLResponse)
+async def gallery():
+    """Serve the gallery page"""
+    return serve_static_file("gallery.html")
+
+
+@app.get("/import", response_class=HTMLResponse)
+async def import_page():
+    """Serve the import management page"""
+    return serve_static_file("import.html")
+
+
+@app.get("/authors", response_class=HTMLResponse)
+async def authors_page():
+    """Serve the authors management page"""
+    return serve_static_file("authors.html")
+
+
+def serve_static_file(filename: str):
+    """Helper function to serve static HTML files"""
     static_dir = Path(__file__).parent / "static"
-    index_file = static_dir / "index.html"
+    file_path = static_dir / filename
     
-    if index_file.exists():
-        return HTMLResponse(content=index_file.read_text(), status_code=200)
+    if file_path.exists():
+        content = file_path.read_text(encoding="utf-8")
+        return HTMLResponse(content=content, status_code=200)
     else:
         return HTMLResponse(
-            content="""
+            content=f"""
             <html>
-                <head><title>ImaLink Fase 1</title></head>
+                <head><title>Side ikke funnet - ImaLink</title></head>
                 <body>
-                    <h1>ImaLink Fase 1</h1>
-                    <p>Welcome to ImaLink! The frontend is not yet available.</p>
-                    <p>API documentation: <a href="/docs">/docs</a></p>
+                    <h1>404 - Side ikke funnet</h1>
+                    <p>Filen {filename} ble ikke funnet.</p>
+                    <p><a href="/">← Tilbake til hovedsiden</a></p>
                 </body>
             </html>
             """,
-            status_code=200
+            status_code=404
         )
 
 
@@ -68,4 +94,4 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
