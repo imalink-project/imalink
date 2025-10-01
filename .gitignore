@@ -40,3 +40,8 @@ backup/
 *.raf
 *.orf
 *.rw2
+
+# Development and testing scripts (keep organized scripts, ignore temporary ones)
+**/debug_*.py
+**/temp_*.py
+**/quick_test_*.py
