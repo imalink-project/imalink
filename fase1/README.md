@@ -12,6 +12,27 @@ Ferdigstilt fungerende versjon av ImaLink med:
 - ✅ CSS-organisert arkitektur
 - ✅ Bakgrunnsprosessering av imports
 
+## 🧠 Kjerneprinsippene
+
+Fase 1 implementerer ImaLinks unike designfilosofi:
+
+1. **🔥 Hot Thumbnail + Rotasjonsuavhengig Hash**
+   - Miniaturbilder lagres binært i database for umiddelbar tilgang
+   - Perceptuell hash beregnes fra bildeinnhold, ikke EXIF-orientering
+   - Samme bilde = samme hash, uavhengig av rotasjon
+
+2. **🔌 Server/Kildefil Separasjon** 
+   - Alle metadata og thumbnails lagres i database
+   - Original-filer kan være offline (USB, NAS, cloud)
+   - Galleri fungerer selv uten tilgang til kildebilder
+
+3. **🔑 Hash som Universell Identitet**
+   - Hash-verdien ER bildeidentiteten
+   - Robust mot filflytting, omdøping og kopiering
+   - Fremtidssikker for distribuerte systemer
+
+Se [hovedprosjektets README](../README.md) for utdypende forklaring.
+
 ## Teknologi-stack
 - **Backend:** Python 3.11+ med FastAPI
 - **Database:** SQLite med SQLAlchemy

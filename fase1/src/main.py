@@ -3,19 +3,24 @@ Main FastAPI application for ImaLink Fase 1
 """
 import os
 from pathlib import Path
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, Request, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
 # Import our modules
+from config import config
 from database.connection import init_database
 from api.images import router as images_router
 from api.import_api import router as import_router
 from api.authors import router as authors_router
+from api.selections import router as selections_router
+
+# Ensure directories exist
+config.ensure_directories()
 
 # Initialize database
 init_database()
@@ -31,11 +36,25 @@ app = FastAPI(
 app.include_router(images_router, prefix="/api/images", tags=["images"])
 app.include_router(import_router, prefix="/api/import", tags=["import"])
 app.include_router(authors_router, prefix="/api/authors", tags=["authors"])
+app.include_router(selections_router, prefix="/api/selections", tags=["selections"])
 
 # Serve static files
 static_dir = Path(__file__).parent / "static"
 if static_dir.exists():
     app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+# Middleware to add no-cache headers to static files in development
+@app.middleware("http")
+async def add_no_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    
+    # Add no-cache headers for static files in development
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    
+    return response
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -60,6 +79,12 @@ async def import_page():
 async def authors_page():
     """Serve the authors management page"""
     return serve_static_file("authors.html")
+
+
+@app.get("/selections", response_class=HTMLResponse)
+async def selections_page():
+    """Serve the selections management page"""
+    return serve_static_file("selections.html")
 
 
 def serve_static_file(filename: str):

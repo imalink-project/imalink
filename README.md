@@ -15,6 +15,32 @@ Et enkelt og intuitivt verktøy for organisering av store bildematerialer.
 - **Responsivt galleri**: Web-basert visning med thumbnail-rotasjon
 - **Modern arkitektur**: FastAPI + SQLite + ekstern CSS
 
+## 🧠 Designfilosofi
+
+ImaLink følger noen unike prinsipper som skiller den fra andre fotoarkiveringsprogrammer:
+
+### 1. "Hot Thumbnail med Rotasjonsuavhengig Hash"
+- **Hot thumbnail**: Miniaturbilder lagres som binærdata direkte i databasen for umiddelbar tilgang
+- **Rotasjonsuavhengig hash**: Perceptuell hash beregnes fra bildeinnholdet, ikke fildata
+- **Resultat**: Samme bilde får samme hash uavhengig av rotasjon eller EXIF-orientering
+- **Fordel**: Perfekt duplikatdeteksjon selv når bilder er rotert eller re-eksportert
+
+### 2. Hundre Prosent Skille Mellom Kildefil og Server
+- **Kildefiler kan være offline**: Original-filer kan ligge på USB-disker, NAS eller cloud-lagring
+- **Serveren er komplett uavhengig**: All nødvendig informasjon lagres i databasen
+- **Metadata-preservering**: EXIF, thumbnail og bildedata bevares i database
+- **Resultat**: Du kan vise, søke og organisere bilder selv om kildefilene ikke er tilgjengelige
+- **Fordel**: Perfekt for arkivering på portable medier eller cloud-lagring
+
+### 3. Hash som Universell Nøkkel
+- **Perceptuell hash = bildeidentitet**: Hash-verdien ER bildet, uavhengig av filnavn eller lokasjon
+- **Universell referanse**: Samme hash refererer til samme bilde på tvers av alle systemer
+- **Filnavn-uavhengig**: Bilder kan flyttes, omdøpes eller kopieres uten å miste identitet
+- **Fremtidssikring**: Hash-basert system kan utvides til distribuerte løsninger
+- **Fordel**: Robust identifikasjon som aldri går i stykker ved filoperasjoner
+
+Denne filosofien gjør ImaLink spesielt egnet for fotografer med store arkiver som må håndtere bilder på tvers av forskjellige lagringsmedier og systemer.
+
 ## 🚀 Kom i gang
 
 ```bash

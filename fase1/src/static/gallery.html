@@ -31,6 +31,12 @@
                 </a>
             </li>
             <li class="nav-item">
+                <a href="/selections" class="nav-link">
+                    <span class="nav-icon">📁</span>
+                    Selections
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="/import" class="nav-link">
                     <span class="nav-icon">📥</span>
                     Import
@@ -65,6 +71,12 @@
             <div class="section">
                 <h2>🖼️ Bildegalleri</h2>
                 <div id="imageCount" class="image-count"></div>
+                
+                <!-- Test Modal Button (temporary) -->
+                <button onclick="testModal()" class="btn btn-primary" style="margin-bottom: 1rem;">
+                    🧪 Test Modal (midlertidig)
+                </button>
+                
                 <div id="gallery" class="gallery-grid">
                     <!-- Images will be loaded here -->
                 </div>
@@ -75,15 +87,58 @@
         </div>
     </main>
 
-    <!-- Image Modal -->
+    <!-- Enhanced Image Viewer Modal -->
     <div id="imageModal" class="modal hidden">
-        <div class="modal-content">
-            <button class="close" onclick="closeModal()">&times;</button>
-            <div class="modal-controls">
-                <button class="btn btn-primary" onclick="rotateImage()">🔄 Roter 90°</button>
+        <div class="modal-content image-viewer">
+            <div class="viewer-header">
+                <h3 id="viewerTitle">Bildevisning</h3>
+                <button class="close" onclick="closeModal()" title="Lukk">&times;</button>
             </div>
-            <div id="modalImageContainer">
-                <!-- Image details will be shown here -->
+            
+            <div class="viewer-controls">
+                <div class="size-controls">
+                    <label for="sizeSelector">Størrelse:</label>
+                    <select id="poolSizeSelector" class="form-select" onchange="onPoolSizeChange()">
+                        <option value="small">Liten (400px)</option>
+                        <option value="medium" selected>Medium (800px)</option>
+                        <option value="large">Stor (1200px)</option>
+                    </select>
+                </div>
+                
+                <div class="action-controls">
+                    <button id="viewerRotateBtn" class="btn btn-primary" onclick="rotateViewerImage()" title="Roter 90°">
+                        🔄 Roter
+                    </button>
+                    <button id="viewerDownloadBtn" class="btn btn-secondary" onclick="downloadViewerImage()" title="Last ned pool-bilde">
+                        💾 Last ned
+                    </button>
+                </div>
+            </div>
+            
+            <div class="viewer-body">
+                <div class="image-container" id="viewerImageContainer">
+                    <div id="imageLoadingSpinner" class="loading hidden">Laster bilde...</div>
+                    <div id="imageError" class="error-message hidden">
+                        Kunne ikke laste bilde. Prøv en annen størrelse.
+                    </div>
+                </div>
+                
+                <div class="image-info-panel">
+                    <h4>📋 Filinformasjon</h4>
+                    <div id="imageFileInfo" class="image-details">
+                        <!-- Details will be populated here -->
+                    </div>
+                    
+                    <h4>📊 Tekniske detaljer</h4>
+                    <div id="imageTechnicalInfo" class="image-technical">
+                        <!-- Technical details will be populated here -->
+                    </div>
+                    
+                    <h4>📍 Metadata</h4>
+                    <div id="imageMetadataInfo" class="image-metadata">
+                        <!-- Metadata will be populated here -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>

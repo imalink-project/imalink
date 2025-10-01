@@ -131,6 +131,77 @@ async def get_thumbnail(image_id: int, db: Session = Depends(get_db)):
         )
 
 
+@router.get("/{image_id}/pool/{size}")
+async def get_pool_image(
+    image_id: int,
+    size: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Get optimized image version from pool
+    
+    Available sizes:
+    - small: 400x400 max (for gallery grid view)
+    - medium: 800x800 max (for standard viewing)
+    - large: 1200x1200 max (for detailed viewing)
+    
+    Pool images have EXIF rotation baked in and no EXIF data.
+    They are optimized JPEG files for fast web delivery.
+    """
+    from fastapi.responses import FileResponse
+    from services.image_pool import ImagePoolService
+    from config import config
+    
+    # Validate size parameter
+    valid_sizes = ["small", "medium", "large"]
+    if size not in valid_sizes:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid size '{size}'. Valid sizes: {valid_sizes}"
+        )
+    
+    # Get image from database
+    image = db.query(Image).filter(Image.id == image_id).first()
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    # Check if original file exists
+    file_path_str = str(image.file_path) if image.file_path is not None else None
+    if not file_path_str or not Path(file_path_str).exists():
+        raise HTTPException(status_code=404, detail="Original image file not found")
+    
+    try:
+        # Initialize pool service
+        pool_service = ImagePoolService(config.IMAGE_POOL_DIRECTORY)
+        
+        # Get or create pool version
+        pool_path = pool_service.get_or_create(
+            original_path=Path(file_path_str),
+            image_hash=str(image.image_hash),
+            size=size,
+            quality=config.POOL_QUALITY
+        )
+        
+        # Return optimized image with aggressive caching
+        return FileResponse(
+            pool_path,
+            media_type="image/jpeg",
+            headers={
+                "Cache-Control": "public, max-age=31536000",  # 1 year cache
+                "ETag": f'"{str(image.image_hash)}_{size}"',
+                "X-Pool-Size": size,
+                "X-Image-Hash": str(image.image_hash)
+            }
+        )
+        
+    except Exception as e:
+        print(f"Error serving pool image {image_id}/{size}: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate or serve pool image"
+        )
+
+
 @router.get("/search")
 async def search_images(
     q: Optional[str] = None,

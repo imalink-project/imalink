@@ -93,6 +93,57 @@ class Image(Base):
         return f"<Image(id={self.id}, hash={self.image_hash[:8]}..., filename={self.original_filename})>"
 
 
+class Selection(Base):
+    """
+    Selections - Smart collections/albums based on criteria or manual picks
+    Three types: saved (database criteria), algorithmic (runtime), manual (explicit list)
+    """
+    __tablename__ = "selections"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    
+    # Basic info
+    name = Column(String(255), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    color = Column(String(7), nullable=True)  # Hex color for UI (#FF5733)
+    icon = Column(String(50), nullable=True)  # Icon name for UI
+    
+    # Selection mechanism
+    is_algorithmic = Column(Boolean, default=False, nullable=False)
+    
+    # For regular selections: JSON criteria (includes manual image lists)
+    search_criteria = Column(Text, nullable=True)  # JSON: {"date_from": "2023-01-01", "image_ids": [123, 456], ...}
+    
+    # For algorithmic selections: generation parameters
+    algorithm_type = Column(String(50), nullable=True)  # 'recent', 'memories', 'top_rated', 'yearly', etc.
+    algorithm_params = Column(Text, nullable=True)  # JSON: {"days": 30, "min_rating": 4, ...}
+    
+    # Metadata
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_accessed = Column(DateTime, nullable=True)
+    access_count = Column(Integer, default=0)
+    
+    # User organization
+    is_favorite = Column(Boolean, default=False)
+    is_public = Column(Boolean, default=False)  # For sharing
+    sort_order = Column(Integer, default=0)  # Custom sorting
+    
+    # Cascading support
+    parent_selection_id = Column(Integer, ForeignKey('selections.id'), nullable=True, index=True)
+    
+    # Creator tracking
+    created_by = Column(String(255), nullable=True)  # Future multi-user support
+    
+    # Relationships
+    parent_selection = relationship("Selection", remote_side=[id], backref="child_selections")
+    
+    def __repr__(self):
+        is_algo = getattr(self, 'is_algorithmic', False)
+        selection_type = 'algorithmic' if is_algo else 'criteria'
+        return f"<Selection(id={self.id}, name='{self.name}', type='{selection_type}')>"
+
+
 class ImportSession(Base):
     """
     Tracks import sessions for auditing and organization

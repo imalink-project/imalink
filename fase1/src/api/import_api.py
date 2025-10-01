@@ -207,6 +207,27 @@ def import_directory_background(session_id: int, source_path: str, source_descri
                     db.add(image_record)
                     db.commit()
                     imported_count += 1
+                    
+                    # Generate pool versions in background (non-blocking)
+                    try:
+                        from services.image_pool import ImagePoolService
+                        from config import config
+                        
+                        pool_service = ImagePoolService(config.IMAGE_POOL_DIRECTORY)
+                        
+                        # Generate all pool sizes optimized
+                        created_paths = pool_service.create_all_sizes_optimized(
+                            original_path=file_path,
+                            image_hash=str(image_record.image_hash),
+                            quality=config.POOL_QUALITY
+                        )
+                        
+                        print(f"Created pool versions for {image_record.original_filename}: {list(created_paths.keys())}")
+                        
+                    except Exception as pool_error:
+                        # Pool generation is non-critical - don't fail the import
+                        print(f"Warning: Failed to create pool versions for {file_path}: {pool_error}")
+                        # Continue with import process
                 
             except Exception as e:
                 errors_count += 1

@@ -11,6 +11,23 @@ document.addEventListener('DOMContentLoaded', function() {
     loadAllImages();
 });
 
+// Test function to verify modal functionality (temporary)
+function testModal() {
+    console.log('Testing modal...');
+    const modal = document.getElementById('imageModal');
+    if (modal) {
+        console.log('Modal found, showing...');
+        modal.classList.remove('hidden');
+        
+        // Add some test content
+        document.getElementById('viewerTitle').textContent = 'Test Modal';
+        document.getElementById('viewerImageContainer').innerHTML = '<div style="padding: 2rem; text-align: center;">Modal fungerer! 🎉</div>';
+    } else {
+        console.error('Modal element not found!');
+        alert('Modal element not found in HTML!');
+    }
+}
+
 // Search and gallery functions
 async function searchImages() {
     const query = document.getElementById('searchQuery').value.trim();
@@ -79,8 +96,9 @@ function renderGallery() {
             <div class="thumbnail-container">
                 <img src="${API_BASE}/images/${image.id}/thumbnail" 
                      alt="${image.filename}"
-                     onclick="showImageModal(${image.id})"
-                     style="transform: rotate(${rotationDegrees}deg);"
+                     title="Klikk for å åpne bildeviewer - ${image.filename}"
+                     onclick="console.log('Image clicked:', ${image.id}); showImageModal(${image.id});"
+                     style="transform: rotate(${rotationDegrees}deg); cursor: pointer;"
                      onerror="this.style.display='none'">
                 <div class="thumbnail-controls">
                     <button class="rotate-thumbnail-btn" onclick="event.stopPropagation(); rotateThumbnail(${image.id})" title="Roter 90°">
@@ -107,43 +125,246 @@ function renderGallery() {
     }).join('');
 }
 
-// Modal functions
-// This function is redefined below with rotation support
+// Enhanced modal functions
 
-function renderImageModal(imageData) {
-    const container = document.getElementById('modalImageContainer');
+// Load image with specific pool size
+async function loadImageWithPoolSize(poolSize, imageData) {
+    currentImageData = imageData;
+    const container = document.getElementById('viewerImageContainer');
+    const sizeSelector = document.getElementById('poolSizeSelector');
     
-    container.innerHTML = `
-        <div class="modal-image-container">
-            <img src="${API_BASE}/images/${imageData.id}/thumbnail" alt="${imageData.filename}">
-            <h3>${imageData.filename}</h3>
-            <div class="modal-metadata">
-                ${Object.entries({
-                    'Filsti': imageData.file_path,
-                    'Størrelse': `${imageData.width} × ${imageData.height}`,
-                    'Filstørrelse': formatFileSize(imageData.file_size),
-                    'Format': imageData.format?.toUpperCase(),
-                    'Tatt': formatDate(imageData.taken_at),
-                    'Importert': formatDate(imageData.created_at),
-                    'GPS': imageData.gps_latitude && imageData.gps_longitude ? 
-                           `${imageData.gps_latitude.toFixed(6)}, ${imageData.gps_longitude.toFixed(6)}` : 'Nei',
-                    'Kilde': imageData.import_source,
-                    'Hash': imageData.hash
-                }).map(([label, value]) => 
-                    value ? `
-                    <div class="metadata-item">
-                        <span class="metadata-label">${label}:</span>
-                        <span class="metadata-value">${value}</span>
+    // Update size selector
+    sizeSelector.value = poolSize;
+    
+    try {
+        // Try pool image URL directly - backend will create if needed
+        let imageUrl = `${API_BASE}/images/${imageData.id}/pool/${poolSize}`;
+        
+        console.log(`Loading pool image for size '${poolSize}': ${imageUrl}`);
+        
+        // Create and load image
+        const img = document.createElement('img');
+        img.className = 'viewer-image';
+        img.alt = imageData.filename;
+        
+        // Apply user rotation if any
+        if (imageData.user_rotation) {
+            const rotation = imageData.user_rotation * 90;
+            img.style.transform = `rotate(${rotation}deg)`;
+        }
+        
+        img.onload = () => {
+            console.log(`Successfully loaded ${poolSize} image for ${imageData.filename}`);
+            console.log(`Image dimensions: ${img.naturalWidth} x ${img.naturalHeight}`);
+            container.innerHTML = '';
+            container.appendChild(img);
+            
+            // Add debugging info overlay (remove in production)
+            const debugInfo = document.createElement('div');
+            debugInfo.style.cssText = `
+                position: absolute;
+                top: 10px;
+                left: 10px;
+                background: rgba(0,0,0,0.7);
+                color: white;
+                padding: 5px 10px;
+                border-radius: 4px;
+                font-size: 12px;
+                z-index: 10;
+                pointer-events: none;
+            `;
+            debugInfo.textContent = `${poolSize.toUpperCase()}: ${img.naturalWidth}×${img.naturalHeight}`;
+            container.appendChild(debugInfo);
+            
+            // Add usage hint for large images
+            if (img.naturalWidth > 800 || img.naturalHeight > 600) {
+                const hintInfo = document.createElement('div');
+                hintInfo.style.cssText = `
+                    position: absolute;
+                    bottom: 10px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(0,0,0,0.7);
+                    color: white;
+                    padding: 5px 15px;
+                    border-radius: 20px;
+                    font-size: 11px;
+                    z-index: 10;
+                    pointer-events: none;
+                    opacity: 0.8;
+                `;
+                hintInfo.textContent = '💡 Dra bildet for å navigere • Scroll for å zoome';
+                container.appendChild(hintInfo);
+                
+                // Fade out hint after 3 seconds
+                setTimeout(() => {
+                    if (hintInfo.parentNode) {
+                        hintInfo.style.transition = 'opacity 1s ease';
+                        hintInfo.style.opacity = '0';
+                        setTimeout(() => {
+                            if (hintInfo.parentNode) hintInfo.remove();
+                        }, 1000);
+                    }
+                }, 3000);
+            }
+            
+            // Add drag scrolling functionality for large images
+            setupImageDragging(img, container);
+            
+            // Show image dimensions in console for debugging
+            img.onload = null; // Remove handler to avoid recursive calls
+        };
+        
+        img.onerror = (error) => {
+            console.error(`Failed to load ${poolSize} image:`, error);
+            console.log(`Falling back to thumbnail for ${imageData.filename}`);
+            
+            // Fallback to thumbnail
+            const fallbackImg = document.createElement('img');
+            fallbackImg.className = 'viewer-image';
+            fallbackImg.alt = imageData.filename;
+            fallbackImg.src = `${API_BASE}/images/${imageData.id}/thumbnail`;
+            
+            fallbackImg.onload = () => {
+                container.innerHTML = '';
+                container.appendChild(fallbackImg);
+            };
+            
+            fallbackImg.onerror = () => {
+                container.innerHTML = `
+                    <div class="error-message">
+                        <strong>Kunne ikke laste bilde</strong><br>
+                        Pool størrelse: ${poolSize}<br>
+                        Thumbnail fallback feilet også
                     </div>
-                    ` : ''
-                ).join('')}
+                `;
+            };
+        };
+        
+        img.src = imageUrl;
+        
+    } catch (error) {
+        container.innerHTML = `
+            <div class="error-message">
+                <strong>Feil ved lasting av pool-bilde</strong><br>
+                ${error.message}
             </div>
+        `;
+    }
+}
+
+// Populate image information panels
+function populateImageInfo(imageData) {
+    // File Info panel
+    const fileInfo = document.getElementById('imageFileInfo');
+    fileInfo.innerHTML = `
+        <div class="detail-row">
+            <span class="detail-label">Filnavn</span>
+            <span class="detail-value highlight">${imageData.filename || 'Ukjent'}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Filsti</span>
+            <span class="detail-value">${imageData.file_path || 'Ukjent'}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Filstørrelse</span>
+            <span class="detail-value">${formatFileSize(imageData.file_size)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Hash</span>
+            <span class="detail-value muted">${imageData.hash || 'Ukjent'}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Importert</span>
+            <span class="detail-value">${formatDate(imageData.created_at)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Kilde</span>
+            <span class="detail-value">${imageData.import_source || 'Ukjent'}</span>
+        </div>
+    `;
+    
+    // Technical Details panel with pool size explanation
+    const technicalInfo = document.getElementById('imageTechnicalInfo');
+    const originalWidth = imageData.width || 0;
+    const originalHeight = imageData.height || 0;
+    
+    // Calculate effective pool sizes
+    const getEffectiveSize = (maxW, maxH) => {
+        if (originalWidth <= maxW && originalHeight <= maxH) {
+            return `${originalWidth}×${originalHeight} (original)`;
+        }
+        const aspect = originalWidth / originalHeight;
+        let newW, newH;
+        if (aspect > 1) {
+            newW = Math.min(maxW, originalWidth);
+            newH = Math.round(newW / aspect);
+        } else {
+            newH = Math.min(maxH, originalHeight);
+            newW = Math.round(newH * aspect);
+        }
+        return `${newW}×${newH}`;
+    };
+    
+    technicalInfo.innerHTML = `
+        <div class="detail-row">
+            <span class="detail-label">Format</span>
+            <span class="detail-value highlight">${(imageData.format || 'Ukjent').toUpperCase()}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Original størrelse</span>
+            <span class="detail-value">${originalWidth} × ${originalHeight}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Pool: Small</span>
+            <span class="detail-value muted">${getEffectiveSize(400, 400)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Pool: Medium</span>
+            <span class="detail-value muted">${getEffectiveSize(800, 800)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Pool: Large</span>
+            <span class="detail-value muted">${getEffectiveSize(1200, 1200)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Rotasjon (bruker)</span>
+            <span class="detail-value">${imageData.user_rotation ? imageData.user_rotation * 90 + '°' : '0°'}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">EXIF rotasjon</span>
+            <span class="detail-value">${imageData.exif_rotation || 'Ingen'}</span>
+        </div>
+    `;
+    
+    // Metadata panel
+    const metadataInfo = document.getElementById('imageMetadataInfo');
+    metadataInfo.innerHTML = `
+        <div class="detail-row">
+            <span class="detail-label">Tatt dato</span>
+            <span class="detail-value">${formatDate(imageData.taken_at)}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Kamera</span>
+            <span class="detail-value">${imageData.camera_make ? `${imageData.camera_make} ${imageData.camera_model || ''}`.trim() : 'Ukjent'}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">GPS posisjon</span>
+            <span class="detail-value">${imageData.gps_latitude && imageData.gps_longitude ? 
+                `${imageData.gps_latitude.toFixed(6)}, ${imageData.gps_longitude.toFixed(6)}` : 'Ikke tilgjengelig'}</span>
+        </div>
+        <div class="detail-row">
+            <span class="detail-label">Fotograf</span>
+            <span class="detail-value">${imageData.photographer || 'Ukjent'}</span>
         </div>
     `;
 }
 
 function closeModal() {
-    document.getElementById('imageModal').style.display = 'none';
+    const modal = document.getElementById('imageModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
 }
 
 // Utility functions
@@ -172,6 +393,205 @@ function formatFileSize(bytes) {
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
 }
 
+// Setup drag scrolling for large images
+function setupImageDragging(img, container) {
+    let isMouseDown = false;
+    let startX, startY, scrollLeft, scrollTop;
+    
+    // Mouse events for desktop
+    img.addEventListener('mousedown', (e) => {
+        isMouseDown = true;
+        img.style.cursor = 'grabbing';
+        startX = e.pageX - container.offsetLeft;
+        startY = e.pageY - container.offsetTop;
+        scrollLeft = container.scrollLeft;
+        scrollTop = container.scrollTop;
+        e.preventDefault(); // Prevent image drag default behavior
+    });
+    
+    container.addEventListener('mouseleave', () => {
+        isMouseDown = false;
+        img.style.cursor = 'grab';
+    });
+    
+    container.addEventListener('mouseup', () => {
+        isMouseDown = false;
+        img.style.cursor = 'grab';
+    });
+    
+    container.addEventListener('mousemove', (e) => {
+        if (!isMouseDown) return;
+        e.preventDefault();
+        const x = e.pageX - container.offsetLeft;
+        const y = e.pageY - container.offsetTop;
+        const walkX = (x - startX) * 1; // Scroll speed multiplier
+        const walkY = (y - startY) * 1;
+        container.scrollLeft = scrollLeft - walkX;
+        container.scrollTop = scrollTop - walkY;
+    });
+    
+    // Touch events for mobile
+    img.addEventListener('touchstart', (e) => {
+        isMouseDown = true;
+        const touch = e.touches[0];
+        startX = touch.pageX - container.offsetLeft;
+        startY = touch.pageY - container.offsetTop;
+        scrollLeft = container.scrollLeft;
+        scrollTop = container.scrollTop;
+    }, { passive: false });
+    
+    container.addEventListener('touchend', () => {
+        isMouseDown = false;
+    });
+    
+    container.addEventListener('touchmove', (e) => {
+        if (!isMouseDown) return;
+        e.preventDefault();
+        const touch = e.touches[0];
+        const x = touch.pageX - container.offsetLeft;
+        const y = touch.pageY - container.offsetTop;
+        const walkX = (x - startX) * 1;
+        const walkY = (y - startY) * 1;
+        container.scrollLeft = scrollLeft - walkX;
+        container.scrollTop = scrollTop - walkY;
+    }, { passive: false });
+}
+
+// Enhanced modal event handlers
+function onPoolSizeChange() {
+    const sizeSelector = document.getElementById('poolSizeSelector');
+    const selectedSize = sizeSelector.value;
+    
+    if (currentImageData) {
+        loadImageWithPoolSize(selectedSize, currentImageData);
+        
+        // Update dropdown options with actual sizes if available
+        updateDropdownLabels();
+    }
+}
+
+function updateDropdownLabels() {
+    if (!currentImageData) return;
+    
+    const sizeSelector = document.getElementById('poolSizeSelector');
+    const originalWidth = currentImageData.width || 0;
+    const originalHeight = currentImageData.height || 0;
+    
+    // Calculate effective sizes
+    const getEffectiveSize = (maxW, maxH) => {
+        if (originalWidth <= maxW && originalHeight <= maxH) {
+            return { width: originalWidth, height: originalHeight, isOriginal: true };
+        }
+        const aspect = originalWidth / originalHeight;
+        let newW, newH;
+        if (aspect > 1) {
+            newW = Math.min(maxW, originalWidth);
+            newH = Math.round(newW / aspect);
+        } else {
+            newH = Math.min(maxH, originalHeight);
+            newW = Math.round(newH * aspect);
+        }
+        return { width: newW, height: newH, isOriginal: false };
+    };
+    
+    const small = getEffectiveSize(400, 400);
+    const medium = getEffectiveSize(800, 800);
+    const large = getEffectiveSize(1200, 1200);
+    
+    // Update option texts
+    const options = sizeSelector.querySelectorAll('option');
+    if (options[0]) options[0].textContent = `Liten (${small.width}×${small.height})`;
+    if (options[1]) options[1].textContent = `Medium (${medium.width}×${medium.height})`;
+    if (options[2]) {
+        const largeText = `Stor (${large.width}×${large.height})`;
+        const sameAsMedium = large.width === medium.width && large.height === medium.height;
+        options[2].textContent = sameAsMedium ? `${largeText} - samme som medium` : largeText;
+    }
+}
+
+// Enhanced rotate function for modal
+async function rotateViewerImage() {
+    if (!currentImageId) return;
+    
+    const rotateBtn = document.getElementById('viewerRotateBtn');
+    const originalText = rotateBtn.textContent;
+    
+    try {
+        // Show loading state
+        rotateBtn.textContent = '🔄 Roterer...';
+        rotateBtn.disabled = true;
+        
+        const response = await fetch(`${API_BASE}/images/${currentImageId}/rotate`, {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Rotasjon feilet');
+        }
+        
+        const result = await response.json();
+        
+        // Update current image data with new rotation
+        if (currentImageData) {
+            currentImageData.user_rotation = result.user_rotation;
+        }
+        
+        // Reload the modal image with current pool size
+        const currentPoolSize = document.getElementById('poolSizeSelector').value;
+        await loadImageWithPoolSize(currentPoolSize, currentImageData);
+        
+        // Update technical info panel
+        populateImageInfo(currentImageData);
+        
+        // Reload gallery to update thumbnail
+        await loadAllImages();
+        
+    } catch (error) {
+        alert(`Feil ved rotasjon: ${error.message}`);
+    } finally {
+        rotateBtn.textContent = originalText;
+        rotateBtn.disabled = false;
+    }
+}
+
+// Download current pool image
+async function downloadViewerImage() {
+    if (!currentImageId) return;
+    
+    const downloadBtn = document.getElementById('viewerDownloadBtn');
+    const poolSize = document.getElementById('poolSizeSelector').value;
+    const originalText = downloadBtn.textContent;
+    
+    try {
+        downloadBtn.textContent = '📥 Laster ned...';
+        downloadBtn.disabled = true;
+        
+        // Try pool image first, fallback to thumbnail
+        let downloadUrl = `${API_BASE}/images/${currentImageId}/pool/${poolSize}`;
+        
+        // Check if pool image exists
+        const checkResponse = await fetch(downloadUrl, { method: 'HEAD' });
+        if (!checkResponse.ok) {
+            downloadUrl = `${API_BASE}/images/${currentImageId}/thumbnail`;
+        }
+        
+        // Create download link
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = currentImageData ? `${currentImageData.filename}_${poolSize}` : `image_${currentImageId}_${poolSize}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+    } catch (error) {
+        alert(`Feil ved nedlasting: ${error.message}`);
+    } finally {
+        downloadBtn.textContent = originalText;
+        downloadBtn.disabled = false;
+    }
+}
+
+// Close modal when clicking outside
 // Close modal when clicking outside
 window.onclick = function(event) {
     const modal = document.getElementById('imageModal');
@@ -187,27 +607,72 @@ document.addEventListener('keydown', function(event) {
     }
 });
 
-// Current image ID for rotation
+// Current image ID and data for modal operations
 let currentImageId = null;
+let currentImageData = null;
 
-// Show image modal with rotation support
+// Show enhanced image modal with pool support
 async function showImageModal(imageId) {
-    currentImageId = imageId;  // Store for rotation
-    const modal = document.getElementById('imageModal');
-    const container = document.getElementById('modalImageContainer');
+    console.log('Opening image modal for image ID:', imageId);
     
-    // Show modal with loading
-    container.innerHTML = '<div class="loading">Laster bildedetaljer...</div>';
-    modal.style.display = 'block';
+    currentImageId = imageId;  // Store for rotation and operations
+    const modal = document.getElementById('imageModal');
+    const imageContainer = document.getElementById('viewerImageContainer');
+    const spinner = document.getElementById('imageLoadingSpinner');
+    const errorDiv = document.getElementById('imageError');
+    
+    // Check if elements exist
+    if (!modal) {
+        console.error('Modal element not found!');
+        alert('Feil: Modal-element ikke funnet. Sjekk HTML-strukturen.');
+        return;
+    }
+    
+    if (!imageContainer) {
+        console.error('Image container element not found!');
+        alert('Feil: Bildebeholder ikke funnet. Sjekk HTML-strukturen.');
+        return;
+    }
+    
+    // Reset states
+    imageContainer.innerHTML = '';
+    if (spinner) spinner.classList.remove('hidden');
+    if (errorDiv) errorDiv.classList.add('hidden');
+    modal.classList.remove('hidden');
     
     try {
+        // Load image metadata
         const response = await fetch(`${API_BASE}/images/${imageId}`);
+        if (!response.ok) throw new Error('Kunne ikke laste bildedata');
+        
         const imageData = await response.json();
         
-        renderImageModal(imageData);
+        // Update modal title
+        document.getElementById('viewerTitle').textContent = imageData.filename || 'Ukjent fil';
+        
+        // Load image with default pool size
+        await loadImageWithPoolSize('medium', imageData);
+        
+        // Populate file information
+        populateImageInfo(imageData);
+        
+        // Update dropdown labels with actual sizes
+        updateDropdownLabels();
+        
+        if (spinner) spinner.classList.add('hidden');
         
     } catch (error) {
-        container.innerHTML = `<div class="loading">Feil ved lasting: ${error.message}</div>`;
+        console.error('Error loading image:', error);
+        if (spinner) spinner.classList.add('hidden');
+        if (errorDiv) {
+            errorDiv.classList.remove('hidden');
+            errorDiv.innerHTML = `
+                <div class="error-message">
+                    <strong>Feil ved lasting av bilde</strong><br>
+                    ${error.message}
+                </div>
+            `;
+        }
     }
 }
 

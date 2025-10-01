@@ -8,11 +8,12 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 
 from .models import Base
+from config import Config
 
 # Database configuration
-# Use fixed path in C:\temp directory
-db_path = r"C:\temp\imalink.db"
-DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{db_path}")
+# Use configuration from config.py
+config = Config()
+DATABASE_URL = config.DATABASE_URL
 
 # SQLite specific configuration for better performance
 engine = create_engine(
