@@ -23,3 +23,20 @@ Thumbs.db
 # Project specific
 temp/
 backup/
+
+# Image files (test files and user uploads should be stored elsewhere)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+*.tif
+*.raw
+*.cr2
+*.nef
+*.arw
+*.dng
+*.raf
+*.orf
+*.rw2
