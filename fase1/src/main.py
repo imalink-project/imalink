@@ -1,23 +1,20 @@
 """
-Main FastAPI application for ImaLink Fase 1
+Main FastAPI application for ImaLink Fase 1 - Pure API Backend
 """
-import os
-from pathlib import Path
-from fastapi import FastAPI, Depends, Request, Response
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
 
 # Import our modules
-from config import config
+from core.config import config
 from database.connection import init_database
-from api.images import router as images_router
-from api.import_api import router as import_router
-from api.authors import router as authors_router
-from api.selections import router as selections_router
+from api.v1.images import router as images_router
+from api.v1.imports import router as imports_router
+from api.v1.authors import router as authors_router
+from core.exceptions import APIException
 
 # Ensure directories exist
 config.ensure_directories()
@@ -27,88 +24,52 @@ init_database()
 
 # Create FastAPI app
 app = FastAPI(
-    title="ImaLink Fase 1",
-    description="Simple image gallery and management system",
+    title="ImaLink API",
+    description="Pure API backend for image gallery and management system",
     version="0.1.0"
 )
 
-# Include API routers
-app.include_router(images_router, prefix="/api/images", tags=["images"])
-app.include_router(import_router, prefix="/api/import", tags=["import"])
-app.include_router(authors_router, prefix="/api/authors", tags=["authors"])
-app.include_router(selections_router, prefix="/api/selections", tags=["selections"])
-
-# Serve static files
-static_dir = Path(__file__).parent / "static"
-if static_dir.exists():
-    app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-# Middleware to add no-cache headers to static files in development
-@app.middleware("http")
-async def add_no_cache_headers(request: Request, call_next):
-    response = await call_next(request)
-    
-    # Add no-cache headers for static files in development
-    if request.url.path.startswith("/static/"):
-        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-        response.headers["Pragma"] = "no-cache"
-        response.headers["Expires"] = "0"
-    
-    return response
+# Include API routers with v1 prefix for versioning
+app.include_router(images_router, prefix="/api/v1/images", tags=["images"])
+print("🔥 MAIN.PY: Loading imports router...")
+app.include_router(imports_router, prefix="/api/v1/imports", tags=["imports"])
+print("🔥 MAIN.PY: Imports router loaded!")
+app.include_router(authors_router, prefix="/api/v1/authors", tags=["authors"])
 
 
-@app.get("/", response_class=HTMLResponse)
-async def root():
-    """Serve the main dashboard page"""
-    return serve_static_file("index.html")
+
+# Debug endpoint to list all routes
+@app.get("/debug/routes")
+async def list_routes():
+    """Debug endpoint to show all available routes"""
+    routes = []
+    for route in app.routes:
+        route_info = {
+            "path": getattr(route, 'path', 'unknown'),
+            "methods": list(getattr(route, 'methods', [])),
+            "name": getattr(route, 'name', 'unnamed')
+        }
+        routes.append(route_info)
+    return {"routes": routes}
+
+# Global exception handler for API exceptions
+@app.exception_handler(APIException)
+async def api_exception_handler(request: Request, exc: APIException):
+    """Handle custom API exceptions with structured response"""
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": {
+                "code": exc.code,
+                "message": exc.message,
+                "details": exc.details
+            }
+        }
+    )
 
 
-@app.get("/gallery", response_class=HTMLResponse)
-async def gallery():
-    """Serve the gallery page"""
-    return serve_static_file("gallery.html")
 
 
-@app.get("/import", response_class=HTMLResponse)
-async def import_page():
-    """Serve the import management page"""
-    return serve_static_file("import.html")
-
-
-@app.get("/authors", response_class=HTMLResponse)
-async def authors_page():
-    """Serve the authors management page"""
-    return serve_static_file("authors.html")
-
-
-@app.get("/selections", response_class=HTMLResponse)
-async def selections_page():
-    """Serve the selections management page"""
-    return serve_static_file("selections.html")
-
-
-def serve_static_file(filename: str):
-    """Helper function to serve static HTML files"""
-    static_dir = Path(__file__).parent / "static"
-    file_path = static_dir / filename
-    
-    if file_path.exists():
-        content = file_path.read_text(encoding="utf-8")
-        return HTMLResponse(content=content, status_code=200)
-    else:
-        return HTMLResponse(
-            content=f"""
-            <html>
-                <head><title>Side ikke funnet - ImaLink</title></head>
-                <body>
-                    <h1>404 - Side ikke funnet</h1>
-                    <p>Filen {filename} ble ikke funnet.</p>
-                    <p><a href="/">← Tilbake til hovedsiden</a></p>
-                </body>
-            </html>
-            """,
-            status_code=404
-        )
 
 
 @app.get("/health")
