@@ -30,9 +30,41 @@ class ImageProcessor:
         return Path(file_path).exists()
     
     async def generate_thumbnail(self, file_path: str) -> Optional[bytes]:
-        """Generate thumbnail for image"""
-        # TODO: Implement thumbnail generation
-        return None
+        """Generate thumbnail for image with EXIF rotation and stripped metadata"""
+        try:
+            from PIL import Image, ImageOps
+            import io
+            
+            if not Path(file_path).exists():
+                return None
+                
+            # Open and resize image to thumbnail size
+            with Image.open(file_path) as img:
+                # CRITICAL: Apply EXIF rotation before any processing
+                img_fixed = ImageOps.exif_transpose(img.copy())
+                
+                # Strip EXIF data (not needed in thumbnails)
+                if img_fixed and hasattr(img_fixed, 'info') and img_fixed.info:
+                    img_fixed.info.pop('exif', None)
+                
+                # Convert to RGB if needed (for JPEG output)  
+                if img_fixed and img_fixed.mode in ('RGBA', 'LA', 'P'):
+                    img_fixed = img_fixed.convert('RGB')
+                
+                # Create thumbnail (maintaining aspect ratio)
+                if img_fixed:
+                    img_fixed.thumbnail((200, 200), Image.Resampling.LANCZOS)
+                    
+                    # Save as JPEG bytes
+                    thumbnail_io = io.BytesIO()
+                    img_fixed.save(thumbnail_io, format='JPEG', quality=85, optimize=True)
+                    return thumbnail_io.getvalue()
+                
+                return None
+                
+        except Exception as e:
+            print(f"Error generating thumbnail for {file_path}: {e}")
+            return None
     
     async def get_pool_image(self, file_path: str, pool_size: str, rotation: int) -> Optional[str]:
         """Get or create pooled image"""

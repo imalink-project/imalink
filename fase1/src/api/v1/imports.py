@@ -14,6 +14,7 @@ from schemas.responses.import_responses import (
 )
 from schemas.common import SingleResponse
 from core.exceptions import APIException
+import datetime as dt
 
 router = APIRouter()
 
@@ -44,8 +45,8 @@ def run_import_background_service(import_id: int, source_directory: str):
     
     try:
         with open(debug_file, "a", encoding="utf-8") as f:
-            f.write(f"{datetime.datetime.now()} - 🚀 BACKGROUND SERVICE: Starting import for session {import_id}\n")
-            f.write(f"{datetime.datetime.now()} - 📦 BACKGROUND SERVICE: Processing directory {source_directory}\n")
+            f.write(f"{dt.datetime.now()} - 🚀 BACKGROUND SERVICE: Starting import for session {import_id}\n")
+            f.write(f"{dt.datetime.now()} - 📦 BACKGROUND SERVICE: Processing directory {source_directory}\n")
         
         # Import here to avoid circular imports
         from database.connection import get_db_sync
@@ -93,16 +94,94 @@ def run_import_background_service(import_id: int, source_directory: str):
                 if existing_image:
                     duplicates_skipped += 1
                     with open(debug_file, "a", encoding="utf-8") as f:
-                        f.write(f"{datetime.datetime.now()} - ⏭️ Duplicate skipped: {image_file.name} (already exists)\n")
+                        f.write(f"{dt.datetime.now()} - ⏭️ Duplicate skipped: {image_file.name} (already exists)\n")
                     continue
                 
-                # Create new image record
+                # Create new image record with EXIF data
+                from PIL import Image as PILImage, ImageOps
+                from PIL.ExifTags import GPSTAGS
+                import json
+                
+                # Extract image dimensions, EXIF data, date taken, and GPS coordinates
+                width, height = 0, 0
+                exif_data = None
+                taken_at = None
+                gps_latitude = None
+                gps_longitude = None
+                
+                try:
+                    with PILImage.open(image_file) as img:
+                        # Get dimensions from properly rotated image
+                        img_rotated = ImageOps.exif_transpose(img)
+                        width, height = img_rotated.size
+                        
+                        # Extract EXIF data
+                        exif = img.getexif()
+                        if exif:
+                            # Store EXIF as JSON
+                            exif_dict = {}
+                            for tag_id, value in exif.items():
+                                try:
+                                    tag = PILImage.ExifTags.TAGS.get(tag_id, tag_id)
+                                    exif_dict[str(tag)] = str(value)
+                                except:
+                                    pass
+                            
+                            if exif_dict:
+                                exif_data = json.dumps(exif_dict).encode('utf-8')
+                            
+                            # Try to extract date taken
+                            date_taken = exif.get(36867) or exif.get(306)  # DateTimeOriginal or DateTime
+                            if date_taken:
+                                try:
+                                    taken_at = dt.datetime.strptime(date_taken, '%Y:%m:%d %H:%M:%S')
+                                except:
+                                    pass
+                            
+                            # Extract GPS coordinates using GPS IFD
+                            try:
+                                gps_ifd = exif.get_ifd(0x8825)  # GPS IFD tag
+                                if gps_ifd and len(gps_ifd) > 0:
+                                    gps_data = {}
+                                    for key in gps_ifd.keys():
+                                        name = GPSTAGS.get(key, key)
+                                        gps_data[name] = gps_ifd[key]
+                                    
+                                    # Convert GPS coordinates to decimal degrees
+                                    def convert_to_degrees(value):
+                                        d, m, s = value
+                                        return d + (m / 60.0) + (s / 3600.0)
+                                    
+                                    if 'GPSLatitude' in gps_data and 'GPSLatitudeRef' in gps_data:
+                                        lat = convert_to_degrees(gps_data['GPSLatitude'])
+                                        if gps_data['GPSLatitudeRef'] == 'S':
+                                            lat = -lat
+                                        gps_latitude = lat
+                                    
+                                    if 'GPSLongitude' in gps_data and 'GPSLongitudeRef' in gps_data:
+                                        lon = convert_to_degrees(gps_data['GPSLongitude'])
+                                        if gps_data['GPSLongitudeRef'] == 'W':
+                                            lon = -lon
+                                        gps_longitude = lon
+                            except Exception:
+                                # GPS extraction failed, but that's OK - not all images have GPS
+                                pass
+                except Exception:
+                    # EXIF extraction failed, continue with basic file info
+                    pass
+
                 new_image = Image(
                     image_hash=file_hash,
                     original_filename=image_file.name,
                     file_path=str(image_file),
                     file_size=image_file.stat().st_size,
-                    import_source=f"Import {import_id}"
+                    import_source=f"Import {import_id}",
+                    width=width,
+                    height=height,
+                    exif_data=exif_data,
+                    taken_at=taken_at,
+                    gps_latitude=gps_latitude,
+                    gps_longitude=gps_longitude
                 )
                 
                 db.add(new_image)
@@ -110,23 +189,23 @@ def run_import_background_service(import_id: int, source_directory: str):
                 images_processed += 1
                 
                 with open(debug_file, "a", encoding="utf-8") as f:
-                    f.write(f"{datetime.datetime.now()} - ✅ Imported {image_file.name}\n")
+                    f.write(f"{dt.datetime.now()} - ✅ Imported {image_file.name}\n")
                 
             except Exception as e:
                 # Check if it's a duplicate error (integrity constraint) vs real error
                 if "UNIQUE constraint failed: images.image_hash" in str(e):
                     duplicates_skipped += 1
                     with open(debug_file, "a", encoding="utf-8") as f:
-                        f.write(f"{datetime.datetime.now()} - ⏭️ Duplicate detected via DB constraint: {image_file.name}\n")
+                        f.write(f"{dt.datetime.now()} - ⏭️ Duplicate detected via DB constraint: {image_file.name}\n")
                 else:
                     errors_count += 1
                     with open(debug_file, "a", encoding="utf-8") as f:
-                        f.write(f"{datetime.datetime.now()} - ❌ Error processing {image_file.name}: {e}\n")
+                        f.write(f"{dt.datetime.now()} - ❌ Error processing {image_file.name}: {e}\n")
         
         # Final database update - success if no real errors, even with duplicates
         final_status = 'completed' if errors_count == 0 else 'failed'
         with open(debug_file, "a", encoding="utf-8") as f:
-            f.write(f"\n{datetime.datetime.now()} - 🏁 Import completed!\n")
+            f.write(f"\n{dt.datetime.now()} - 🏁 Import completed!\n")
             f.write(f"  📊 Final stats: {images_processed} imported, {duplicates_skipped} duplicates, {errors_count} errors\n")
             f.write(f"  🎯 Status: {final_status}\n")
         db.execute(text(f"UPDATE imports SET images_imported = {images_processed}, duplicates_skipped = {duplicates_skipped}, errors_count = {errors_count}, status = '{final_status}', completed_at = CURRENT_TIMESTAMP WHERE id = {import_id}"))
@@ -139,16 +218,16 @@ def run_import_background_service(import_id: int, source_directory: str):
         }
         
         with open(debug_file, "a", encoding="utf-8") as f:
-            f.write(f"{datetime.datetime.now()} - ✅ Processed {result.get('images_processed', 0)} images\n")
-            f.write(f"{datetime.datetime.now()} - ⚠️ Skipped {result.get('duplicates_skipped', 0)} duplicates\n")
-            f.write(f"{datetime.datetime.now()} - ❌ Errors: {result.get('errors_count', 0)}\n")
+            f.write(f"{dt.datetime.now()} - ✅ Processed {result.get('images_processed', 0)} images\n")
+            f.write(f"{dt.datetime.now()} - ⚠️ Skipped {result.get('duplicates_skipped', 0)} duplicates\n")
+            f.write(f"{dt.datetime.now()} - ❌ Errors: {result.get('errors_count', 0)}\n")
         
         with open(debug_file, "a", encoding="utf-8") as f:
-            f.write(f"{datetime.datetime.now()} - ✅ BACKGROUND SERVICE: Import completed for session {import_id}\n")
+            f.write(f"{dt.datetime.now()} - ✅ BACKGROUND SERVICE: Import completed for session {import_id}\n")
         
     except Exception as e:
         with open(debug_file, "a", encoding="utf-8") as f:
-            f.write(f"{datetime.datetime.now()} - ❌ BACKGROUND SERVICE ERROR: {e}\n")
+            f.write(f"{dt.datetime.now()} - ❌ BACKGROUND SERVICE ERROR: {e}\n")
         import traceback
         traceback.print_exc()
     finally:
@@ -472,8 +551,11 @@ def import_directory_background(import_id: int, source_path: str, source_descrip
                     session.duplicates_skipped += 1
                     print(f"Skipping duplicate: {image_file.name}")
                 else:
-                    # Create new image record with proper hash
+                    # Create new image record with proper hash and EXIF data
                     try:
+                        from PIL import Image as PILImage, ImageOps
+                        import json
+                        
                         file_size = image_file.stat().st_size
                         
                         # Generate unique hash from file content
@@ -481,16 +563,87 @@ def import_directory_background(import_id: int, source_path: str, source_descrip
                             file_content = f.read()
                             unique_hash = hashlib.md5(file_content).hexdigest()
                         
+                        # Extract image dimensions, EXIF data, date taken, and GPS coordinates
+                        width, height = 0, 0
+                        exif_data = None
+                        taken_at = None
+                        gps_latitude = None
+                        gps_longitude = None
+                        
+                        try:
+                            with PILImage.open(image_file) as img:
+                                # Get dimensions from properly rotated image
+                                img_rotated = ImageOps.exif_transpose(img)
+                                width, height = img_rotated.size
+                                
+                                # Extract EXIF data
+                                exif = img.getexif()
+                                if exif:
+                                    # Store EXIF as JSON
+                                    exif_dict = {}
+                                    for tag_id, value in exif.items():
+                                        try:
+                                            tag = PILImage.ExifTags.TAGS.get(tag_id, tag_id)
+                                            exif_dict[str(tag)] = str(value)
+                                        except:
+                                            pass
+                                    
+                                    if exif_dict:
+                                        exif_data = json.dumps(exif_dict).encode('utf-8')
+                                    
+                                    # Try to extract date taken
+                                    date_taken = exif.get(36867) or exif.get(306)  # DateTimeOriginal or DateTime
+                                    if date_taken:
+                                        try:
+                                            taken_at = dt.datetime.strptime(date_taken, '%Y:%m:%d %H:%M:%S')
+                                        except:
+                                            pass
+                                    
+                                    # Extract GPS coordinates if available - use GPS IFD
+                                    try:
+                                        gps_ifd = exif.get_ifd(0x8825)  # GPS IFD tag
+                                        if gps_ifd and len(gps_ifd) > 0:
+                                            from PIL.ExifTags import GPSTAGS
+                                            gps_data = {}
+                                            for key in gps_ifd.keys():
+                                                name = GPSTAGS.get(key, key)
+                                                gps_data[name] = gps_ifd[key]
+                                            
+                                            # Convert GPS coordinates to decimal degrees
+                                            def convert_to_degrees(value):
+                                                d, m, s = value
+                                                return d + (m / 60.0) + (s / 3600.0)
+                                            
+                                            if 'GPSLatitude' in gps_data and 'GPSLatitudeRef' in gps_data:
+                                                lat = convert_to_degrees(gps_data['GPSLatitude'])
+                                                if gps_data['GPSLatitudeRef'] == 'S':
+                                                    lat = -lat
+                                                gps_latitude = lat
+                                            
+                                            if 'GPSLongitude' in gps_data and 'GPSLongitudeRef' in gps_data:
+                                                lon = convert_to_degrees(gps_data['GPSLongitude'])
+                                                if gps_data['GPSLongitudeRef'] == 'W':
+                                                    lon = -lon
+                                                gps_longitude = lon
+                                    except Exception as gps_error:
+                                        # GPS extraction failed, but that's OK - not all images have GPS
+                                        pass
+                        except Exception as exif_error:
+                            print(f"Could not extract EXIF from {image_file.name}: {exif_error}")
+                        
                         new_image = Image(
                             original_filename=image_file.name,
                             file_path=str(image_file),
                             file_size=file_size,
                             file_format=image_file.suffix.lower(),
                             import_source="directory_import",
-                            # Required fields
-                            width=0,
-                            height=0,
-                            image_hash=unique_hash
+                            width=width,
+                            height=height,
+                            image_hash=unique_hash,
+                            exif_data=exif_data,
+                            taken_at=taken_at,
+                            gps_latitude=gps_latitude,
+                            gps_longitude=gps_longitude
                         )
                         db.add(new_image)
                         session.images_imported += 1
