@@ -5,7 +5,7 @@ from .base import Base
 from .mixins import TimestampMixin, SoftDeleteMixin
 from .image import Image
 from .author import Author
-from .import_model import Import
+from .import_session import ImportSession
 
 __all__ = [
     "Base",
@@ -13,5 +13,5 @@ __all__ = [
     "SoftDeleteMixin",
     "Image",
     "Author",
-    "Import"
+    "ImportSession"
 ]

@@ -6,12 +6,12 @@ def test_imports():
     """Test that all modules can be imported"""
     tests = [
         ("main", "from main import app"),
-        ("models", "from models import Image, Author, Import"),
+        ("models", "from models import Image, Author, ImportSession"),
         ("database", "from database.connection import get_db"),
-        ("import_service", "from services.import_service import ImportService"),
-        ("import_repository", "from repositories.import_repository import ImportRepository"),
-        ("import_requests", "from schemas.requests.import_requests import ImportStartRequest"),
-        ("import_api", "from api.v1.imports import router"),
+        ("import_service", "from services.import_session_service import ImportSessionService"),
+        ("import_repository", "from repositories.import_session_repository import ImportSessionRepository"),
+        ("import_requests", "from schemas.requests.import_session_requests import ImportStartRequest"),
+        ("import_api", "from api.v1.import_sessions import router"),
         ("dependencies", "from core.dependencies import get_import_service")
     ]
     
@@ -32,7 +32,7 @@ def test_imports():
     # Test creating request object
     print("\nTesting ImportStartRequest creation:")
     try:
-        from schemas.requests.import_requests import ImportStartRequest
+        from schemas.requests.import_session_requests import ImportStartRequest
         
         # Test with source_directory
         request1 = ImportStartRequest(

@@ -1,5 +1,5 @@
 """
-Import Service - Business Logic Layer for Import operations
+Import Session Service - Business Logic Layer for Import operations
 """
 import os
 from typing import List, Optional, Dict, Any
@@ -7,9 +7,9 @@ from pathlib import Path
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from repositories.import_repository import ImportRepository
-from schemas.requests.import_requests import ImportStartRequest, ImportTestRequest
-from schemas.responses.import_responses import (
+from repositories.import_session_repository import ImportSessionRepository
+from schemas.requests.import_session_requests import ImportStartRequest, ImportTestRequest
+from schemas.responses.import_session_responses import (
     ImportResponse, ImportStartResponse, ImportListResponse,
     ImportTestResponse
 )
@@ -17,32 +17,32 @@ from schemas.common import PaginatedResponse, create_paginated_response
 from core.exceptions import NotFoundError, ValidationError
 
 
-class ImportService:
-    """Service class for Import business logic"""
+class ImportSessionService:
+    """Service class for ImportSession business logic"""
     
     def __init__(self, db: Session):
         self.db = db
-        self.import_repo = ImportRepository(db)
+        self.import_repo = ImportSessionRepository(db)
     
     async def start_import(self, request: ImportStartRequest) -> ImportStartResponse:
         """Start a new import session"""
-        print(f"🚀 SERVICE: start_import called with source_directory: {request.source_directory}")
+        # Logging handled by proper logger if needed
         
         # Business Logic: Validate source path
-        source_path = Path(request.source_path)
+        source_path = Path(request.source_directory)
         
         if not source_path.exists():
-            raise ValidationError(f"Source path does not exist: {request.source_path}")
+            raise ValidationError(f"Source path does not exist: {request.source_directory}")
         
         if not source_path.is_dir():
-            raise ValidationError(f"Source path must be a directory: {request.source_path}")
+            raise ValidationError(f"Source path must be a directory: {request.source_directory}")
         
         # Business Logic: Check if path is accessible
         try:
             # Try to list directory to check permissions
             list(source_path.iterdir())
         except PermissionError:
-            raise ValidationError(f"Permission denied accessing: {request.source_path}")
+            raise ValidationError(f"Permission denied accessing: {request.source_directory}")
         except OSError as e:
             raise ValidationError(f"Cannot access path: {str(e)}")
         
@@ -265,6 +265,9 @@ class ImportService:
             duplicates_skipped=getattr(session, 'duplicates_skipped', 0) or 0,
             raw_files_skipped=getattr(session, 'raw_files_skipped', 0) or 0,
             single_raw_skipped=getattr(session, 'single_raw_skipped', 0) or 0,
-            errors_count=getattr(session, 'errors_count', 0) or 0
+            errors_count=getattr(session, 'errors_count', 0) or 0,
+            
+            # Import result classification and user feedback
+            import_result_type=getattr(session, 'import_result_type', None),
+            user_feedback_message=getattr(session, 'user_feedback_message', None)
         )
-

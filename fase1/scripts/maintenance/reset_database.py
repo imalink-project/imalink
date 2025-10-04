@@ -43,7 +43,7 @@ def complete_database_reset():
         sys.path.insert(0, str(db_dir))
         
         from database.connection import init_database
-        from database.models import Base
+        from models.base import Base
         
         # This will create a completely new database
         init_database()
@@ -52,7 +52,7 @@ def complete_database_reset():
         
         # Verify it's empty
         from database.connection import get_db_session
-        from database.models import Image, Author, ImportSession
+        from models import Image, Author, ImportSession
         
         with get_db_session() as db:
             image_count = db.query(Image).count()

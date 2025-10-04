@@ -4,7 +4,7 @@ Import session model for tracking import operations
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -14,11 +14,11 @@ if TYPE_CHECKING:
     from .author import Author
 
 
-class Import(Base, TimestampMixin):
+class ImportSession(Base, TimestampMixin):
     """
-    Tracks imports for auditing and organization
+    Tracks import sessions for auditing and organization
     """
-    __tablename__ = "imports"
+    __tablename__ = "import_sessions"
     
     id = Column(Integer, primary_key=True, index=True)
     
@@ -45,8 +45,24 @@ class Import(Base, TimestampMixin):
     # Error log (JSON string)
     error_log = Column(Text)
     
+    # Archive system - Digital negative storage
+    archive_base_path = Column(Text)                            # Full path to archive folder (e.g., D:\imalink_archives\imalink_2024-10-04_abc123)
+    
+    # File copy tracking (integrated from import_once)
+    storage_name = Column(Text)                                 # Unique folder name (e.g., imalink_20241004_abc123def)
+    copy_files = Column(Boolean, default=True)                 # Whether to copy files to storage
+    files_copied = Column(Integer, default=0)                  # Number of files successfully copied
+    files_copy_skipped = Column(Integer, default=0)            # Number of files skipped during copy (already exist)
+    storage_errors_count = Column(Integer, default=0)          # Number of storage/copy errors
+    
     # Relationships
     default_author = relationship("Author", back_populates="imports")
     
+    @property
+    def is_archived(self) -> bool:
+        """Check if this session has an archive path"""
+        return bool(getattr(self, 'archive_base_path', None))
+    
     def __repr__(self):
-        return f"<Import(id={self.id}, source={self.source_path}, status={self.status})>"
+        archive_info = f"archived={self.is_archived}" if getattr(self, 'archive_base_path', None) else "no_archive"
+        return f"<ImportSession(id={self.id}, source={self.source_path}, status={self.status}, {archive_info})>"

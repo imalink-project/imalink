@@ -19,7 +19,7 @@ def test_import_api():
         
         # Test the import endpoint
         response = requests.post(
-            "http://localhost:8000/api/v1/imports/",
+            "http://localhost:8000/api/v1/import_sessions/",
             json=TEST_DATA,
             timeout=30
         )
@@ -39,7 +39,7 @@ def test_import_api():
                 time.sleep(1)  # Wait a bit
                 
                 status_response = requests.get(
-                    f"http://localhost:8000/api/v1/imports/status/{session_id}"
+                    f"http://localhost:8000/api/v1/import_sessions/status/{session_id}"
                 )
                 
                 print(f"Status endpoint response: {status_response.status_code}")

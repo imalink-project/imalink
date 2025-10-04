@@ -4,7 +4,7 @@ Provides type-safe data models for image operations
 """
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, ConfigDict
 import json
 
 
@@ -63,14 +63,18 @@ class ImageResponse(BaseModel):
         from_attributes = True
         populate_by_name = True
     
-    @validator('has_gps', pre=False, always=True)
-    def compute_has_gps(cls, v, values):
+    @field_validator('has_gps')
+    @classmethod
+    def compute_has_gps(cls, v, info):
         """Compute has_gps from latitude/longitude"""
-        lat = values.get('gps_latitude')
-        lon = values.get('gps_longitude')
-        return lat is not None and lon is not None
+        if info.data:
+            lat = info.data.get('gps_latitude')
+            lon = info.data.get('gps_longitude')
+            return lat is not None and lon is not None
+        return v
     
-    @validator('tags', pre=True)
+    @field_validator('tags', mode='before')
+    @classmethod
     def parse_tags(cls, v):
         """Parse tags from JSON string if needed"""
         if isinstance(v, str):

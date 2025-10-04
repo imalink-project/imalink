@@ -219,7 +219,7 @@ Test coverage:
 ```python
 # scripts/maintenance/cleanup_pool.py
 from services.image_pool import ImagePoolService
-from database.models import Image
+from models import Image
 
 # Get valid hashes from database
 valid_hashes = [img.image_hash for img in db.query(Image.image_hash).all()]

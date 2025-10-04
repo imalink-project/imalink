@@ -17,16 +17,13 @@ Dette er minimalsettet av tester for ImaLink som fokuserer på det som **oftest 
 - ✅ `/api/authors/` - Authors API eksisterer og returnerer riktig format  
 - ✅ `/api/imports/imports` - Import API eksisterer og returnerer riktig format
 
-#### Frontend Route Tests
-- ✅ `/` - Hovedside laster (HTML)
-- ✅ `/gallery` - Galleri-side laster (HTML)
-- ✅ `/import` - Import-side laster (HTML)
-- ✅ `/authors` - Forfatter-side laster (HTML)
+#### Route Cleanup Tests  
+- ✅ `/demo` routes returnerer 404 (gamle HTML demoer fjernet)
+- ✅ `/demo/import` routes returnerer 404 (gamle HTML demoer fjernet)
 
 #### Error Handling Tests
 - ✅ `404` for ikke-eksisterende ruter
 - ✅ `404` for ikke-eksisterende API ruter
-- ✅ Static CSS fil er tilgjengelig
 
 ## 🚀 Hvordan kjøre testene
 

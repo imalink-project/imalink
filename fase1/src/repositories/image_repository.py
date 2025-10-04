@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, desc, asc, func
 from datetime import datetime
 
-from database.models import Image, Author
+from models import Image, Author
 from schemas.image_schemas import ImageCreateRequest, ImageUpdateRequest, ImageSearchRequest
 
 
@@ -146,6 +146,15 @@ class ImageRepository:
             .filter(Image.author_id == author_id)
             .order_by(desc(Image.taken_at), desc(Image.created_at))
             .limit(limit)
+            .all()
+        )
+    
+    def get_images_by_import_session(self, import_session_id: int) -> List[Image]:
+        """Get all images from a specific import session"""
+        return (
+            self.db.query(Image)
+            .filter(Image.import_session_id == import_session_id)
+            .order_by(desc(Image.created_at))
             .all()
         )
     

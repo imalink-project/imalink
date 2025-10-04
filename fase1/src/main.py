@@ -3,7 +3,6 @@ Main FastAPI application for ImaLink Fase 1 - Pure API Backend
 """
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -14,7 +13,7 @@ load_dotenv()
 from core.config import config
 from database.connection import init_database
 from api.v1.images import router as images_router
-from api.v1.imports import router as imports_router
+from api.v1.import_sessions import router as import_sessions_router
 from api.v1.authors import router as authors_router
 from core.exceptions import APIException
 
@@ -42,28 +41,8 @@ app.add_middleware(
 
 # Include API routers with v1 prefix for versioning
 app.include_router(images_router, prefix="/api/v1/images", tags=["images"])
-print("🔥 MAIN.PY: Loading imports router...")
-app.include_router(imports_router, prefix="/api/v1/imports", tags=["imports"])
-print("🔥 MAIN.PY: Imports router loaded!")
+app.include_router(import_sessions_router, prefix="/api/v1/import_sessions", tags=["import_sessions"])
 app.include_router(authors_router, prefix="/api/v1/authors", tags=["authors"])
-
-# Mount static files for demo frontend
-import os
-static_dir = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/static", StaticFiles(directory=static_dir), name="static")
-
-# Demo frontend redirects
-@app.get("/demo/import")
-async def demo_import_redirect():
-    """Redirect to import demo frontend"""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/static/demo.html")
-
-@app.get("/demo")
-async def demo_index():
-    """Demo index page with links to all available demos"""
-    from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/static/demo-index.html")
 
 # Debug endpoint to list all routes
 @app.get("/debug/routes")

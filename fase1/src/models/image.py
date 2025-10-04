@@ -66,6 +66,7 @@ class Image(Base, TimestampMixin):
     
     # Import tracking
     import_source = Column(String(255))  # Description of where this came from
+    import_session_id = Column(Integer, ForeignKey('import_sessions.id'), nullable=True, index=True)
     
     # Relationships
     author = relationship("Author", back_populates="images")

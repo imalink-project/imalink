@@ -132,7 +132,7 @@ async def search_images(
     offset: int = Query(0, ge=0, description="Number of images to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of images to return"),
     sort_by: str = Query("taken_at", description="Sort field"),
-    sort_order: str = Query("desc", regex="^(asc|desc)$", description="Sort order"),
+    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sort order"),
     image_service: ImageService = Depends(get_image_service)
 ):
     """Search images with advanced criteria"""

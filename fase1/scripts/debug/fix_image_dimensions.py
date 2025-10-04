@@ -15,7 +15,7 @@ def fix_image_dimensions():
     
     try:
         from database.connection import get_db_sync
-        from database.models import Image as ImageModel
+        from models import Image as ImageModel
         from services.image_service import ImageProcessor
         
         db = get_db_sync()

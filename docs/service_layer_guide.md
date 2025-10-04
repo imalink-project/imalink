@@ -55,7 +55,7 @@ async def get_images(db: Session = Depends(get_db)):
 # repositories/image_repository.py
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from database.models import Image
+from models import Image
 
 class ImageRepository:
     def __init__(self, db: Session):

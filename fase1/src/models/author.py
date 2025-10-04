@@ -12,7 +12,7 @@ from .mixins import TimestampMixin
 
 if TYPE_CHECKING:
     from .image import Image
-    from .import_model import Import
+    from .import_session import ImportSession
 
 
 class Author(Base, TimestampMixin):
@@ -28,7 +28,7 @@ class Author(Base, TimestampMixin):
     
     # Relationships
     images = relationship("Image", back_populates="author")
-    imports = relationship("Import", back_populates="default_author")
+    imports = relationship("ImportSession", back_populates="default_author")
     
     def __repr__(self):
         return f"<Author(id={self.id}, name='{self.name}')>"

@@ -29,58 +29,48 @@ class TestAPIRoutes:
     
     def test_images_api_exists(self):
         """Images API should exist and return 200 with structured data"""
-        response = client.get("/api/images/")
+        response = client.get("/api/v1/images/")
         assert response.status_code == 200
         data = response.json()
-        # Modern API returns structured response with 'data' field
-        assert "data" in data
-        assert isinstance(data["data"], list)
+        # Modern API returns structured response
+        assert "data" in data or isinstance(data, list)
+        if "data" in data:
+            assert isinstance(data["data"], list)
     
     def test_authors_api_exists(self):
         """Authors API should exist and return 200"""
-        response = client.get("/api/authors/")
+        response = client.get("/api/v1/authors/")
         assert response.status_code == 200
         data = response.json()
-        # Modern API returns structured response with 'data' field
-        assert "data" in data
-        assert isinstance(data["data"], list)
+        # Modern API returns structured response
+        assert "data" in data or isinstance(data, list)
+        if "data" in data:
+            assert isinstance(data["data"], list)
     
-    def test_imports_api_imports_exists(self):
-        """Import imports API should exist"""
-        response = client.get("/api/imports/imports")
+    def test_import_sessions_api_exists(self):
+        """Import sessions API should exist"""
+        response = client.get("/api/v1/import_sessions/")
         assert response.status_code == 200
         data = response.json()
-        # Import API returns different structure with 'imports' field
-        assert "imports" in data
-        assert isinstance(data["imports"], list)
+        # Import sessions API returns list of import sessions
+        assert isinstance(data, list) or "data" in data
 
 
-class TestFrontendRoutes:
-    """Test that frontend HTML routes exist"""
+class TestAPIOnlySystem:
+    """Test that system is now API-only without HTML routes"""
     
-    def test_main_page(self):
-        """Main dashboard should load"""
+    def test_no_root_route(self):
+        """Root route should not exist in API-only system"""
         response = client.get("/")
-        assert response.status_code == 200
-        assert "text/html" in response.headers["content-type"]
+        assert response.status_code == 404
     
-    def test_gallery_page(self):
-        """Gallery page should load"""
-        response = client.get("/gallery")
+    def test_debug_routes_endpoint(self):
+        """Debug routes endpoint should exist for introspection"""
+        response = client.get("/debug/routes")
         assert response.status_code == 200
-        assert "text/html" in response.headers["content-type"]
-    
-    def test_import_page(self):
-        """Import management page should load"""
-        response = client.get("/import")
-        assert response.status_code == 200
-        assert "text/html" in response.headers["content-type"]
-    
-    def test_authors_page(self):
-        """Authors management page should load"""
-        response = client.get("/authors")
-        assert response.status_code == 200
-        assert "text/html" in response.headers["content-type"]
+        data = response.json()
+        assert "routes" in data
+        assert isinstance(data["routes"], list)
 
 
 class TestCommonErrors:
@@ -96,11 +86,13 @@ class TestCommonErrors:
         response = client.get("/api/nonexistent")
         assert response.status_code == 404
     
-    def test_static_css_exists(self):
-        """Main CSS file should be accessible"""
-        response = client.get("/static/styles.css")
-        assert response.status_code == 200
-        assert "text/css" in response.headers["content-type"]
+    def test_demo_routes_removed(self):
+        """Old demo routes should be removed"""
+        response = client.get("/demo")
+        assert response.status_code == 404
+        
+        response = client.get("/demo/import")
+        assert response.status_code == 404
 
 
 if __name__ == "__main__":

@@ -5,10 +5,10 @@ Debug background task - minimal test to see what's failing
 def test_simple_image_creation():
     """Test creating a single Image record"""
     try:
-        from database.connection import get_db_sync
-        from models import Image
-        from datetime import datetime
-        import hashlib
+        from database.connection ImportSession get_db_sync
+        from models ImportSession Image
+        from datetime ImportSession datetime
+        ImportSession hashlib
         
         db = get_db_sync()
         
@@ -37,20 +37,20 @@ def test_simple_image_creation():
         
     except Exception as e:
         print(f"❌ Failed to create image: {e}")
-        import traceback
+        ImportSession traceback
         traceback.print_exc()
         return False
 
 def test_import_session_update():
-    """Test updating Import"""
+    """Test updating ImportSession"""
     try:
-        from database.connection import get_db_sync
-        from models import Import
+        from database.connection ImportSession get_db_sync
+        from models ImportSession ImportSession
         
         db = get_db_sync()
         
         # Get latest session
-        session = db.query(Import).order_by(Import.id.desc()).first()
+        session = db.query(ImportSession).order_by(ImportSession.id.desc()).first()
         if session:
             print(f"Found session: {session.id}, status: {session.status}")
             
@@ -68,7 +68,7 @@ def test_import_session_update():
         
     except Exception as e:
         print(f"❌ Failed to update session: {e}")
-        import traceback
+        ImportSession traceback
         traceback.print_exc()
         return False
 
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     print("\n1. Testing Image creation:")
     img_success = test_simple_image_creation()
     
-    print("\n2. Testing Import update:")
+    print("\n2. Testing ImportSession update:")
     session_success = test_import_session_update()
     
     print(f"\nResults:")

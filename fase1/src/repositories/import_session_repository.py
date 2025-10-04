@@ -1,30 +1,32 @@
 """
-Import Repository - Data Access Layer for Import operations
+Import Session Repository - Data Access Layer for ImportSession operations
 """
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, func, and_, or_
 
-from models import Import, Image
-from schemas.requests.import_requests import ImportStartRequest
+from models import ImportSession, Image
+from schemas.requests.import_session_requests import ImportStartRequest
 
 
-class ImportRepository:
-    """Repository class for Import data access operations"""
+class ImportSessionRepository:
+    """Repository class for ImportSession data access operations"""
     
     def __init__(self, db: Session):
         self.db = db
     
-    # === Import CRUD Operations ===
+    # === ImportSession CRUD Operations ===
     
-    def create_import(self, request: ImportStartRequest) -> Import:
-        """Create new import"""
-        session = Import(
-            source_path=request.source_path,
+    def create_import(self, request: ImportStartRequest) -> ImportSession:
+        """Create new ImportSession"""
+        session = ImportSession(
+            source_path=request.source_directory,
             source_description=request.source_description,
             status="in_progress",
-            started_at=datetime.now()
+            started_at=datetime.now(),
+            archive_base_path=request.archive_base_path,
+            copy_files=request.copy_files
         )
         
         self.db.add(session)
@@ -32,11 +34,11 @@ class ImportRepository:
         self.db.refresh(session)
         return session
     
-    def get_import_by_id(self, session_id: int) -> Optional[Import]:
-        """Get import by ID"""
+    def get_import_by_id(self, session_id: int) -> Optional[ImportSession]:
+        """Get ImportSession by ID"""
         return (
-            self.db.query(Import)
-            .filter(Import.id == session_id)
+            self.db.query(ImportSession)
+            .filter(ImportSession.id == session_id)
             .first()
         )
     
@@ -44,8 +46,8 @@ class ImportRepository:
         self, 
         session_id: int, 
         update_data: Dict[str, Any]
-    ) -> Optional[Import]:
-        """Update import with progress data"""
+    ) -> Optional[ImportSession]:
+        """Update ImportSession with progress data"""
         session = self.get_import_by_id(session_id)
         if not session:
             return None
@@ -58,8 +60,8 @@ class ImportRepository:
         self.db.refresh(session)
         return session
     
-    def complete_import(self, session_id: int) -> Optional[Import]:
-        """Mark import as completed"""
+    def complete_import(self, session_id: int) -> Optional[ImportSession]:
+        """Mark ImportSession as completed"""
         session = self.get_import_by_id(session_id)
         if not session:
             return None
@@ -71,8 +73,8 @@ class ImportRepository:
         self.db.refresh(session)
         return session
     
-    def fail_import(self, session_id: int, error_message: str) -> Optional[Import]:
-        """Mark import as failed"""
+    def fail_import(self, session_id: int, error_message: str) -> Optional[ImportSession]:
+        """Mark ImportSession as failed"""
         session = self.get_import_by_id(session_id)
         if not session:
             return None
@@ -85,11 +87,25 @@ class ImportRepository:
         self.db.refresh(session)
         return session
     
-    def get_all_imports(self, limit: int = 50, offset: int = 0) -> List[Import]:
+    def update_feedback(self, session_id: int, result_type: str, user_message: str) -> Optional[ImportSession]:
+        """Update ImportSession with feedback information"""
+        session = self.get_import_by_id(session_id)
+        if not session:
+            return None
+            
+        # Type ignore for SQLAlchemy column assignments (Pylance limitation)
+        session.import_result_type = result_type  # type: ignore
+        session.user_feedback_message = user_message  # type: ignore
+        
+        self.db.commit()
+        self.db.refresh(session)
+        return session
+    
+    def get_all_imports(self, limit: int = 50, offset: int = 0) -> List[ImportSession]:
         """Get all imports with pagination"""
         return (
-            self.db.query(Import)
-            .order_by(desc(Import.started_at))
+            self.db.query(ImportSession)
+            .order_by(desc(ImportSession.started_at))
             .offset(offset)
             .limit(limit)
             .all()
@@ -97,7 +113,7 @@ class ImportRepository:
     
     def count_imports(self) -> int:
         """Count total number of imports"""
-        return self.db.query(Import).count()
+        return self.db.query(ImportSession).count()
     
     # === Progress Tracking ===
     
@@ -140,37 +156,37 @@ class ImportRepository:
     # === Statistics and Reporting ===
     
     def get_import_statistics(self) -> Dict[str, Any]:
-        """Get comprehensive import statistics"""
+        """Get comprehensive ImportSession statistics"""
         
-        total_sessions = self.db.query(Import).count()
+        total_sessions = self.db.query(ImportSession).count()
         
         completed_sessions = (
-            self.db.query(Import)
-            .filter(Import.status == "completed")
+            self.db.query(ImportSession)
+            .filter(ImportSession.status == "completed")
             .count()
         )
         
         failed_sessions = (
-            self.db.query(Import)
-            .filter(Import.status == "failed")
+            self.db.query(ImportSession)
+            .filter(ImportSession.status == "failed")
             .count()
         )
         
         in_progress_sessions = (
-            self.db.query(Import)
-            .filter(Import.status == "in_progress")
+            self.db.query(ImportSession)
+            .filter(ImportSession.status == "in_progress")
             .count()
         )
         
         # Aggregate statistics
         stats_result = (
             self.db.query(
-                func.sum(Import.total_files_found).label('total_files'),
-                func.sum(Import.images_imported).label('total_imported'),
-                func.sum(Import.duplicates_skipped).label('total_duplicates'),
-                func.sum(Import.errors_count).label('total_errors')
+                func.sum(ImportSession.total_files_found).label('total_files'),
+                func.sum(ImportSession.images_imported).label('total_imported'),
+                func.sum(ImportSession.duplicates_skipped).label('total_duplicates'),
+                func.sum(ImportSession.errors_count).label('total_errors')
             )
-            .filter(Import.status == "completed")
+            .filter(ImportSession.status == "completed")
             .first()
         )
         
@@ -191,34 +207,32 @@ class ImportRepository:
             "total_errors": total_errors
         }
     
-    def get_recent_imports(self, days: int = 7) -> List[Import]:
+    def get_recent_imports(self, days: int = 7) -> List[ImportSession]:
         """Get imports from the last N days"""
         cutoff_date = datetime.now() - timedelta(days=days)
         
         return (
-            self.db.query(Import)
-            .filter(Import.started_at >= cutoff_date)
-            .order_by(desc(Import.started_at))
+            self.db.query(ImportSession)
+            .filter(ImportSession.started_at >= cutoff_date)
+            .order_by(desc(ImportSession.started_at))
             .all()
         )
     
     # === Session Validation ===
     
     def session_exists(self, session_id: int) -> bool:
-        """Check if import exists"""
+        """Check if ImportSession exists"""
         return (
-            self.db.query(Import.id)
-            .filter(Import.id == session_id)
+            self.db.query(ImportSession.id)
+            .filter(ImportSession.id == session_id)
             .first() is not None
         )
     
-    def get_active_imports(self) -> List[Import]:
+    def get_active_imports(self) -> List[ImportSession]:
         """Get all currently active (in progress) sessions"""
         return (
-            self.db.query(Import)
-            .filter(Import.status == "in_progress")
-            .order_by(Import.started_at)
+            self.db.query(ImportSession)
+            .filter(ImportSession.status == "in_progress")
+            .order_by(ImportSession.started_at)
             .all()
         )
-
-

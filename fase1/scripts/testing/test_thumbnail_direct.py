@@ -18,7 +18,7 @@ def test_thumbnail_rotation_direct():
     try:
         # Import database modules
         from database.connection import get_db_sync
-        from database.models import Image as ImageModel
+        from models import Image as ImageModel
         
         db = get_db_sync()
         

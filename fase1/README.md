@@ -37,7 +37,7 @@ Se [hovedprosjektets README](../README.md) for utdypende forklaring.
 - **Backend:** Python 3.11+ med FastAPI
 - **Database:** SQLite med SQLAlchemy
 - **Bildeprosessering:** Pillow, piexif, imagehash
-- **Frontend:** Enkel HTML/CSS/JavaScript
+- **Demo/Testing:** Streamlit, Jupyter Notebooks, CLI tools
 - **Testing:** pytest
 
 ## Prosjektstruktur
@@ -60,10 +60,11 @@ fase1/
 │   │   ├── __init__.py
 │   │   ├── images.py
 │   │   └── import.py
-│   └── static/           # Frontend filer
-│       ├── index.html
-│       ├── style.css
-│       └── app.js
+├── demos/                # Demo system
+│   ├── README.md         # Demo documentation
+│   └── streamlit/        # Streamlit demo system
+│       ├── main.py       # Demo hub homepage
+│       └── pages/        # Individual demo pages
 ├── tests/                # Tester
 ├── docs/                 # Dokumentasjon
 ├── requirements.txt      # Python avhengigheter

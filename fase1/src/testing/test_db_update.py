@@ -1,18 +1,18 @@
 """
-Simple test to check if Import updates work correctly
+Simple test to check if ImportSession updates work correctly
 """
 
 def test_database_update():
     """Test basic database operations"""
     try:
-        from database.connection import get_db_sync
-        from models import Import
-        from datetime import datetime
+        from database.connection ImportSession get_db_sync
+        from models ImportSession ImportSession
+        from datetime ImportSession datetime
         
         db = get_db_sync()
         
         # Try to get a session
-        session = db.query(Import).first()
+        session = db.query(ImportSession).first()
         if session:
             print(f"Found session: {session.id}, status: {session.status}")
             
@@ -32,7 +32,7 @@ def test_database_update():
         else:
             print("No sessions found - creating a test session")
             
-            test_session = Import(
+            test_session = ImportSession(
                 source_path="C:\\test",
                 source_description="Test session",
                 status="test"
@@ -55,7 +55,7 @@ def test_database_update():
         
     except Exception as e:
         print(f"Database test failed: {e}")
-        import traceback
+        ImportSession traceback
         traceback.print_exc()
         return False
 
