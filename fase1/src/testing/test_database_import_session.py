@@ -62,7 +62,7 @@ def test_database_with_import_session():
         
         # Create request for testing
         request = ImportStartRequest(
-            source_directory="/another/test/path",
+            source_path="/another/test/path",
             source_description="Another test"
         )
         

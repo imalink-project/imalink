@@ -15,7 +15,7 @@ def quick_import_test():
     
     # Start import
     import_data = {
-        "source_directory": TEST_DIR,
+        "source_path": TEST_DIR,
         "source_description": "Quick test"
     }
     

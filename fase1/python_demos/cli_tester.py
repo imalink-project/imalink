@@ -63,7 +63,7 @@ class ImaLinkTester:
             description = f"CLI Test - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         
         payload = {
-            "source_directory": source_dir,
+            "source_path": source_dir,
             "source_description": description,
             "copy_files": copy_files
         }

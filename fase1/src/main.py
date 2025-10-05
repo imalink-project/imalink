@@ -15,6 +15,7 @@ from database.connection import init_database
 from api.v1.images import router as images_router
 from api.v1.import_sessions import router as import_sessions_router
 from api.v1.authors import router as authors_router
+from api.v1.debug import router as debug_router
 from core.exceptions import APIException
 
 # Ensure directories exist
@@ -43,6 +44,7 @@ app.add_middleware(
 app.include_router(images_router, prefix="/api/v1/images", tags=["images"])
 app.include_router(import_sessions_router, prefix="/api/v1/import_sessions", tags=["import_sessions"])
 app.include_router(authors_router, prefix="/api/v1/authors", tags=["authors"])
+app.include_router(debug_router, prefix="/api/v1/debug", tags=["debug"])
 
 # Debug endpoint to list all routes
 @app.get("/debug/routes")

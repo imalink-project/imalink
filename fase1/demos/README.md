@@ -56,7 +56,7 @@ curl -X POST "http://localhost:8000/api/v1/import-sessions/" \
 
   -H "Content-Type: application/json" \
 
-  -d '{"source_directory": "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO", "recursive": true, "author_id": 1}'
+  -d '{"source_path": "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO", "recursive": true, "author_id": 1}'
 
 ```### 1. Start ImaLink API### 1. Start ImaLink API
 
@@ -114,7 +114,7 @@ curl -X GET "http://localhost:8000/api/v1/import_sessions/"
 
 - ✅ Enkel og direkte - ingen kompleks UI
 
-  -d '{"source_directory": "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO", "recursive": true, "author_id": 1}'  -d '{"source_directory": "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO", "recursive": true, "author_id": 1}'
+  -d '{"source_path": "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO", "recursive": true, "author_id": 1}'  -d '{"source_path": "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO", "recursive": true, "author_id": 1}'
 
 **Bruk**:
 

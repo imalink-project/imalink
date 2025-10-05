@@ -25,7 +25,7 @@ def test_import_with_logging():
     
     # Start import
     import_data = {
-        "source_directory": TEST_DIR,
+        "source_path": TEST_DIR,
         "source_description": "Debug test with logging"
     }
     

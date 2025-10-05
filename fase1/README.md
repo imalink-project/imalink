@@ -37,17 +37,28 @@ Se [hovedprosjektets README](../README.md) for utdypende forklaring.
 - **Backend:** Python 3.11+ med FastAPI
 - **Database:** SQLite med SQLAlchemy
 - **Bildeprosessering:** Pillow, piexif, imagehash
-- **Demo/Testing:** Streamlit, Jupyter Notebooks, CLI tools
-- **Testing:** pytest
+- **Demo/Testing:** Python scripts, CLI tools  
+- **Testing:** pytest, Custom Python test suite
 
 ## Prosjektstruktur
 ```
 fase1/
 ├── src/                    # Hovedkode
-│   ├── __init__.py
 │   ├── main.py            # FastAPI app entry point
-│   ├── database/          # Database-relatert kode
-│   │   ├── __init__.py
+│   ├── api/               # API endpoints og routes
+│   ├── core/              # Konfigurasjon og dependencies
+│   ├── database/          # Database connection
+│   ├── models/            # SQLAlchemy modeller
+│   ├── repositories/      # Data access layer
+│   ├── schemas/           # Pydantic schemas
+│   ├── services/          # Business logic
+│   └── utils/             # Hjelpefunksjoner
+├── tests/                  # Unit tests og integrasjonstester
+├── python_demos/           # Enkle demo scripts
+├── scripts/                # Utility scripts og maintenance
+├── docs/                   # Detaljert dokumentasjon
+├── demos/                  # Demo applikasjoner (deprecated)
+├── test_user_files/        # Test data og eksempelfiler
 │   │   ├── models.py      # SQLAlchemy modeller
 │   │   ├── connection.py  # Database connection
 │   │   └── migrations/    # Database migrations
@@ -96,11 +107,40 @@ cd src
 python main.py
 ```
 
-### Hovedfunksjoner:
-- **Dashboard**: `http://localhost:8000/` - Oversikt og statistikk
-- **Galleri**: `http://localhost:8000/gallery` - Bildegalleri med søk og rotasjon
-- **Import**: `http://localhost:8000/import` - Import bilder med sanntids fremgang  
-- **Fotografer**: `http://localhost:8000/authors` - Administrer fotografer
+### API og Testing:
+- **Health**: `http://localhost:8000/health` - Server status
+- **API Docs**: `http://localhost:8000/docs` - Interaktiv API dokumentasjon
+- **Authors API**: `http://localhost:8000/api/v1/authors/` - CRUD for fotografer
+- **Images API**: `http://localhost:8000/api/v1/images/` - Bildedata og metadata
+
+### Demo Suite:
+```bash
+# Kjør alle Python demos
+uv run python python_demos/run_all_demos.py
+
+# Individuell demo
+uv run python python_demos/health_demo.py
+uv run python python_demos/author_demo.py
+uv run python python_demos/api_demo_suite.py
+
+# Unit tests
+uv run python tests/run_tests.py
+```
+
+### Database Reset (Experimentation):
+```bash
+# Show reset options
+uv run python scripts/reset_options.py
+
+# Quick API reset (recommended)
+uv run python scripts/api_fresh_start.py
+
+# Nuclear file deletion
+uv run python scripts/nuclear_reset.py
+
+# Full reset with backup
+uv run python scripts/reset_database.py
+```
 
 ### Database:
 - Lokasjon: `/mnt/c/temp/00imalink_data/imalink.db` (WSL/Linux)

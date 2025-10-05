@@ -21,7 +21,7 @@ class ImportSessionRepository:
     def create_import(self, request: ImportStartRequest) -> ImportSession:
         """Create new ImportSession"""
         session = ImportSession(
-            source_path=request.source_directory,
+            source_path=request.source_path,
             source_description=request.source_description,
             status="in_progress",
             started_at=datetime.now(),

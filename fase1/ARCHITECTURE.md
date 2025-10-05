@@ -86,20 +86,29 @@ fase1/
 │       ├── file_utils.py       # Fil og path utilities  
 │       └── datetime_utils.py   # Dato/tid utilities
 │
-├── tests/                      # Test suite
-├── docs/                       # Ekstra dokumentasjon  
-├── demos/                    # Demo system directory
-│   ├── README.md             # Demo system documentation  
-│   └── streamlit/            # Organized Streamlit demo system
-│       ├── main.py           # Demo hub homepage
-│       └── pages/            # Individual demo pages
-│           ├── 01_📥_Import_Sessions.py
-│           ├── 02_🖼️_Image_Gallery.py  
-│           ├── 03_🔗_API_Testing.py
-│           └── 04_📊_System_Statistics.py
-├── api_testing.ipynb          # Jupyter notebook for API testing
-├── cli_tester.py              # Command-line testing tool
-└── requirements.txt           # Python avhengigheter
+├── tests/                      # Unit tests og integrasjonstester
+│   ├── test_exif.py          # EXIF handling tests
+│   ├── test_exif_full.py     # Complete EXIF test suite
+│   ├── test_image_processor.py # Image processing tests
+│   └── test_routes.py        # API route tests
+├── python_demos/             # Simple Python demo scripts  
+│   ├── README.md             # Demo documentation
+│   ├── health_demo.py        # Server health check demo
+│   ├── author_demo.py        # Complete author CRUD demo
+│   ├── api_demo_suite.py     # All API endpoints demo
+│   ├── cli_tester.py         # Command-line demo tool
+│   ├── database_debug_demo.py # Database inspection demo
+│   └── run_all_demos.py      # Run all demos
+├── scripts/                  # Utility scripts
+│   ├── reset_database.py     # Database reset utility
+│   ├── maintenance/          # Database maintenance
+│   ├── migrations/           # Database migrations
+│   └── debug/               # Debug utilities
+├── docs/                     # Detailed documentation
+│   ├── finpuss_todo.md      # Project todo items
+│   ├── REFACTORING_COMPLETE.md # Refactoring notes
+│   └── RELEASE_NOTES.md     # Release documentation
+└── pyproject.toml           # Python project configuration
 ```
 
 ## 🎯 Lag og Ansvar
@@ -391,12 +400,13 @@ def get_author_service(db: Session = Depends(get_db)) -> AuthorService:
 ### Testing Tools
 1. **Streamlit Demo Hub** (`demos/streamlit/`) - Multi-page interactive testing system
    - Homepage with demo navigation (`main.py`)
-   - Import Sessions demo (`01_📥_Import_Sessions.py`)
-   - Image Gallery demo (`02_🖼️_Image_Gallery.py`)
-   - API Testing demo (`03_🔗_API_Testing.py`)
-   - System Statistics demo (`04_📊_System_Statistics.py`)
-2. **Jupyter Notebooks** (`api_testing.ipynb`) - Step-by-step API testing  
-3. **CLI Tester** (`cli_tester.py`) - Command-line automation
+2. **Python Demo Scripts** (`python_demos/`) - Simple stdout demonstrations:
+   - Health Check (`health_demo.py`) - Server connectivity demo
+   - Author CRUD (`author_demo.py`) - Complete author lifecycle demo
+   - API Demo Suite (`api_demo_suite.py`) - All endpoints demo
+   - Database Debug (`database_debug_demo.py`) - Database inspection demo
+   - Demo Runner (`run_all_demos.py`) - Automated demo execution
+3. **CLI Tester** (`python_demos/cli_tester.py`) - Command-line automation
 4. **Unit Tests** (`tests/`) - Automated test suite
 
 ### Test Coverage

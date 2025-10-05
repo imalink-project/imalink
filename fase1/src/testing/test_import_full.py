@@ -18,7 +18,7 @@ def test_full_import_cycle():
     print(f"1. Starting import from: {TEST_DIR}")
     
     import_data = {
-        "source_directory": TEST_DIR,
+        "source_path": TEST_DIR,
         "source_description": "Full cycle test"
     }
     

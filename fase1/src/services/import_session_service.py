@@ -29,20 +29,20 @@ class ImportSessionService:
         # Logging handled by proper logger if needed
         
         # Business Logic: Validate source path
-        source_path = Path(request.source_directory)
+        source_path = Path(request.source_path)
         
         if not source_path.exists():
-            raise ValidationError(f"Source path does not exist: {request.source_directory}")
+            raise ValidationError(f"Source path does not exist: {request.source_path}")
         
         if not source_path.is_dir():
-            raise ValidationError(f"Source path must be a directory: {request.source_directory}")
+            raise ValidationError(f"Source path must be a directory: {request.source_path}")
         
         # Business Logic: Check if path is accessible
         try:
             # Try to list directory to check permissions
             list(source_path.iterdir())
         except PermissionError:
-            raise ValidationError(f"Permission denied accessing: {request.source_directory}")
+            raise ValidationError(f"Permission denied accessing: {request.source_path}")
         except OSError as e:
             raise ValidationError(f"Cannot access path: {str(e)}")
         
