@@ -13,7 +13,7 @@ from pathlib import Path
 
 # Configuration
 API_BASE = "http://localhost:8000/api/v1"
-DEFAULT_TEST_DIR = "C:/temp/PHOTOS_SRC_TEST_MICRO"
+DEFAULT_TEST_DIR = "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO"
 
 class ImaLinkTester:
     def __init__(self, api_base=API_BASE):

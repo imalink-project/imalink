@@ -7,7 +7,7 @@ import time
 
 # Test data
 TEST_DATA = {
-    "source_directory": "C:\\temp\\PHOTOS_SRC_TEST_MICRO",
+    "source_directory": "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO",
     "source_description": "Test import from script"
 }
 

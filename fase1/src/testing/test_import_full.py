@@ -7,7 +7,7 @@ import time
 
 # Test configuration
 API_BASE = "http://localhost:8000/api/v1"
-TEST_DIR = "C:\\temp\\PHOTOS_SRC_TEST_MICRO"
+TEST_DIR = "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO"
 
 def test_full_import_cycle():
     """Test complete import cycle with proper monitoring"""

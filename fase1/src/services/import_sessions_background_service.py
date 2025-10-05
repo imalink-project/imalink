@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from repositories.import_session_repository import ImportSessionRepository
 from repositories.image_repository import ImageRepository
 from services.importing.image_processor import ImageProcessor
+from core.config import Config
 from models import ImportSession, Image
 
 logger = logging.getLogger(__name__)
@@ -78,7 +79,7 @@ class ImportSessionsBackgroundService:
         if not source_dir.exists() or not source_dir.is_dir():
             raise ValueError(f"Invalid source directory: {source_path}")
         
-        image_extensions = {'.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp', '.webp'}
+        image_extensions = {'.jpg', '.jpeg', '.png', '.tiff', '.tif', '.bmp', '.webp', '.dng', '.raw', '.cr2', '.nef', '.arw'}
         image_files = []
         
         for ext in image_extensions:
@@ -185,7 +186,7 @@ class ImportSessionsBackgroundService:
                 
             if not archive_base_path:
                 # Use default base path
-                archive_base_path = "C:/ImaLink/Storage"  # TODO: Make this configurable
+                archive_base_path = Config.TEST_STORAGE_ROOT  # Use config path
             
             # Update import session with storage identifiers
             update_data = {

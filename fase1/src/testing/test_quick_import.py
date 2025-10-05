@@ -9,7 +9,7 @@ def quick_import_test():
     """Quick test to see if background processing works"""
     
     API_BASE = "http://localhost:8000/api/v1"
-    TEST_DIR = "C:\\temp\\PHOTOS_SRC_TEST_MICRO"
+    TEST_DIR = "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO"
     
     print("🚀 Quick Import Test")
     

@@ -18,6 +18,7 @@ from schemas.common import SingleResponse
 from core.exceptions import APIException
 from services.importing.image_processor import ImageProcessor
 import datetime as dt
+from core.config import Config
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -41,7 +42,7 @@ def simple_background_test():
 def run_import_background_service(import_id: int, source_directory: str):
     """Run import using service layer in background"""
     # Write to a debug file to confirm this function runs
-    debug_file = "C:/temp/import_debug.txt"
+    debug_file = f"{Config.TEMP}/import_debug.txt"
     
     try:
         with open(debug_file, "a", encoding="utf-8") as f:
@@ -242,7 +243,7 @@ async def get_storage_info(
         from pathlib import Path
         
         # Generate storage info similar to import_once
-        base_storage = Path("C:/ImaLink/Storage")  # TODO: Make configurable
+        base_storage = Path(Config.TEST_STORAGE_ROOT)  # Use config path
         
         if subfolder:
             storage_path = base_storage / subfolder

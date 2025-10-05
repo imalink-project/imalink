@@ -11,12 +11,19 @@ class Config:
     
     # Database
 #    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///C:/temp/imalink_data/imalink.db")
-    DATABASE_URL: str = "sqlite:///C:/temp/00imalink_data/imalink.db"
+#    DATABASE_URL: str = "sqlite:///C:/temp/00imalink_data/imalink.db"
+    TEMP: str = "/mnt/c/temp"
+    DATA_DIRECTORY: str = f"{TEMP}/00imalink_data"
+    DATABASE_URL: str = f"sqlite:///{DATA_DIRECTORY}/imalink.db"
     
     # File directories
 #    IMAGE_POOL_DIRECTORY: str = os.getenv("IMAGE_POOL_DIRECTORY", "C:/temp/imalink_data/imalink_pool")
-    IMAGE_POOL_DIRECTORY: str = "C:/temp/00imalink_data/imalink_pool"
+    IMAGE_POOL_DIRECTORY: str = f"{DATA_DIRECTORY}/imalink_pool"
     
+#    TEST_IMPORT_DIRECTORY: str = os.getenv("TEST_IMPORT_DIRECTORY", "/mnt/c/temp/00imalink_import")
+    TEST_IMPORT_DIRECTORY: str = f"{TEMP}/PHOTOS_SRC_TEST_MICRO"
+    TEST_STORAGE_ROOT: str = f"{TEMP}/storage"
+     
     # Image processing
     POOL_QUALITY: int = int(os.getenv("POOL_QUALITY", "85"))
     

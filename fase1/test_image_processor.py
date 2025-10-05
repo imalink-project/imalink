@@ -9,9 +9,9 @@ def test_image_processor():
     
     # Test files from our known set
     test_files = [
-        r"C:\temp\PHOTOS_SRC_TEST_MICRO\2024_04_27_taipei_beitou\20240427_234934.JPG",
-        r"C:\temp\PHOTOS_SRC_TEST_MICRO\2024_04_27_taipei_beitou\IMG_20240427_145518.jpg",
-        r"C:\temp\PHOTOS_SRC_TEST_MICRO\oman\20250112_171126.JPG"
+        "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO/2024_04_27_taipei_beitou/20240427_234934.JPG",
+        "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO/2024_04_27_taipei_beitou/IMG_20240427_145518.jpg",
+        "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO/oman/20250112_171126.JPG"
     ]
     
     for file_path in test_files:

@@ -103,6 +103,6 @@ python main.py
 - **Fotografer**: `http://localhost:8000/authors` - Administrer fotografer
 
 ### Database:
-- Lokasjon: `C:\temp\imalink.db`
+- Lokasjon: `/mnt/c/temp/00imalink_data/imalink.db` (WSL/Linux)
 - Automatisk initialisering ved første kjøring
 - Migrasjonsstøtte for oppgraderinger

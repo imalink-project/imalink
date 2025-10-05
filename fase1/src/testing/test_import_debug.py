@@ -10,7 +10,7 @@ def test_import_with_logging():
     """Test import and log everything to file"""
     
     API_BASE = "http://localhost:8000/api/v1"
-    TEST_DIR = "C:\\temp\\PHOTOS_SRC_TEST_MICRO"
+    TEST_DIR = "/mnt/c/temp/PHOTOS_SRC_TEST_MICRO"
     
     # Create log file
     log_file = f"import_debug_{datetime.now().strftime('%H%M%S')}.txt"
