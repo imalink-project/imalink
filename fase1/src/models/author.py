@@ -27,7 +27,7 @@ class Author(Base, TimestampMixin):
     bio = Column(Text, nullable=True)
     
     # Relationships
-    images = relationship("Image", back_populates="author")
+    photos = relationship("Photo", back_populates="author")
     imports = relationship("ImportSession", back_populates="default_author")
     
     def __repr__(self):

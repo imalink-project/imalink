@@ -38,6 +38,17 @@ class DuplicateImageError(APIException):
         )
 
 
+class DuplicatePhotoError(APIException):
+    """Raised when trying to create a duplicate photo"""
+    
+    def __init__(self, message: str = "Photo already exists"):
+        super().__init__(
+            message=message,
+            code="DUPLICATE_PHOTO",
+            status_code=409
+        )
+
+
 class ValidationError(APIException):
     """Raised when request data fails validation"""
     

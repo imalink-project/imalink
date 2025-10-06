@@ -43,7 +43,7 @@ def test_thumbnail_rotation():
         
         # Get thumbnail
         try:
-            response = requests.get(f"http://localhost:8000/api/images/{image_id}/thumbnail")
+            response = requests.get(f"http://localhost:8000/api/images/{image_id}/hotpreview")
             if response.status_code == 200:
                 # Check thumbnail dimensions
                 thumbnail_data = response.content

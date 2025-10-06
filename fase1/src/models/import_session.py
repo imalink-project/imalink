@@ -57,6 +57,8 @@ class ImportSession(Base, TimestampMixin):
     
     # Relationships
     default_author = relationship("Author", back_populates="imports")
+    photos = relationship("Photo", back_populates="import_session")
+    images = relationship("Image", back_populates="import_session")
     
     @property
     def is_archived(self) -> bool:

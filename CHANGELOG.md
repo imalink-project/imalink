@@ -6,7 +6,7 @@ Alle viktige endringer i dette prosjektet dokumenteres i denne filen.
 
 ### Lagt til
 - ✅ Komplett import-system med bakgrunnsprosessering
-- ✅ EXIF-orientering og automatisk thumbnail-rotasjon  
+- ✅ EXIF-orientering og automatisk hotpreview-rotasjon  
 - ✅ RAW+JPEG smart håndtering og deteksjon
 - ✅ Fotograf-administrasjon med navn, email og bio
 - ✅ Responsivt web-grensesnitt med moderne design
@@ -15,7 +15,7 @@ Alle viktige endringer i dette prosjektet dokumenteres i denne filen.
 - ✅ SQLite database med migrasjonstøtte
 - ✅ Søk og filtrering i bildegalleri
 - ✅ CSS-organisering i eksterne filer
-- ✅ Brukerrotasjon av thumbnails
+- ✅ Brukerrotasjon av hotpreviews
 - ✅ GPS og EXIF-metadata uttrekk
 
 ### Teknisk
@@ -30,7 +30,7 @@ Alle viktige endringer i dette prosjektet dokumenteres i denne filen.
 - EXIF-orientering håndteres nå konsekvent som File Explorer
 - Duplikatsjekk basert på bildeinnhold, ikke filnavn
 - RAW-filer med JPEG-kompanjon hoppes over riktig
-- Thumbnail-generering med korrekt orientering
+- Hotpreview-generering med korrekt orientering
 - Database-migrasjoner kjører automatisk og sikkert
 - Responsiv design fungerer på alle enheter
 

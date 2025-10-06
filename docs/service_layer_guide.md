@@ -210,7 +210,7 @@ class ImageService:
             # Transform til response model
             image_response = ImageResponse(
                 id=img.id,
-                hash=img.image_hash,
+                hash=img.hothash,
                 filename=img.original_filename,
                 taken_at=img.taken_at,
                 created_at=img.created_at,
@@ -260,11 +260,11 @@ class ImageService:
         if self.image_repo.exists_by_hash(image_data.hash):
             raise DuplicateImageError("Image with this hash already exists")
         
-        # Business logic: Thumbnail generation
-        thumbnail = await self.image_processor.generate_thumbnail(image_data.file_path)
+        # Business logic: Hot preview generation
+        hotpreview = await self.image_processor.generate_hotpreview(image_data.file_path)
         
         image_dict = image_data.dict()
-        image_dict['thumbnail'] = thumbnail
+        image_dict['hotpreview'] = hotpreview
         
         image = self.image_repo.create(image_dict)
         return ImageResponse.from_orm(image)

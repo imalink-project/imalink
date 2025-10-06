@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test thumbnail EXIF rotation directly in database
+Test preview image EXIF rotation directly in database
 """
 import sys
 import os
@@ -11,9 +11,9 @@ import io
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
-def test_thumbnail_rotation_direct():
-    """Test thumbnail rotation by checking database directly"""
-    print("🧪 Testing thumbnail EXIF rotation (database direct)...")
+def test_preview_image_rotation_direct():
+    """Test preview image rotation by checking database directly"""
+    print("🧪 Testing preview image EXIF rotation (database direct)...")
     
     try:
         # Import database modules
@@ -36,22 +36,22 @@ def test_thumbnail_rotation_direct():
             print(f"   ID: {image.id}")
             print(f"   Database dimensions: {image.width}x{image.height}")
             
-            if image.thumbnail:
-                # Load thumbnail from database
-                thumbnail_img = Image.open(io.BytesIO(image.thumbnail))
-                print(f"   Thumbnail dimensions: {thumbnail_img.size[0]}x{thumbnail_img.size[1]}")
+            if image.preview_image:
+                # Load preview image from database
+                preview_img = Image.open(io.BytesIO(image.preview_image))
+                print(f"   Preview image dimensions: {preview_img.size[0]}x{preview_img.size[1]}")
                 
                 # Check if orientation matches expectations
                 db_is_portrait = image.height > image.width
-                thumb_is_portrait = thumbnail_img.size[1] > thumbnail_img.size[0]
+                preview_is_portrait = preview_img.size[1] > preview_img.size[0]
                 
                 print(f"   DB says portrait: {db_is_portrait}")
-                print(f"   Thumbnail is portrait: {thumb_is_portrait}")
+                print(f"   Preview image is portrait: {preview_is_portrait}")
                 
-                if db_is_portrait and not thumb_is_portrait:
-                    print("   ⚠️ ISSUE: DB says portrait, thumbnail is landscape - EXIF rotation not applied!")
-                elif not db_is_portrait and thumb_is_portrait:
-                    print("   ⚠️ ISSUE: DB says landscape, thumbnail is portrait")
+                if db_is_portrait and not preview_is_portrait:
+                    print("   ⚠️ ISSUE: DB says portrait, preview image is landscape - EXIF rotation not applied!")
+                elif not db_is_portrait and preview_is_portrait:
+                    print("   ⚠️ ISSUE: DB says landscape, preview image is portrait")
                 else:
                     print("   ✅ Orientation consistent")
                 
@@ -72,7 +72,7 @@ def test_thumbnail_rotation_direct():
                 else:
                     print(f"   ⚠️ Original file not found: {image.file_path}")
             else:
-                print("   ❌ No thumbnail in database")
+                print("   ❌ No preview image in database")
         
         db.close()
         return True
@@ -84,7 +84,7 @@ def test_thumbnail_rotation_direct():
         return False
 
 if __name__ == "__main__":
-    success = test_thumbnail_rotation_direct()
+    success = test_preview_image_rotation_direct()
     if success:
         print("\n🎯 Test completed!")
         print("\n💡 If thumbnails show wrong orientation:")

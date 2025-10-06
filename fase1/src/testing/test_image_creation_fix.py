@@ -15,11 +15,11 @@ def test_image_creation_fix():
         
         # Test image data that should work now (without import_import_id)
         image_data = {
-            "image_hash": "test123hash",
+            "hothash": "test123hash",
             "original_filename": "test.jpg",
             "file_path": "/test/path/test.jpg",
             "file_size": 12345,
-            "import_source": "ImportSession 1",
+            # "import_source" removed - using import_session_id relationship instead
             "width": 1920,
             "height": 1080,
             "exif_data": b"test exif",

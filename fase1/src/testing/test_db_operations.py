@@ -18,10 +18,10 @@ def test_simple_image_creation():
             file_path="C:\\test\\test.jpg",
             file_size=12345,
             file_format=".jpg",
-            import_source="debug_test",
+            # import_source removed - using import_session_id relationship instead
             width=800,
             height=600,
-            image_hash=hashlib.md5(b"test_content").hexdigest()
+            hothash=hashlib.md5(b"test_content").hexdigest()
         )
         
         print(f"Created image object: {test_image}")

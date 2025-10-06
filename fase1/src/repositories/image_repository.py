@@ -30,7 +30,7 @@ class ImageRepository:
         """Get image by hash (for duplicate detection)"""
         return (
             self.db.query(Image)
-            .filter(Image.image_hash == image_hash)
+            .filter(Image.hothash == image_hash)
             .first()
         )
     
@@ -38,7 +38,7 @@ class ImageRepository:
         """Check if image with hash already exists"""
         return (
             self.db.query(Image.id)
-            .filter(Image.image_hash == image_hash)
+            .filter(Image.hothash == image_hash)
             .first()
         ) is not None
     
@@ -231,17 +231,8 @@ class ImageRepository:
             if search_params.author_id and not author_id:
                 query = query.filter(Image.author_id == search_params.author_id)
             
-            # Tags filter (requires JSON search - simplified for now)
-            if search_params.tags:
-                for tag in search_params.tags:
-                    tag_pattern = f"%{tag}%"
-                    query = query.filter(Image.tags.ilike(tag_pattern))
-            
-            # Rating filters
-            if search_params.rating_min:
-                query = query.filter(Image.rating >= search_params.rating_min)
-            if search_params.rating_max:
-                query = query.filter(Image.rating <= search_params.rating_max)
+            # NOTE: Tags and rating filters removed since user metadata was moved out of Image model
+            # These will be implemented with ImageMetadata table in future
             
             # Date filters
             if search_params.taken_after:

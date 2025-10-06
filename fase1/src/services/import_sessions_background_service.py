@@ -1,5 +1,35 @@
 """
-Background Import Processing Service - Service Layer for ImportSession Background Tasks
+ImaLink Import Processing Service - MAIN IMPORT LOGIC
+
+🎯 OVERVIEW:
+This is the CORE of ImaLink's import functionality. All comprehensive import 
+logic and sequential tasks are orchestrated here.
+
+🔍 QUICK NAVIGATION:
+- process_directory_import()     ← MAIN WORKFLOW (sekvensielle oppgaver)
+- _find_image_files()           ← Filskanning og type-deteksjon  
+- _group_raw_jpeg_pairs()       ← Grupperer RAW/JPEG par
+- _process_photo_group()        ← Photo-centric behandling (bruker Photo.create_from_file_group)
+- _copy_files_to_storage()      ← Filarkivering og struktur-preservering
+
+📋 PHOTO-CENTRIC IMPORT SEQUENCE:
+1. Valider import session og oppdater status
+2. Skann katalog for bildefiler (rekursivt)
+3. Grupper filer etter basename (RAW/JPEG pairing)
+4. For hver photo-gruppe: Photo.create_from_file_group() → hash → duplikatsjekk → metadata → database
+5. Kopier filer til permanent arkiv med mappestruktur
+6. Generer rapport og marker som ferdig
+
+🛠️ MAINTENANCE:
+- Ny filtype: _find_image_files() → image_extensions
+- Photo-logikk: Photo.create_from_file_group() og relaterte metoder
+- Performance: _process_photo_group() (kjører per photo-gruppe)
+- Storage: _copy_files_to_storage() (filkopiering og organisering)
+
+📁 RELATED FILES:
+- src/services/importing/image_processor.py (metadata extraction)
+- src/repositories/ (database operations)  
+- python_demos/import_session/ (testing and demos)
 """
 from typing import Optional, List, Dict, Any
 from pathlib import Path
@@ -14,7 +44,7 @@ from repositories.import_session_repository import ImportSessionRepository
 from repositories.image_repository import ImageRepository
 from services.importing.image_processor import ImageProcessor
 from core.config import Config
-from models import ImportSession, Image
+from models import ImportSession, Image, Photo
 
 logger = logging.getLogger(__name__)
 
@@ -30,8 +60,27 @@ class ImportSessionsBackgroundService:
     
     def process_directory_import(self, import_id: int, source_path: str) -> bool:
         """
-        Process a directory ImportSession in the background
-        Returns True if successful, False otherwise
+        🎯 MAIN IMPORT WORKFLOW - All sequential import tasks are orchestrated here
+        
+        This is the CORE METHOD that handles the complete import process:
+        1. Validate and setup import session
+        2. Discover all image files in source directory  
+        3. Process each image (hash, duplicate check, metadata, database)
+        4. Copy files to permanent storage with directory structure
+        5. Generate completion report and update status
+        
+        Args:
+            import_id: Database ID of the ImportSession to process
+            source_path: Directory path containing images to import
+            
+        Returns:
+            bool: True if import completed successfully, False if errors occurred
+            
+        🔧 MAINTENANCE NOTES:
+        - This method orchestrates the entire import pipeline
+        - Each step is in a separate private method for maintainability
+        - Database transactions are handled at the repository level
+        - File operations preserve original directory structure
         """
         try:
             # Get ImportSession session
@@ -45,12 +94,15 @@ class ImportSessionsBackgroundService:
             # Find image files
             image_files = self._find_image_files(source_path)
             
-            # Update total files found
+            # Group files by basename for RAW/JPEG pairing
+            file_groups = self._group_raw_jpeg_pairs(image_files)
+            
+            # Update total files found (count all individual files)
             self.import_repo.update_import(import_id, {"total_files_found": len(image_files)})
             
-            # Process each image
-            for image_file in image_files:
-                success = self._process_single_image(image_file, import_id)
+            # Process each photo group using Photo-centric approach
+            for basename, file_list in file_groups.items():
+                success = self._process_photo_group(file_list, import_id)
                 if not success:
                     self.import_repo.increment_errors(import_id)
             
@@ -88,62 +140,68 @@ class ImportSessionsBackgroundService:
         
         return image_files
     
-    def _process_single_image(self, image_file: Path, import_id: int) -> bool:
+    def _group_raw_jpeg_pairs(self, image_files: list[Path]) -> dict[str, list[Path]]:
         """
-        Process a single image file
-        Returns True if successful, False otherwise
+        Group image files by their basename for RAW/JPEG pairing.
+        
+        Args:
+            image_files: List of image file paths
+            
+        Returns:
+            Dict mapping basename to list of files with that basename
+            
+        Examples:
+            IMG_1234.jpg + IMG_1234.RAW -> {"IMG_1234": [Path("IMG_1234.jpg"), Path("IMG_1234.RAW")]}
+            IMG_5678.jpg (standalone) -> {"IMG_5678": [Path("IMG_5678.jpg")]}
+        """
+        file_groups: dict[str, list[Path]] = {}
+        
+        for file_path in image_files:
+            # Get basename without extension
+            basename = file_path.stem
+            
+            # Add file to group
+            if basename not in file_groups:
+                file_groups[basename] = []
+            file_groups[basename].append(file_path)
+        
+        return file_groups
+    
+    def _process_photo_group(self, file_list: list[Path], import_id: int) -> bool:
+        """
+        Process a group of files that represent a single photo (e.g., RAW + JPEG pair).
+        Uses Photo-centric approach with factory methods.
+        
+        Args:
+            file_list: List of file paths that belong to the same photo
+            import_id: ID of the import session
+            
+        Returns:
+            True if successful, False otherwise
         """
         try:
-            # Calculate file hash
-            file_hash = self._calculate_file_hash(image_file)
+            # Use Photo factory method to create Photo and associated Images
+            # Convert Path objects to strings as expected by factory method
+            file_group_str = [str(f) for f in file_list]
+            photo = Photo.create_from_file_group(
+                file_group=file_group_str,
+                import_session_id=import_id,
+                db_session=self.db
+            )
             
-            # Check if image already exists
-            if self.image_repo.exists_by_hash(file_hash):
-                self.import_repo.increment_duplicates_skipped(import_id)
-                return True
-            
-            # Check for RAW files (skip processing but count)
-            if self._is_raw_file(image_file):
-                self.import_repo.increment_raw_files_skipped(import_id)
-                return True
-            
-            # Extract metadata using ImageProcessor
-            metadata = self.image_processor.extract_metadata(image_file)
-            
-            # Create image record
-            image_data = {
-                "image_hash": file_hash,
-                "original_filename": image_file.name,
-                "file_path": str(image_file),
-                "file_size": image_file.stat().st_size,
-                "import_source": f"ImportSession {import_id}",
-                "import_session_id": import_id,  # Link to import session
-                "width": metadata.width,
-                "height": metadata.height,
-                "exif_data": metadata.exif_data,
-                "taken_at": metadata.taken_at,
-                "gps_latitude": metadata.gps_latitude,
-                "gps_longitude": metadata.gps_longitude
-            }
-            
-            # Use repository to create image (would need to adapt image_repo.create method)
-            new_image = Image(**image_data)
-            self.db.add(new_image)
-            self.db.commit()
-            
+            # Successfully created photo - increment counter
             self.import_repo.increment_images_imported(import_id)
             return True
             
         except Exception as e:
-            print(f"Error processing {image_file}: {e}")
-            return False
-    
-    def _calculate_file_hash(self, file_path: Path) -> str:
-        """Calculate MD5 hash of file"""
-        with open(file_path, 'rb') as f:
-            file_content = f.read()
-            return hashlib.md5(file_content).hexdigest()
-    
+            # Handle duplicates specifically (check by name since importing specific exception classes can be complex)
+            if "DuplicateImageError" in str(type(e)) or "already exists" in str(e) or "duplicate" in str(e).lower():
+                self.import_repo.increment_duplicates_skipped(import_id)
+                return True
+            else:
+                # Actual error in processing
+                print(f"Error processing photo group {[f.name for f in file_list]}: {e}")
+                return False
     def _is_raw_file(self, file_path: Path) -> bool:
         """Check if file is a RAW format"""
         raw_extensions = {'.raw', '.cr2', '.nef', '.arw', '.dng', '.orf', '.rw2'}
@@ -247,7 +305,7 @@ class ImportSessionsBackgroundService:
                         "original_path": str(source_file),
                         "relative_path": str(relative_path),
                         "archive_path": str(dest_file),
-                        "image_hash": image.image_hash,
+                        "hothash": image.hothash,
                         "size_bytes": dest_file.stat().st_size,
                         "width": image.width,
                         "height": image.height,

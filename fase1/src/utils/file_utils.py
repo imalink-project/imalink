@@ -42,3 +42,47 @@ def find_image_files(directory: str, recursive: bool = True) -> List[str]:
 def ensure_directory_exists(directory: str) -> None:
     """Create directory if it doesn't exist"""
     Path(directory).mkdir(parents=True, exist_ok=True)
+
+
+def get_file_format(filename: str) -> Optional[str]:
+    """
+    Extract file format from filename extension (without dot).
+    
+    Args:
+        filename: File name with extension (e.g. "IMG_1234.jpg")
+        
+    Returns:
+        File format in lowercase (e.g. "jpg", "cr2", "dng") or None if no extension
+    """
+    if not filename or '.' not in filename:
+        return None
+    
+    extension = Path(filename).suffix.lower()
+    if not extension:
+        return None
+        
+    # Remove the dot
+    return extension[1:]
+
+
+def is_raw_format(filename: str) -> bool:
+    """Check if filename represents a RAW format"""
+    format_type = get_file_format(filename)
+    if not format_type:
+        return False
+        
+    raw_formats = {'cr2', 'nef', 'arw', 'dng', 'orf', 'rw2', 'raw'}
+    return format_type in raw_formats
+
+
+def normalize_filename(filename: str) -> str:
+    """
+    Normalize filename by ensuring it's just the filename without path.
+    
+    Args:
+        filename: Potentially full path or just filename
+        
+    Returns:
+        Just the filename part
+    """
+    return Path(filename).name

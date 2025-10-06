@@ -16,7 +16,7 @@ async def test_image_schemas():
         create_req = ImageCreateRequest(
             original_filename="test.jpg",
             file_path="/path/to/test.jpg",
-            image_hash="abc123def456",
+            hothash="abc123def456",
             file_size=1024000,
             width=1920,
             height=1080,

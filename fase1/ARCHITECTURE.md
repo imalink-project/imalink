@@ -195,7 +195,7 @@ class Image(Base, TimestampMixin):
     id = Column(Integer, primary_key=True, index=True)
     
     # Unique identifier
-    image_hash = Column(String(64), unique=True, index=True, nullable=False)
+    hothash = Column(String(64), unique=True, index=True, nullable=False)
     
     # File information
     original_filename = Column(String(255), nullable=False) 
@@ -339,7 +339,7 @@ Archive Base Path: /path/to/archives/
       "original_path": "/source/2024/january/IMG_001.jpg",
       "relative_path": "2024/january/IMG_001.jpg",
       "archive_path": "/archive/imalink_20241004_abc123/2024/january/IMG_001.jpg",
-      "image_hash": "abcd1234efgh5678",
+      "hothash": "abcd1234efgh5678",
       "size_bytes": 2847362,
       "width": 4032,
       "height": 3024,
@@ -420,7 +420,7 @@ def get_author_service(db: Session = Depends(get_db)) -> AuthorService:
 ## 📈 Performance Considerations
 
 ### Database Optimization
-- Indices på ofte brukte felt (`image_hash`, `author_id`, etc.)
+- Indices på ofte brukte felt (`hothash`, `author_id`, etc.)
 - Efficient queries med SQLAlchemy
 - Connection pooling
 - Lazy loading av relations

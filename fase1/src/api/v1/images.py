@@ -50,20 +50,20 @@ async def get_image_details(
         raise HTTPException(status_code=500, detail=f"Failed to retrieve image: {str(e)}")
 
 
-@router.get("/{image_id}/thumbnail")
-async def get_thumbnail(
+@router.get("/{image_id}/hotpreview")
+async def get_hotpreview(
     image_id: int,
     image_service: ImageService = Depends(get_image_service)
 ):
-    """Get thumbnail image data"""
+    """Get hot preview image data"""
     try:
-        thumbnail_data = await image_service.get_image_thumbnail(image_id)
+        hotpreview_data = await image_service.get_image_hotpreview(image_id)
         
-        if not thumbnail_data:
-            raise HTTPException(status_code=404, detail="Thumbnail not found")
+        if not hotpreview_data:
+            raise HTTPException(status_code=404, detail="Hot preview not found")
         
         return Response(
-            content=thumbnail_data,
+            content=hotpreview_data,
             media_type="image/jpeg",
             headers={
                 "Cache-Control": "public, max-age=3600",
@@ -73,7 +73,7 @@ async def get_thumbnail(
     except APIException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve thumbnail: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve hot preview: {str(e)}")
 
 
 @router.get("/{image_id}/pool/{size}")

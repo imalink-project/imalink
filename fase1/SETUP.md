@@ -109,7 +109,7 @@ FastAPI genererer automatisk API-dokumentasjon:
 **Bilder:**
 - `GET /api/images/` - List bilder
 - `GET /api/images/{id}` - Bildedetaljer
-- `GET /api/images/{id}/thumbnail` - Thumbnail
+- `GET /api/images/{id}/hotpreview` - Hot preview image
 - `GET /api/images/search` - Søk i bilder
 
 ---

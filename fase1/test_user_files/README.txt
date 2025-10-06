@@ -1,0 +1,1 @@
+Her ligger noen bilder som brukes i tester

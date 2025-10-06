@@ -101,7 +101,7 @@ export async function createImportSession(sourcePath) {
  * Get thumbnail URL for an image
  */
 export function getThumbnailUrl(imageId) {
-    return `http://localhost:8000/api/v1/images/${imageId}/thumbnail`;
+    return `http://localhost:8000/api/v1/images/${imageId}/hotpreview`;
 }
 
 /**

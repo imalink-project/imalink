@@ -326,13 +326,20 @@ class ImageService:
                 # Fallback: split by comma
                 tags = [tag.strip() for tag in str(image.tags).split(',') if tag.strip()]
         
+        # Compute derived values from filename
+        filename = getattr(image, 'filename', '')
+        from utils.file_utils import get_file_format
+        computed_format = get_file_format(filename) if filename else None
+        
         return ImageResponse(
             id=getattr(image, 'id'),
-            image_hash=getattr(image, 'image_hash', ''),
-            original_filename=getattr(image, 'original_filename', ''),
-            file_path=getattr(image, 'file_path', ''),
+            hothash=getattr(image, 'hothash', ''),
+            filename=filename,
             file_size=getattr(image, 'file_size', None),
-            file_format=getattr(image, 'file_format', None),
+            # Computed fields
+            file_format=computed_format,
+            file_path=None,  # Could be computed by storage service if needed
+            original_filename=filename,  # Could be computed from import session if needed
             created_at=getattr(image, 'created_at'),
             taken_at=getattr(image, 'taken_at', None),
             width=getattr(image, 'width', None),
@@ -340,16 +347,13 @@ class ImageService:
             gps_latitude=getattr(image, 'gps_latitude', None),
             gps_longitude=getattr(image, 'gps_longitude', None),
             has_gps=bool(getattr(image, 'gps_latitude', None) and getattr(image, 'gps_longitude', None)),
-            title=getattr(image, 'title', None),
-            description=getattr(image, 'description', None),
-            tags=tags,
-            rating=getattr(image, 'rating', None),
+            # NOTE: title, description, tags, rating moved to ImageMetadata table
             user_rotation=getattr(image, 'user_rotation', 0) or 0,
             author=author_summary,
             author_id=getattr(image, 'author_id', None),
-            import_source=getattr(image, 'import_source', None),
-            has_raw_companion=has_raw_companion,
-            has_thumbnail=has_thumbnail
+            # import_source available via import_session relationship if needed
+            has_raw_companion=computed_format in ['cr2', 'nef', 'arw', 'dng', 'orf', 'rw2', 'raw'] if computed_format else False,
+            has_hotpreview=bool(getattr(image, 'hotpreview', None)) or (computed_format in ['jpg', 'jpeg', 'png', 'tiff'] if computed_format else False)
         )
     
     async def _cleanup_image_files(self, image) -> None:

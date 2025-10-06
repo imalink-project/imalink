@@ -5,7 +5,7 @@
 - [x] GET /health - `healthCheck()`
 - [x] GET /api/v1/images/ - `getImages()`
 - [x] GET /api/v1/images/{id} - `getImage(imageId)`
-- [x] GET /api/v1/images/{id}/thumbnail - `getThumbnailUrl(imageId)` (URL helper)
+- [x] GET /api/v1/images/{id}/hotpreview - `getThumbnailUrl(imageId)` (URL helper)
 - [x] GET /api/v1/images/{id}/pool/{size} - `getImageUrl(imageId)` (URL helper)
 - [x] GET /api/v1/authors/ - `getAuthors()`
 - [x] GET /api/v1/authors/{id} - `getAuthor(authorId)`

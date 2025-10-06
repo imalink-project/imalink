@@ -20,11 +20,14 @@ class AuthorSummary(BaseModel):
 class ImageResponse(BaseModel):
     """Complete image response model"""
     id: int
-    hash: str = Field(..., alias="image_hash", description="Perceptual hash of the image")
-    filename: str = Field(..., alias="original_filename", description="Original filename")
-    file_path: str = Field(..., description="Full path to image file")
+    hash: str = Field(..., alias="hothash", description="Hot hash identifier based on hotpreview")
+    filename: str = Field(..., description="Filename with extension (e.g. IMG_1234.jpg)")
     file_size: Optional[int] = Field(None, description="File size in bytes")
-    file_format: Optional[str] = Field(None, description="File format (jpg, png, raw, etc.)")
+    
+    # Computed fields (provided by service layer)
+    file_format: Optional[str] = Field(None, description="File format computed from filename")
+    file_path: Optional[str] = Field(None, description="Full path computed by storage service")
+    original_filename: Optional[str] = Field(None, description="Original filename from import session")
     
     # Timestamps
     created_at: datetime = Field(..., description="When image was imported")
@@ -39,11 +42,9 @@ class ImageResponse(BaseModel):
     gps_longitude: Optional[float] = Field(None, description="GPS longitude")
     has_gps: bool = Field(False, description="Whether image has GPS coordinates")
     
-    # User metadata
-    title: Optional[str] = Field(None, description="User-assigned title")
-    description: Optional[str] = Field(None, description="User-assigned description")
-    tags: List[str] = Field(default_factory=list, description="User-assigned tags")
-    rating: Optional[int] = Field(None, ge=1, le=5, description="User rating (1-5 stars)")
+    # NOTE: User metadata moved to separate ImageMetadata table
+    # title, description, tags, rating will be handled by ImageMetadataService
+    # These fields removed from Image model to support multiple files per motif (JPEG/RAW)
     
     # User modifications
     user_rotation: int = Field(0, ge=0, le=3, description="User rotation (0=0°, 1=90°, 2=180°, 3=270°)")
@@ -52,12 +53,11 @@ class ImageResponse(BaseModel):
     author: Optional[AuthorSummary] = Field(None, description="Image author/photographer")
     author_id: Optional[int] = Field(None, description="Author ID")
     
-    # Import info
-    import_source: Optional[str] = Field(None, description="Import source description")
+    # Import info available via import_session_id relationship in service layer
     
     # Computed fields (set by service layer)
     has_raw_companion: bool = Field(False, description="Whether image has RAW companion file")
-    has_thumbnail: bool = Field(False, description="Whether thumbnail is available")
+    has_hotpreview: bool = Field(False, description="Whether hot preview is available")
     
     class Config:
         from_attributes = True
@@ -73,17 +73,7 @@ class ImageResponse(BaseModel):
             return lat is not None and lon is not None
         return v
     
-    @field_validator('tags', mode='before')
-    @classmethod
-    def parse_tags(cls, v):
-        """Parse tags from JSON string if needed"""
-        if isinstance(v, str):
-            try:
-                return json.loads(v) if v else []
-            except json.JSONDecodeError:
-                # Fallback: split by comma
-                return [tag.strip() for tag in v.split(',') if tag.strip()]
-        return v or []
+    # NOTE: tags validator removed since tags moved to ImageMetadata table
 
 
 class ImageListResponse(BaseModel):
@@ -97,13 +87,11 @@ class ImageListResponse(BaseModel):
 
 class ImageCreateRequest(BaseModel):
     """Request model for creating new images"""
-    original_filename: str = Field(..., min_length=1, max_length=255, description="Original filename")
-    file_path: str = Field(..., description="Full path to image file")
-    image_hash: str = Field(..., min_length=1, max_length=64, description="Perceptual hash")
+    filename: str = Field(..., min_length=1, max_length=255, description="Filename with extension")
+    hothash: str = Field(..., min_length=1, max_length=64, description="Hot hash identifier")
     
     # Optional file metadata
     file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")
-    file_format: Optional[str] = Field(None, max_length=10, description="File format")
     
     # Optional timestamps
     taken_at: Optional[datetime] = Field(None, description="When photo was taken")
@@ -116,34 +104,25 @@ class ImageCreateRequest(BaseModel):
     gps_latitude: Optional[float] = Field(None, ge=-90, le=90, description="GPS latitude")
     gps_longitude: Optional[float] = Field(None, ge=-180, le=180, description="GPS longitude")
     
-    # Optional metadata
-    title: Optional[str] = Field(None, max_length=255, description="Image title")
-    description: Optional[str] = Field(None, max_length=2000, description="Image description")
-    tags: List[str] = Field(default_factory=list, description="Image tags")
-    rating: Optional[int] = Field(None, ge=1, le=5, description="Image rating")
+    # NOTE: title, description, tags, rating moved to ImageMetadata table
     
     # Relationships
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
-    import_source: Optional[str] = Field(None, max_length=255, description="Import source")
+    # Note: import_source removed - use import_session_id relationship in service layer
 
 
 class ImageUpdateRequest(BaseModel):
     """Request model for updating existing images"""
-    title: Optional[str] = Field(None, max_length=255, description="Image title")
-    description: Optional[str] = Field(None, max_length=2000, description="Image description")
-    tags: Optional[List[str]] = Field(None, description="Image tags")
-    rating: Optional[int] = Field(None, ge=1, le=5, description="Image rating")
+    # NOTE: title, description, tags, rating moved to ImageMetadata table
     user_rotation: Optional[int] = Field(None, ge=0, le=3, description="User rotation")
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
 
 
 class ImageSearchRequest(BaseModel):
     """Request model for image search"""
-    q: Optional[str] = Field(None, description="Search query (filename, title, description)")
+    q: Optional[str] = Field(None, description="Search query (filename)")
     author_id: Optional[int] = Field(None, description="Filter by author ID")
-    tags: Optional[List[str]] = Field(None, description="Filter by tags")
-    rating_min: Optional[int] = Field(None, ge=1, le=5, description="Minimum rating")
-    rating_max: Optional[int] = Field(None, ge=1, le=5, description="Maximum rating")
+    # NOTE: tags, rating search moved to ImageMetadata table
     taken_after: Optional[datetime] = Field(None, description="Taken after date")
     taken_before: Optional[datetime] = Field(None, description="Taken before date")
     has_gps: Optional[bool] = Field(None, description="Filter by GPS availability")
@@ -163,10 +142,10 @@ class ImageRotateRequest(BaseModel):
     clockwise: bool = Field(True, description="Rotate clockwise (90°) or counter-clockwise (-90°)")
 
 
-class ImageThumbnailResponse(BaseModel):
-    """Response model for thumbnail requests"""
+class ImageHotpreviewResponse(BaseModel):
+    """Response model for hot preview requests"""
     image_id: int = Field(..., description="Image ID")
-    thumbnail_data: bytes = Field(..., description="Thumbnail binary data")
+    hotpreview_data: bytes = Field(..., description="Hot preview binary data")
     content_type: str = Field("image/jpeg", description="MIME type")
     
     class Config:

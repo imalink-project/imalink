@@ -12,6 +12,7 @@ from database.connection import get_db
 from services.image_service_new import ImageService
 from services.author_service import AuthorService
 from services.import_session_service import ImportSessionService
+from services.photo_service import PhotoService
 
 
 # Image Service Dependencies
@@ -34,6 +35,12 @@ def get_author_service(db: Session = Depends(get_db)) -> AuthorService:
 def get_import_session_service(db: Session = Depends(get_db)) -> ImportSessionService:
     """Get ImportSessionService instance with database dependency"""
     return ImportSessionService(db)
+
+
+# Photo Service Dependencies
+def get_photo_service(db: Session = Depends(get_db)) -> PhotoService:
+    """Get PhotoService instance with database dependency"""
+    return PhotoService(db)
 
 
 # Import Once functionality has been integrated into ImportSessionService
