@@ -32,6 +32,7 @@ class PhotoResponse(BaseModel):
     hothash: str = Field(..., description="Content-based hash identifier")
     
     # Visual presentation data
+    hotpreview: Optional[str] = Field(None, description="Base64 encoded preview image")
     width: Optional[int] = Field(None, description="Original image width in pixels")
     height: Optional[int] = Field(None, description="Original image height in pixels")
     user_rotation: int = Field(0, ge=0, le=3, description="User rotation (0=0°, 1=90°, 2=180°, 3=270°)")
@@ -90,6 +91,7 @@ class PhotoCreateRequest(BaseModel):
     hothash: str = Field(..., min_length=1, max_length=64, description="Content-based hash identifier")
     
     # Visual data
+    hotpreview: Optional[str] = Field(None, description="Base64 encoded preview image")
     width: Optional[int] = Field(None, ge=1, description="Image width in pixels")
     height: Optional[int] = Field(None, ge=1, description="Image height in pixels")
     

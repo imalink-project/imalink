@@ -128,12 +128,8 @@ class ImageService:
         """Create new image with business logic validation"""
         
         # Business Logic: Check for duplicates
-        if self.image_repo.exists_by_hash(image_data.image_hash):
-            raise DuplicateImageError(f"Image with hash {image_data.image_hash} already exists")
-        
-        # Business Logic: Validate file exists
-        if not Path(image_data.file_path).exists():
-            raise ValidationError(f"File not found: {image_data.file_path}")
+        if self.image_repo.exists_by_hash(image_data.hothash):
+            raise DuplicateImageError(f"Image with hash {image_data.hothash} already exists")
         
         # Create image record
         image = self.image_repo.create(image_data)
@@ -152,20 +148,8 @@ class ImageService:
         if not existing_image:
             raise NotFoundError("Image", image_id)
         
-        # Business Logic: Validate rating range
-        if update_data.rating is not None and not (1 <= update_data.rating <= 5):
-            raise ValidationError("Rating must be between 1 and 5")
-        
-        # Business Logic: Normalize tags
+        # Convert update data to dict (only Image model fields)
         update_dict = update_data.dict(exclude_unset=True)
-        if 'tags' in update_dict and update_dict['tags'] is not None:
-            # Normalize tags: lowercase, trim, remove duplicates
-            normalized_tags = []
-            for tag in update_dict['tags']:
-                tag = tag.strip().lower()
-                if tag and tag not in normalized_tags:
-                    normalized_tags.append(tag)
-            update_dict['tags'] = normalized_tags
         
         # Update image
         updated_image = self.image_repo.update(image_id, update_dict)
@@ -303,28 +287,27 @@ class ImageService:
         
         # Business Logic: Detect RAW companion
         has_raw_companion = False
-        if image.file_path:
-            has_raw_companion = await self.image_processor.has_raw_companion(image.file_path)
+        if hasattr(image, 'filename') and image.filename:
+            # Note: We no longer have full file path, only filename
+            # For now, disable RAW companion detection
+            has_raw_companion = False
         
         # Business Logic: Check thumbnail availability
-        has_thumbnail = bool(image.thumbnail) or await self.image_processor.can_generate_thumbnail(image.file_path)
+        # Note: We no longer have full file path, so disable thumbnail generation for now
+        has_thumbnail = bool(getattr(image, 'thumbnail', None))
         
-        # Convert author if present
+        # Convert author if present (from Photo relationship)
         author_summary = None
-        if image.author:
+        if hasattr(image, 'photo') and image.photo and hasattr(image.photo, 'author') and image.photo.author:
             author_summary = AuthorSummary(
-                id=image.author.id,
-                name=image.author.name
+                id=image.photo.author.id,
+                name=image.photo.author.name
             )
         
-        # Parse tags from JSON string
+        # Image model doesn't have tags - they're in Photo model
         tags = []
-        if image.tags:
-            try:
-                tags = json.loads(image.tags)
-            except (json.JSONDecodeError, TypeError):
-                # Fallback: split by comma
-                tags = [tag.strip() for tag in str(image.tags).split(',') if tag.strip()]
+        if image.photo and image.photo.tags:
+            tags = image.photo.tags if isinstance(image.photo.tags, list) else []
         
         # Compute derived values from filename
         filename = getattr(image, 'filename', '')
@@ -358,7 +341,9 @@ class ImageService:
     
     async def _cleanup_image_files(self, image) -> None:
         """Clean up files associated with image"""
-        await self.image_processor.cleanup_image_files(image.file_path, image.id)
+        # Note: We no longer have full file path, so disable file cleanup for now
+        # await self.image_processor.cleanup_image_files(image.filename, image.id)
+        pass
     
     async def _invalidate_pool_cache(self, image_id: int) -> None:
         """Invalidate cached pool images for image"""

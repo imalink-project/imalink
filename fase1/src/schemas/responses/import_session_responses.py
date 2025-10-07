@@ -20,7 +20,12 @@ class ImportResponse(BaseModel):
     raw_files_skipped: int = 0
     single_raw_skipped: int = 0
     errors_count: int = 0
+    
+    # Progress tracking
     progress_percentage: float = 0.0
+    files_processed: int = 0
+    current_file: Optional[str] = None
+    is_cancelled: bool = False
     
     # Import result classification and user feedback
     import_result_type: Optional[str] = Field(None, description="Classification: all_new, all_duplicates, mixed")
@@ -60,3 +65,30 @@ class ImportListResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class ImportProgressResponse(BaseModel):
+    """Response for import progress tracking"""
+    import_id: int
+    status: str
+    progress_percentage: float = 0.0
+    files_processed: int = 0
+    total_files_found: int = 0
+    current_file: Optional[str] = None
+    is_cancelled: bool = False
+    
+    # Quick stats
+    images_imported: int = 0
+    duplicates_skipped: int = 0
+    errors_count: int = 0
+    
+    class Config:
+        from_attributes = True
+
+
+class ImportCancelResponse(BaseModel):
+    """Response when cancelling import"""
+    message: str
+    import_id: int
+    success: bool
+    status: str

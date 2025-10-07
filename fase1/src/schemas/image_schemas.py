@@ -86,29 +86,20 @@ class ImageListResponse(BaseModel):
 
 
 class ImageCreateRequest(BaseModel):
-    """Request model for creating new images"""
+    """Request model for creating new images - file-specific data only"""
     filename: str = Field(..., min_length=1, max_length=255, description="Filename with extension")
     hothash: str = Field(..., min_length=1, max_length=64, description="Hot hash identifier")
     
     # Optional file metadata
     file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")
     
-    # Optional timestamps
-    taken_at: Optional[datetime] = Field(None, description="When photo was taken")
+    # Optional binary EXIF data
+    exif_data: Optional[bytes] = Field(None, description="Raw EXIF data as binary blob")
     
-    # Optional dimensions
-    width: Optional[int] = Field(None, ge=1, description="Image width in pixels")
-    height: Optional[int] = Field(None, ge=1, description="Image height in pixels")
+    # Optional import tracking
+    import_session_id: Optional[int] = Field(None, description="Import session ID")
     
-    # Optional GPS
-    gps_latitude: Optional[float] = Field(None, ge=-90, le=90, description="GPS latitude")
-    gps_longitude: Optional[float] = Field(None, ge=-180, le=180, description="GPS longitude")
-    
-    # NOTE: title, description, tags, rating moved to ImageMetadata table
-    
-    # Relationships
-    author_id: Optional[int] = Field(None, description="Author/photographer ID")
-    # Note: import_source removed - use import_session_id relationship in service layer
+    # NOTE: Visual metadata (taken_at, width, height, GPS, author_id) belongs to Photo model
 
 
 class ImageUpdateRequest(BaseModel):

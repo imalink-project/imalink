@@ -241,3 +241,63 @@ async def database_schema(db: Session = Depends(get_db)):
             status_code=500,
             detail=f"Failed to get database schema: {str(e)}"
         )
+
+@router.post("/clear-database")
+async def clear_database(db: Session = Depends(get_db)):
+    """
+    🚨 DANGER: Clear all data from database (development only)
+    
+    This will delete ALL records from all tables but preserve the schema.
+    Safer than reset-database as it doesn't drop tables.
+    """
+    
+    # Safety check: Development mode only
+    if not is_development_mode():
+        raise HTTPException(
+            status_code=403,
+            detail="Database clear only allowed in development mode"
+        )
+    
+    try:
+        # Get all table names
+        result = db.execute(text("""
+            SELECT name FROM sqlite_master 
+            WHERE type='table' AND name NOT LIKE 'sqlite_%'
+        """))
+        tables = [row[0] for row in result.fetchall()]
+        
+        # Count records before deletion
+        counts_before = {}
+        for table in tables:
+            count_result = db.execute(text(f"SELECT COUNT(*) FROM {table}"))
+            counts_before[table] = count_result.scalar()
+        
+        # Disable foreign key constraints temporarily
+        db.execute(text("PRAGMA foreign_keys = OFF"))
+        
+        # Clear all tables (but preserve schema)
+        for table in tables:
+            db.execute(text(f"DELETE FROM {table}"))
+        
+        # Re-enable foreign key constraints
+        db.execute(text("PRAGMA foreign_keys = ON"))
+        
+        db.commit()
+        
+        return {
+            "status": "success",
+            "message": f"Database cleared successfully. Deleted data from {len(tables)} tables.",
+            "tables_cleared": len(tables),
+            "photos_deleted": counts_before.get("photos", 0),
+            "images_deleted": counts_before.get("images", 0),
+            "authors_deleted": counts_before.get("authors", 0),
+            "import_sessions_deleted": counts_before.get("import_sessions", 0),
+            "total_records_deleted": sum(counts_before.values())
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Database clear failed: {str(e)}"
+        )

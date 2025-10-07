@@ -1,19 +1,32 @@
 {
 	"name": "frontend",
-	"version": "0.0.1",
 	"private": true,
+	"version": "0.0.1",
+	"type": "module",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
-		"sync-api": "node ../scripts/sync-api.js",
-		"check-api": "curl -s http://localhost:8000/openapi.json | jq '.paths | keys'"
+		"prepare": "svelte-kit sync || echo ''",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"cli": "node src/lib/cli/import-cli.js",
+		"process": "node src/lib/cli/import-cli.js"
 	},
 	"devDependencies": {
-		"@sveltejs/adapter-auto": "^2.0.0",
-		"@sveltejs/kit": "^1.5.0",
-		"svelte": "^3.54.0",
-		"vite": "^4.3.0"
+		"@sveltejs/adapter-auto": "^6.1.0",
+		"@sveltejs/kit": "^2.43.2",
+		"@sveltejs/vite-plugin-svelte": "^6.2.0",
+		"svelte": "^5.39.5",
+		"svelte-check": "^4.3.2",
+		"typescript": "^5.9.2",
+		"vite": "^7.1.7"
 	},
-	"type": "module"
+	"dependencies": {
+		"axios": "^1.12.2",
+		"sharp": "^0.33.2",
+		"exifreader": "^4.19.0",
+		"fs-extra": "^11.2.0",
+		"commander": "^12.0.0"
+	}
 }

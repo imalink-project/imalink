@@ -26,7 +26,7 @@ async def list_authors(
     """
     Get paginated list of authors
     """
-    return await author_service.get_authors(offset=offset, limit=limit)
+    return author_service.get_authors(offset=offset, limit=limit)
 
 
 @router.post("/", response_model=SingleResponse[AuthorResponse])
@@ -37,7 +37,7 @@ async def create_author(
     """
     Create a new author
     """
-    author = await author_service.create_author(author_data)
+    author = author_service.create_author(author_data)
     return SingleResponse(
         data=author,
         meta={"message": f"Author '{author.name}' created successfully"}
@@ -53,7 +53,7 @@ async def get_author(
     """
     Get specific author details
     """
-    author = await author_service.get_author_by_id(author_id)
+    author = author_service.get_author_by_id(author_id)
     return SingleResponse(
         data=author,
         meta={"message": f"Author '{author.name}' retrieved successfully"}
@@ -69,7 +69,7 @@ async def update_author(
     """
     Update author details
     """
-    author = await author_service.update_author(author_id, update_data)
+    author = author_service.update_author(author_id, update_data)
     return SingleResponse(
         data=author,
         meta={"message": f"Author '{author.name}' updated successfully"}
@@ -84,7 +84,7 @@ async def delete_author(
     """
     Delete author (only if no images are associated)
     """
-    success = await author_service.delete_author(author_id)
+    success = author_service.delete_author(author_id)
     return {"message": "Author deleted successfully"}
 
 
@@ -97,7 +97,7 @@ async def search_authors(
     """
     Search authors by name, email, or bio
     """
-    authors = await author_service.search_authors(q, limit)
+    authors = author_service.search_authors(q, limit)
     return AuthorListResponse(
         authors=authors,
         total=len(authors)
@@ -111,7 +111,7 @@ async def get_author_statistics(
     """
     Get comprehensive author statistics
     """
-    return await author_service.get_author_statistics()
+    return author_service.get_author_statistics()
 
 
 @router.get("/with-images/", response_model=AuthorListResponse)
@@ -122,7 +122,7 @@ async def get_authors_with_images(
     """
     Get authors who have uploaded images
     """
-    authors = await author_service.get_authors_with_images(limit)
+    authors = author_service.get_authors_with_photos(limit)
     return AuthorListResponse(
         authors=authors,
         total=len(authors)

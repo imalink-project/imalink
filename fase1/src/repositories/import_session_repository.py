@@ -73,6 +73,23 @@ class ImportSessionRepository:
         self.db.refresh(session)
         return session
     
+    def cancel_import(self, session_id: int) -> Optional[ImportSession]:
+        """Cancel running ImportSession"""
+        session = self.get_import_by_id(session_id)
+        if not session:
+            return None
+        
+        # Only cancel if still in progress
+        current_status = getattr(session, 'status', '')
+        if current_status == "in_progress":
+            return self.update_import(session_id, {
+                "is_cancelled": True,
+                "status": "cancelled", 
+                "completed_at": datetime.now()
+            })
+        
+        return session
+    
     def fail_import(self, session_id: int, error_message: str) -> Optional[ImportSession]:
         """Mark ImportSession as failed"""
         session = self.get_import_by_id(session_id)

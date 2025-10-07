@@ -82,8 +82,23 @@ class PhotoRepository:
         # Convert tags list to JSON if provided
         tags_json = photo_data.tags if photo_data.tags else []
         
+        # Convert base64 hotpreview to binary if provided
+        hotpreview_binary = None
+        if photo_data.hotpreview:
+            import base64
+            try:
+                # Remove data URL prefix if present (data:image/jpeg;base64,)
+                hotpreview_b64 = photo_data.hotpreview
+                if ',' in hotpreview_b64:
+                    hotpreview_b64 = hotpreview_b64.split(',')[1]
+                hotpreview_binary = base64.b64decode(hotpreview_b64)
+            except Exception as e:
+                # Log error but continue without hotpreview
+                print(f"Warning: Failed to decode hotpreview: {e}")
+        
         photo = Photo(
             hothash=photo_data.hothash,
+            hotpreview=hotpreview_binary,
             width=photo_data.width,
             height=photo_data.height,
             taken_at=photo_data.taken_at,

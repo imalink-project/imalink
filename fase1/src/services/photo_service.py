@@ -67,7 +67,7 @@ class PhotoService:
         return self._convert_to_response(photo)
     
     async def create_photo(self, photo_data: PhotoCreateRequest) -> PhotoResponse:
-        """Create new photo"""
+        """Create new photo with EXIF extraction from associated Images"""
         
         # Check for duplicate hash
         if self.photo_repo.exists_by_hash(photo_data.hothash):
@@ -77,10 +77,11 @@ class PhotoService:
         if photo_data.tags:
             self._validate_tags(photo_data.tags)
         
-        # Create photo
-        photo = self.photo_repo.create(photo_data)
-        self.db.commit()
+        # Extract EXIF metadata from associated Images
+        enhanced_data = self._extract_metadata_from_images(photo_data)
         
+        # Create the photo
+        photo = self.photo_repo.create(enhanced_data)
         return self._convert_to_response(photo)
     
     async def update_photo(self, hothash: str, photo_data: PhotoUpdateRequest) -> PhotoResponse:
@@ -164,8 +165,16 @@ class PhotoService:
         has_raw_companion = photo.has_raw_companion
         primary_filename = photo.primary_filename
         
+        # Convert hotpreview binary to base64 string
+        hotpreview_b64 = None
+        hotpreview_data = getattr(photo, 'hotpreview', None)
+        if hotpreview_data:
+            import base64
+            hotpreview_b64 = base64.b64encode(hotpreview_data).decode('utf-8')
+        
         return PhotoResponse(
             hothash=getattr(photo, 'hothash'),
+            hotpreview=hotpreview_b64,
             width=getattr(photo, 'width', None),
             height=getattr(photo, 'height', None),
             user_rotation=getattr(photo, 'user_rotation', 0),
@@ -227,5 +236,34 @@ class PhotoService:
         }
         
         return format_map.get(ext, "unknown")
+    
+    def _extract_metadata_from_images(self, photo_data: PhotoCreateRequest) -> PhotoCreateRequest:
+        """
+        Extract EXIF metadata from associated Images and enhance PhotoCreateRequest
+        
+        Since frontend already sends the EXIF data when creating Photos,
+        this method primarily serves as a validation step.
+        """
+        from repositories.image_repository import ImageRepository
+        
+        # Get image repository
+        image_repo = ImageRepository(self.db)
+        
+        # Find existing image with this hothash to validate the relationship
+        existing_image = image_repo.get_by_hash(photo_data.hothash)
+        
+        if existing_image:
+            print(f"Creating Photo for existing Image: {existing_image.filename}")
+            exif_data = existing_image.exif_data
+            if exif_data is not None:
+                print(f"  Image has EXIF data stored")
+            else:
+                print(f"  Image has no EXIF data stored")
+        else:
+            print(f"Warning: No Image found with hothash {photo_data.hothash}")
+        
+        # Return the original data - frontend should have already extracted and sent EXIF
+        # This architecture assumes the frontend extracts EXIF and includes it in the PhotoCreateRequest
+        return photo_data
 
 

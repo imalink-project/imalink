@@ -11,7 +11,7 @@ from repositories.import_session_repository import ImportSessionRepository
 from schemas.requests.import_session_requests import ImportStartRequest, ImportTestRequest
 from schemas.responses.import_session_responses import (
     ImportResponse, ImportStartResponse, ImportListResponse,
-    ImportTestResponse
+    ImportTestResponse, ImportProgressResponse, ImportCancelResponse
 )
 from schemas.common import PaginatedResponse, create_paginated_response
 from core.exceptions import NotFoundError, ValidationError
@@ -267,7 +267,122 @@ class ImportSessionService:
             single_raw_skipped=getattr(session, 'single_raw_skipped', 0) or 0,
             errors_count=getattr(session, 'errors_count', 0) or 0,
             
+            # Progress tracking
+            progress_percentage=getattr(session, 'progress_percentage', 0.0) or 0.0,
+            files_processed=getattr(session, 'files_processed', 0) or 0,
+            current_file=getattr(session, 'current_file', None),
+            is_cancelled=getattr(session, 'is_cancelled', False) or False,
+            
             # Import result classification and user feedback
             import_result_type=getattr(session, 'import_result_type', None),
-            user_feedback_message=getattr(session, 'user_feedback_message', None)
+            user_feedback_message=getattr(session, 'user_feedback_message', None),
+            
+            # Storage information
+            storage_name=getattr(session, 'storage_name', None),
+            archive_base_path=getattr(session, 'archive_base_path', None),
+            files_copied=getattr(session, 'files_copied', 0) or 0,
+            files_copy_skipped=getattr(session, 'files_copy_skipped', 0) or 0,
+            storage_errors=[]  # This might need proper handling if it's stored as JSON
         )
+    
+    async def get_import_progress(self, import_id: int) -> ImportProgressResponse:
+        """Get real-time progress of import session"""
+        session = self.import_repo.get_import_by_id(import_id)
+        if not session:
+            raise NotFoundError("Import session", import_id)
+        
+        return ImportProgressResponse(
+            import_id=getattr(session, 'id'),
+            status=getattr(session, 'status', 'unknown'),
+            progress_percentage=getattr(session, 'progress_percentage', 0.0) or 0.0,
+            files_processed=getattr(session, 'files_processed', 0) or 0,
+            total_files_found=getattr(session, 'total_files_found', 0) or 0,
+            current_file=getattr(session, 'current_file', None),
+            is_cancelled=getattr(session, 'is_cancelled', False) or False,
+            
+            # Quick stats
+            images_imported=getattr(session, 'images_imported', 0) or 0,
+            duplicates_skipped=getattr(session, 'duplicates_skipped', 0) or 0,
+            errors_count=getattr(session, 'errors_count', 0) or 0
+        )
+    
+    async def cancel_import(self, import_id: int) -> ImportCancelResponse:
+        """Cancel running import session"""
+        session = self.import_repo.get_import_by_id(import_id)
+        if not session:
+            raise NotFoundError("Import session", import_id)
+        
+        # Use repository method to cancel
+        cancelled_session = self.import_repo.cancel_import(import_id)
+        
+        success = cancelled_session is not None
+        final_status = getattr(cancelled_session, 'status', 'unknown') if success else 'error'
+        
+        message = "Import cancelled successfully" if success else "Failed to cancel import"
+        
+        return ImportCancelResponse(
+            message=message,
+            import_id=import_id,
+            success=success,
+            status=final_status
+        )
+    
+    async def copy_to_storage(self, import_id: int, storage_path: str) -> Dict[str, Any]:
+        """
+        Copy files from temp directory to user-specified storage location
+        """
+        import shutil
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        # Get import session
+        import_session = self.import_repo.get_import_by_id(import_id)
+        if not import_session:
+            raise NotFoundError("Import session", import_id)
+        
+        source_dir = Path(str(import_session.source_path))
+        storage_dir = Path(storage_path)
+        
+        # Validate storage path
+        if not storage_dir.parent.exists():
+            raise ValidationError(f"Storage parent directory does not exist: {storage_dir.parent}")
+        
+        # Create storage directory if it doesn't exist
+        storage_dir.mkdir(parents=True, exist_ok=True)
+        
+        try:
+            # Copy all files from source to storage, preserving structure
+            files_copied = 0
+            for item in source_dir.rglob("*"):
+                if item.is_file():
+                    # Calculate relative path
+                    rel_path = item.relative_to(source_dir)
+                    dest_path = storage_dir / rel_path
+                    
+                    # Create parent directories if needed
+                    dest_path.parent.mkdir(parents=True, exist_ok=True)
+                    
+                    # Copy file
+                    shutil.copy2(item, dest_path)
+                    files_copied += 1
+                    
+                    logger.debug(f"Copied {item} -> {dest_path}")
+            
+            # Update import session with storage path
+            self.import_repo.update_import(import_id, {
+                "archive_base_path": str(storage_dir),
+                "storage_name": storage_dir.name
+            })
+            
+            logger.info(f"Successfully copied {files_copied} files to {storage_dir}")
+            
+            return {
+                "storage_path": str(storage_dir),
+                "files_copied": files_copied,
+                "message": f"Successfully copied {files_copied} files to storage"
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to copy files to storage: {str(e)}")
+            raise ValidationError(f"Failed to copy files to storage: {str(e)}")

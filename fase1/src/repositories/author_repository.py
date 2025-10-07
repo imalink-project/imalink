@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc
 
-from models import Author, Image
+from models import Author
 from schemas.requests.author_requests import AuthorCreateRequest, AuthorUpdateRequest
 
 
@@ -16,10 +16,10 @@ class AuthorRepository:
         self.db = db
     
     def get_by_id(self, author_id: int) -> Optional[Author]:
-        """Get author by ID with image count"""
+        """Get author by ID with photos"""
         return (
             self.db.query(Author)
-            .options(joinedload(Author.images))
+            .options(joinedload(Author.photos))
             .filter(Author.id == author_id)
             .first()
         )
@@ -36,7 +36,7 @@ class AuthorRepository:
         """Get all authors with pagination"""
         return (
             self.db.query(Author)
-            .options(joinedload(Author.images))
+            .options(joinedload(Author.photos))
             .order_by(Author.name)
             .offset(offset)
             .limit(limit)
@@ -92,25 +92,27 @@ class AuthorRepository:
             query = query.filter(Author.id != exclude_id)
         return query.first() is not None
     
-    def get_authors_with_images(self, limit: int = 100) -> List[Author]:
-        """Get authors who have images"""
+    def get_authors_with_photos(self, limit: int = 100) -> List[Author]:
+        """Get authors who have photos"""
+        from models.photo import Photo
         return (
             self.db.query(Author)
-            .join(Image)
-            .options(joinedload(Author.images))
+            .join(Photo)
+            .options(joinedload(Author.photos))
             .group_by(Author.id)
-            .order_by(func.count(Image.id).desc())
+            .order_by(func.count(Photo.hothash).desc())
             .limit(limit)
             .all()
         )
     
-    def get_top_authors_by_image_count(self, limit: int = 10) -> List[tuple]:
-        """Get top authors by image count"""
+    def get_top_authors_by_photo_count(self, limit: int = 10) -> List[tuple]:
+        """Get top authors by photo count"""
+        from models.photo import Photo
         return (
-            self.db.query(Author, func.count(Image.id).label('image_count'))
-            .outerjoin(Image)
+            self.db.query(Author, func.count(Photo.hothash).label('photo_count'))
+            .outerjoin(Photo)
             .group_by(Author.id)
-            .order_by(desc('image_count'))
+            .order_by(desc('photo_count'))
             .limit(limit)
             .all()
         )
@@ -120,7 +122,7 @@ class AuthorRepository:
         search_term = f"%{query}%"
         return (
             self.db.query(Author)
-            .options(joinedload(Author.images))
+            .options(joinedload(Author.photos))
             .filter(
                 Author.name.ilike(search_term) |
                 Author.email.ilike(search_term) |
@@ -133,23 +135,24 @@ class AuthorRepository:
     
     def get_statistics(self) -> Dict[str, Any]:
         """Get author statistics"""
+        from models.photo import Photo
         total_authors = self.db.query(Author).count()
         
-        authors_with_images = (
+        authors_with_photos = (
             self.db.query(Author.id)
-            .join(Image)
+            .join(Photo)
             .distinct()
             .count()
         )
         
-        total_images = self.db.query(Image).count()
-        avg_images_per_author = (
-            total_images / total_authors if total_authors > 0 else 0
+        total_photos = self.db.query(Photo).count()
+        avg_photos_per_author = (
+            total_photos / total_authors if total_authors > 0 else 0
         )
         
         return {
             "total_authors": total_authors,
-            "authors_with_images": authors_with_images,
-            "total_images": total_images,
-            "avg_images_per_author": round(avg_images_per_author, 2)
+            "authors_with_photos": authors_with_photos,
+            "total_photos": total_photos,
+            "avg_photos_per_author": round(avg_photos_per_author, 2)
         }

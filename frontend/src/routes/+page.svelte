@@ -1,216 +1,300 @@
-<script>
-    import { onMount } from 'svelte';
-    import { healthCheck, getImages, getAuthors } from '$lib/api.js';
+<script lang="ts">
+import { onMount } from 'svelte';
+import { currentView } from '$lib/stores/app';
 
-    let backendStatus = 'Sjekker...';
-    let imageCount = 0;
-    let authorCount = 0;
-    let error = null;
+currentView.set('photos');
 
-    onMount(async () => {
-        try {
-            // Test backend connection
-            const health = await healthCheck();
-            backendStatus = health.message || 'OK';
-            
-            // Get basic stats
-            const [images, authors] = await Promise.all([
-                getImages(),
-                getAuthors()
-            ]);
-            
-            imageCount = images.length || 0;
-            authorCount = authors.length || 0;
-        } catch (err) {
-            error = err.message;
-            backendStatus = 'Feil - ikke tilkoblet';
-        }
-    });
+let photos = [];
+let loading = true;
+let error = '';
+
+onMount(async () => {
+await loadPhotos();
+});
+
+async function loadPhotos() {
+loading = true;
+error = '';
+
+try {
+const response = await fetch('http://localhost:8000/api/v1/photos/');
+if (!response.ok) {
+throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+}
+
+const data = await response.json();
+photos = data.data || [];
+} catch (err) {
+console.error('Failed to load photos:', err);
+error = err.message || 'Failed to load photos';
+} finally {
+loading = false;
+}
+}
 </script>
 
-<svelte:head>
-    <title>ImaLink - Bildehåndtering</title>
-</svelte:head>
+<div class="photos-page">
+<div class="page-header">
+<h1>📸 Photos</h1>
+<p>Browse your photo collection</p>
+<button on:click={loadPhotos} class="refresh-btn">🔄 Refresh</button>
+</div>
 
-<div class="dashboard">
-    <div class="hero">
-        <h1>Velkommen til ImaLink</h1>
-        <p>Organisering og håndtering av bildekolleksjoner</p>
-    </div>
+{#if loading}
+<div class="loading">
+<div class="spinner"></div>
+<p>Loading photos...</p>
+</div>
+{:else if error}
+<div class="error">
+<p>❌ {error}</p>
+<button on:click={loadPhotos} class="retry-btn">Try Again</button>
+</div>
+{:else if photos.length === 0}
+<div class="empty-state">
+<h3>📋 No photos found</h3>
+<p>Import some photos to get started!</p>
+<a href="/import" class="import-link">Go to Import</a>
+</div>
+{:else}
+<div class="photos-grid">
+{#each photos as photo}
+<div class="photo-card">
+{#if photo.hotpreview}
+<img 
+src="data:image/jpeg;base64,{photo.hotpreview}" 
+alt={photo.primary_filename || photo.hothash}
+class="photo-thumbnail"
+/>
+{:else}
+<div class="photo-placeholder">
+📸
+</div>
+{/if}
 
-    <div class="status-grid">
-        <div class="status-card">
-            <h3>Backend Status</h3>
-            <p class="status-value" class:error={error}>
-                {backendStatus}
-            </p>
-        </div>
+<div class="photo-info">
+<h4 class="photo-filename">{photo.primary_filename || photo.hothash}</h4>
 
-        <div class="status-card">
-            <h3>Bilder</h3>
-            <p class="status-value">{imageCount}</p>
-        </div>
+{#if photo.taken_at}
+<p class="photo-date">📅 {new Date(photo.taken_at).toLocaleDateString()} {new Date(photo.taken_at).toLocaleTimeString()}</p>
+{/if}
 
-        <div class="status-card">
-            <h3>Forfattere</h3>
-            <p class="status-value">{authorCount}</p>
-        </div>
-    </div>
+{#if photo.title}
+<p class="photo-title">📝 {photo.title}</p>
+{/if}
 
-    {#if error}
-        <div class="error-message">
-            <h3>Tilkoblingsfeil</h3>
-            <p>Kan ikke koble til backend: {error}</p>
-            <p>Sjekk at FastAPI server kjører på localhost:8000</p>
-        </div>
-    {:else}
-        <div class="quick-actions">
-            <h2>Hurtighandlinger</h2>
-            <div class="action-buttons">
-                <a href="/gallery" class="action-btn">
-                    <span>📷</span>
-                    <div>
-                        <h3>Se Galleri</h3>
-                        <p>Bla gjennom bildekolleksjonen</p>
-                    </div>
-                </a>
+{#if photo.description}
+<p class="photo-description">📄 {photo.description}</p>
+{/if}
 
-                <a href="/import" class="action-btn">
-                    <span>📁</span>
-                    <div>
-                        <h3>Importer Bilder</h3>
-                        <p>Legg til nye bilder fra mappe</p>
-                    </div>
-                </a>
+{#if photo.author?.name}
+<p class="photo-author">👤 {photo.author.name}</p>
+{/if}
 
-                <a href="/authors" class="action-btn">
-                    <span>👤</span>
-                    <div>
-                        <h3>Forfattere</h3>
-                        <p>Se fotografer og deres bilder</p>
-                    </div>
-                </a>
-            </div>
-        </div>
-    {/if}
+{#if photo.width && photo.height}
+<p class="photo-dimensions">📐 {photo.width} × {photo.height}px</p>
+{/if}
+
+{#if photo.rating > 0}
+<p class="photo-rating">⭐ {'★'.repeat(photo.rating)}{'☆'.repeat(5 - photo.rating)}</p>
+{/if}
+
+{#if photo.has_gps}
+<p class="photo-gps">📍 GPS: {photo.gps_latitude?.toFixed(4)}, {photo.gps_longitude?.toFixed(4)}</p>
+{/if}
+
+{#if photo.has_raw_companion}
+<p class="photo-raw">📸 RAW + JPEG</p>
+{/if}
+
+{#if photo.files && photo.files.length > 0}
+<p class="photo-files">📁 {photo.files.length} file{photo.files.length > 1 ? 's' : ''}</p>
+{/if}
+
+{#if photo.tags && photo.tags.length > 0}
+<p class="photo-tags">🏷️ {photo.tags.join(', ')}</p>
+{/if}
+
+<p class="photo-imported">⏰ Imported {new Date(photo.created_at).toLocaleDateString()}</p>
+</div>
+</div>
+{/each}
+</div>
+{/if}
 </div>
 
 <style>
-    .dashboard {
-        max-width: 1000px;
-        margin: 0 auto;
-    }
+.photos-page {
+padding: 2rem;
+max-width: 1200px;
+margin: 0 auto;
+}
 
-    .hero {
-        text-align: center;
-        margin-bottom: 3rem;
-        padding: 2rem 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 8px;
-    }
+.page-header {
+text-align: center;
+margin-bottom: 2rem;
+}
 
-    .hero h1 {
-        font-size: 3rem;
-        margin: 0 0 1rem 0;
-    }
+.page-header h1 {
+font-size: 2.5rem;
+margin: 0 0 0.5rem 0;
+color: #1f2937;
+}
 
-    .hero p {
-        font-size: 1.2rem;
-        margin: 0;
-        opacity: 0.9;
-    }
+.page-header p {
+font-size: 1.1rem;
+color: #6b7280;
+margin: 0 0 1rem 0;
+}
 
-    .status-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 1.5rem;
-        margin-bottom: 3rem;
-    }
+.refresh-btn, .retry-btn {
+background: #3b82f6;
+color: white;
+border: none;
+padding: 0.75rem 1.5rem;
+border-radius: 0.5rem;
+cursor: pointer;
+font-size: 1rem;
+transition: background-color 0.2s ease;
+}
 
-    .status-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        text-align: center;
-    }
+.refresh-btn:hover, .retry-btn:hover {
+background: #2563eb;
+}
 
-    .status-card h3 {
-        margin: 0 0 1rem 0;
-        color: #666;
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-    }
+.loading {
+text-align: center;
+padding: 3rem;
+}
 
-    .status-value {
-        font-size: 2rem;
-        font-weight: bold;
-        margin: 0;
-        color: #2c3e50;
-    }
+.spinner {
+width: 40px;
+height: 40px;
+border: 4px solid #e5e7eb;
+border-top: 4px solid #3b82f6;
+border-radius: 50%;
+animation: spin 1s linear infinite;
+margin: 0 auto 1rem auto;
+}
 
-    .status-value.error {
-        color: #e74c3c;
-    }
+@keyframes spin {
+0% { transform: rotate(0deg); }
+100% { transform: rotate(360deg); }
+}
 
-    .error-message {
-        background: #ffe6e6;
-        border: 1px solid #ffcccc;
-        border-radius: 8px;
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-        color: #d32f2f;
-    }
+.error {
+text-align: center;
+padding: 3rem;
+color: #dc2626;
+}
 
-    .error-message h3 {
-        margin: 0 0 1rem 0;
-        color: #d32f2f;
-    }
+.empty-state {
+text-align: center;
+padding: 3rem;
+}
 
-    .quick-actions h2 {
-        text-align: center;
-        margin-bottom: 2rem;
-        color: #2c3e50;
-    }
+.empty-state h3 {
+font-size: 1.5rem;
+margin: 0 0 1rem 0;
+color: #374151;
+}
 
-    .action-buttons {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-        gap: 1.5rem;
-    }
+.empty-state p {
+color: #6b7280;
+margin: 0 0 1.5rem 0;
+}
 
-    .action-btn {
-        display: flex;
-        align-items: center;
-        padding: 1.5rem;
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        text-decoration: none;
-        color: #333;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
+.import-link {
+display: inline-block;
+background: #10b981;
+color: white;
+text-decoration: none;
+padding: 0.75rem 1.5rem;
+border-radius: 0.5rem;
+transition: background-color 0.2s ease;
+}
 
-    .action-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    }
+.import-link:hover {
+background: #059669;
+}
 
-    .action-btn span {
-        font-size: 2.5rem;
-        margin-right: 1rem;
-    }
+.photos-grid {
+display: grid;
+grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+gap: 1.5rem;
+margin-top: 2rem;
+}
 
-    .action-btn h3 {
-        margin: 0 0 0.5rem 0;
-        color: #2c3e50;
-    }
+.photo-card {
+background: white;
+border-radius: 0.5rem;
+overflow: hidden;
+box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
 
-    .action-btn p {
-        margin: 0;
-        color: #666;
-        font-size: 0.9rem;
-    }
+.photo-card:hover {
+transform: translateY(-2px);
+box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.photo-thumbnail {
+width: 100%;
+height: 200px;
+object-fit: cover;
+}
+
+.photo-placeholder {
+width: 100%;
+height: 200px;
+display: flex;
+align-items: center;
+justify-content: center;
+background: #f3f4f6;
+font-size: 3rem;
+color: #9ca3af;
+}
+
+.photo-info {
+padding: 1rem;
+}
+
+.photo-filename {
+margin: 0 0 0.5rem 0;
+font-size: 1rem;
+font-weight: 600;
+color: #1f2937;
+word-break: break-word;
+}
+
+.photo-date, .photo-title, .photo-description, .photo-author, .photo-dimensions, 
+.photo-rating, .photo-gps, .photo-raw, .photo-files, .photo-tags, .photo-imported {
+margin: 0.25rem 0;
+font-size: 0.875rem;
+color: #6b7280;
+line-height: 1.4;
+}
+
+.photo-rating {
+color: #f59e0b;
+font-weight: 500;
+}
+
+.photo-gps {
+color: #059669;
+font-family: monospace;
+}
+
+.photo-raw {
+color: #8b5cf6;
+font-weight: 500;
+}
+
+.photo-imported {
+color: #9ca3af;
+font-size: 0.75rem;
+margin-top: 0.5rem;
+padding-top: 0.5rem;
+border-top: 1px solid #e5e7eb;
+}
 </style>

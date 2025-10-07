@@ -1,13 +1,30 @@
 # ImaLink Testing
 
-## 🧪 Minimal Unit Tests
+## 🧪 Comprehensive Unit Tests
 
-Dette er minimalsettet av tester for ImaLink som fokuserer på det som **oftest går galt**:
+This directory contains organized unit tests for the ImaLink photo-centric architecture.
 
-### 📁 Test Files
+## Test Structure
 
-- **`test_routes.py`** - Hovedtester som sjekker at alle ruter eksisterer
-- **`run_tests.py`** - Enkel test-runner script
+```
+tests/
+├── models/           # Model layer tests
+│   ├── test_photo.py    # Photo model comprehensive tests
+│   └── test_image.py    # Image model tests
+├── services/         # Service layer tests  
+│   └── test_import_session.py  # Complete import workflow tests
+├── repositories/     # Repository layer tests (future)
+├── api/             # API endpoint tests (future)
+└── run_unit_tests.py    # Organized test runner
+```
+
+### 📁 Legacy Test Files
+
+Old test files have been moved to `legacy/` directory:
+- **`legacy/test_routes.py`** - Old API endpoint tests
+- **`legacy/test_image_processor.py`** - Old image processing tests  
+- **`legacy/test_exif.py`** - Old EXIF handling tests
+- **`legacy/run_tests.py`** - Old test runner script
 
 ### 🎯 Hva testene dekker
 

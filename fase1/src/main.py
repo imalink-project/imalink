@@ -17,6 +17,7 @@ from api.v1.import_sessions import router as import_sessions_router
 from api.v1.authors import router as authors_router
 from api.v1.debug import router as debug_router
 from api.v1.photos import router as photos_router
+from api.v1.filesystem import router as filesystem_router
 from core.exceptions import APIException
 
 # Ensure directories exist
@@ -47,6 +48,7 @@ app.include_router(import_sessions_router, prefix="/api/v1/import_sessions", tag
 app.include_router(authors_router, prefix="/api/v1/authors", tags=["authors"])
 app.include_router(debug_router, prefix="/api/v1/debug", tags=["debug"])
 app.include_router(photos_router, prefix="/api/v1/photos", tags=["photos"])
+app.include_router(filesystem_router, prefix="/api/v1/filesystem", tags=["filesystem"])
 
 # Debug endpoint to list all routes
 @app.get("/debug/routes")

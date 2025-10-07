@@ -18,10 +18,9 @@ class ImageRepository:
         self.db = db
     
     def get_by_id(self, image_id: int) -> Optional[Image]:
-        """Get image by ID with author relationship loaded"""
+        """Get image by ID"""
         return (
             self.db.query(Image)
-            .options(joinedload(Image.author))
             .filter(Image.id == image_id)
             .first()
         )
@@ -50,7 +49,7 @@ class ImageRepository:
         search_params: Optional[ImageSearchRequest] = None
     ) -> List[Image]:
         """Get images with optional filtering and pagination"""
-        query = self.db.query(Image).options(joinedload(Image.author))
+        query = self.db.query(Image)
         
         # Apply filters
         query = self._apply_filters(query, author_id, search_params)
@@ -59,8 +58,8 @@ class ImageRepository:
         if search_params:
             query = self._apply_sorting(query, search_params.sort_by, search_params.sort_order)
         else:
-            # Default sorting
-            query = query.order_by(desc(Image.taken_at), desc(Image.created_at))
+            # Default sorting - use Image.id since other fields moved to Photo
+            query = query.order_by(desc(Image.id))
         
         return query.offset(offset).limit(limit).all()
     
@@ -79,11 +78,7 @@ class ImageRepository:
     
     def create(self, image_data: ImageCreateRequest) -> Image:
         """Create new image record"""
-        # Convert tags to JSON string for storage
         image_dict = image_data.dict()
-        if image_dict.get('tags'):
-            import json
-            image_dict['tags'] = json.dumps(image_dict['tags'])
         
         image = Image(**image_dict)
         self.db.add(image)
@@ -96,11 +91,6 @@ class ImageRepository:
         image = self.get_by_id(image_id)
         if not image:
             return None
-        
-        # Convert tags to JSON string if provided
-        if 'tags' in update_data and update_data['tags'] is not None:
-            import json
-            update_data['tags'] = json.dumps(update_data['tags'])
         
         # Apply updates
         for key, value in update_data.items():
@@ -139,12 +129,13 @@ class ImageRepository:
         return image
     
     def get_images_by_author(self, author_id: int, limit: int = 100) -> List[Image]:
-        """Get images by specific author"""
+        """Get images by specific author (via Photo relationship)"""
+        from models import Photo  # Import here to avoid circular imports
         return (
             self.db.query(Image)
-            .options(joinedload(Image.author))
-            .filter(Image.author_id == author_id)
-            .order_by(desc(Image.taken_at), desc(Image.created_at))
+            .join(Photo, Image.hothash == Photo.hothash)
+            .filter(Photo.author_id == author_id)
+            .order_by(desc(Image.id))
             .limit(limit)
             .all()
         )
@@ -162,7 +153,6 @@ class ImageRepository:
         """Get recently imported images"""
         return (
             self.db.query(Image)
-            .options(joinedload(Image.author))
             .order_by(desc(Image.created_at))
             .limit(limit)
             .all()
@@ -172,7 +162,6 @@ class ImageRepository:
         """Get images that have GPS coordinates"""
         return (
             self.db.query(Image)
-            .options(joinedload(Image.author))
             .filter(and_(Image.gps_latitude.isnot(None), Image.gps_longitude.isnot(None)))
             .order_by(desc(Image.taken_at))
             .limit(limit)
@@ -211,25 +200,23 @@ class ImageRepository:
     ):
         """Apply filters to query"""
         
-        # Author filter
+        # Author filter (via Photo relationship)
         if author_id:
-            query = query.filter(Image.author_id == author_id)
+            from models import Photo  # Import here to avoid circular imports
+            query = query.join(Photo, Image.hothash == Photo.hothash).filter(Photo.author_id == author_id)
         
         if search_params:
-            # Text search
+            # Text search - only search filename since Image no longer has title/description
             if search_params.q:
                 search_term = f"%{search_params.q}%"
                 query = query.filter(
-                    or_(
-                        Image.original_filename.ilike(search_term),
-                        Image.title.ilike(search_term),
-                        Image.description.ilike(search_term)
-                    )
+                    Image.filename.ilike(search_term)
                 )
             
-            # Author filter from search params
+            # Author filter from search params (via Photo relationship)
             if search_params.author_id and not author_id:
-                query = query.filter(Image.author_id == search_params.author_id)
+                from models import Photo  # Import here to avoid circular imports
+                query = query.join(Photo, Image.hothash == Photo.hothash).filter(Photo.author_id == search_params.author_id)
             
             # NOTE: Tags and rating filters removed since user metadata was moved out of Image model
             # These will be implemented with ImageMetadata table in future

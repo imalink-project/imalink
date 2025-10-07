@@ -42,6 +42,11 @@ class ImportSession(Base, TimestampMixin):
     single_raw_skipped = Column(Integer, default=0)      # Single RAW files (no JPEG companion)
     errors_count = Column(Integer, default=0)            # Files that failed to process
     
+    # Progress tracking
+    files_processed = Column(Integer, default=0)         # Files processed so far
+    current_file = Column(Text)                          # Currently processing file
+    is_cancelled = Column(Boolean, default=False)        # Whether import was cancelled
+    
     # Error log (JSON string)
     error_log = Column(Text)
     
@@ -64,6 +69,22 @@ class ImportSession(Base, TimestampMixin):
     def is_archived(self) -> bool:
         """Check if this session has an archive path"""
         return bool(getattr(self, 'archive_base_path', None))
+    
+    @property
+    def progress_percentage(self) -> float:
+        """Calculate progress percentage"""
+        total = getattr(self, 'total_files_found', 0) or 0
+        processed = getattr(self, 'files_processed', 0) or 0
+        if total == 0:
+            return 0.0
+        return (processed / total) * 100.0
+    
+    @property
+    def is_in_progress(self) -> bool:
+        """Check if import is currently running"""
+        status = getattr(self, 'status', '')
+        cancelled = getattr(self, 'is_cancelled', False)
+        return status == "in_progress" and not cancelled
     
     def __repr__(self):
         archive_info = f"archived={self.is_archived}" if getattr(self, 'archive_base_path', None) else "no_archive"

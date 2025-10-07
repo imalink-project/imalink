@@ -1,118 +1,124 @@
-<script>
-    import { page } from '$app/stores';
+<script lang="ts">
+	import favicon from '$lib/assets/favicon.svg';
+	import { currentView } from '$lib/stores/app';
+
+	let { children } = $props();
 </script>
 
+<svelte:head>
+	<title>ImaLink - Photo Management</title>
+	<link rel="icon" href={favicon} />
+	<meta name="description" content="Modern photo management and gallery system" />
+</svelte:head>
+
 <div class="app">
-    <header class="header">
-        <nav class="nav">
-            <div class="nav-brand">
-                <h1><a href="/">ImaLink</a></h1>
-            </div>
-            <ul class="nav-menu">
-                <li class="nav-item">
-                    <a href="/" class:active={$page.url.pathname === '/'}>Hjem</a>
-                </li>
-                <li class="nav-item">
-                    <a href="/gallery" class:active={$page.url.pathname === '/gallery'}>Galleri</a>
-                </li>
-                <li class="nav-item">
-                    <a href="/import" class:active={$page.url.pathname === '/import'}>Import</a>
-                </li>
-                <li class="nav-item">
-                    <a href="/authors" class:active={$page.url.pathname === '/authors'}>Forfattere</a>
-                </li>
-            </ul>
-        </nav>
-    </header>
+	<!-- Navigation -->
+	<nav class="navbar">
+		<div class="nav-brand">
+			<h1>📸 ImaLink</h1>
+		</div>
+		<div class="nav-links">
+			<a href="/" class="nav-link" class:active={$currentView === 'photos'}>Photos</a>
+			<a href="/import" class="nav-link" class:active={$currentView === 'imports'}>Import</a>
+			<a href="/authors" class="nav-link" class:active={$currentView === 'authors'}>Authors</a>
+			{#if import.meta.env.DEV}
+				<a href="/database-status" class="nav-link dev-link" class:active={$currentView === 'database-status'}>📊 Status</a>
+				<a href="/clear-database" class="nav-link dev-link danger" class:active={$currentView === 'clear-database'}>🗑️ Clear</a>
+			{/if}
+		</div>
+	</nav>
 
-    <main class="main">
-        <slot />
-    </main>
-
-    <footer class="footer">
-        <p>&copy; 2025 ImaLink - Bildehåndtering</p>
-    </footer>
+	<!-- Main content -->
+	<main class="main-content">
+		{@render children?.()}
+	</main>
 </div>
 
 <style>
-    :global(body) {
-        margin: 0;
-        padding: 0;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-        background-color: #f5f5f5;
-        color: #333;
-    }
+	.app {
+		min-height: 100vh;
+		display: flex;
+		flex-direction: column;
+		font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+	}
 
-    .app {
-        display: flex;
-        flex-direction: column;
-        min-height: 100vh;
-    }
+	.navbar {
+		background: #2563eb;
+		color: white;
+		padding: 1rem 2rem;
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+	}
 
-    .header {
-        background-color: #2c3e50;
-        color: white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
+	.nav-brand h1 {
+		margin: 0;
+		font-size: 1.5rem;
+		font-weight: 600;
+	}
 
-    .nav {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 0 1rem;
-        height: 60px;
-    }
+	.nav-links {
+		display: flex;
+		gap: 2rem;
+	}
 
-    .nav-brand h1 {
-        margin: 0;
-    }
+	.nav-link {
+		color: rgba(255,255,255,0.8);
+		text-decoration: none;
+		padding: 0.5rem 1rem;
+		border-radius: 0.375rem;
+		transition: all 0.2s;
+	}
 
-    .nav-brand a {
-        color: white;
-        text-decoration: none;
-        font-size: 1.5rem;
-        font-weight: bold;
-    }
+	.nav-link:hover {
+		color: white;
+		background: rgba(255,255,255,0.1);
+	}
 
-    .nav-menu {
-        display: flex;
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        gap: 2rem;
-    }
+	.nav-link.active {
+		color: white;
+		background: rgba(255,255,255,0.2);
+		font-weight: 500;
+	}
 
-    .nav-item a {
-        color: white;
-        text-decoration: none;
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        transition: background-color 0.2s;
-    }
+	.dev-link {
+		color: #fbbf24 !important;
+		border: 1px solid rgba(251, 191, 36, 0.3);
+		font-size: 0.875rem;
+	}
 
-    .nav-item a:hover, .nav-item a.active {
-        background-color: #34495e;
-    }
+	.dev-link:hover {
+		background: rgba(251, 191, 36, 0.1) !important;
+		border-color: rgba(251, 191, 36, 0.5);
+	}
 
-    .main {
-        flex: 1;
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 2rem 1rem;
-        width: 100%;
-        box-sizing: border-box;
-    }
+	.dev-link.danger {
+		color: #ef4444 !important;
+		border: 1px solid rgba(239, 68, 68, 0.3);
+	}
 
-    .footer {
-        background-color: #34495e;
-        color: white;
-        text-align: center;
-        padding: 1rem;
-    }
+	.dev-link.danger:hover {
+		background: rgba(239, 68, 68, 0.1) !important;
+		border-color: rgba(239, 68, 68, 0.5);
+	}
 
-    .footer p {
-        margin: 0;
-    }
+	.main-content {
+		flex: 1;
+		padding: 2rem;
+		max-width: 1200px;
+		margin: 0 auto;
+		width: 100%;
+	}
+
+	/* Global styles */
+	:global(body) {
+		margin: 0;
+		padding: 0;
+		background: #f8fafc;
+	}
+
+	:global(*, *::before, *::after) {
+		box-sizing: border-box;
+	}
 </style>

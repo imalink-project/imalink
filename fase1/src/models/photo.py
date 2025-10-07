@@ -126,6 +126,10 @@ class Photo(Base, TimestampMixin):
         """
         from pathlib import Path
         
+        # Validate file group is not empty
+        if not file_group:
+            raise ValueError("File group cannot be empty")
+        
         # Convert strings to Path objects for easier handling
         file_paths = [Path(f) for f in file_group]
         
@@ -221,23 +225,67 @@ class Photo(Base, TimestampMixin):
         Ekstraher EXIF, GPS, dimensjoner fra bildefil.
         Returnerer dictionary med metadata.
         
-        TODO: Integrer med ImageProcessor for ekte EXIF-ekstrahering
+        Implementerer full EXIF-ekstrahering med PIL og ExifRead
         """
         from pathlib import Path
+        from datetime import datetime
+        from PIL import Image, ExifTags
+        from PIL.ExifTags import TAGS, GPSTAGS
         
-        # Placeholder implementation
-        # In production: Use PIL/exifread or ImageProcessor
         try:
-            from PIL import Image
             with Image.open(file_path) as img:
-                return {
-                    'width': img.size[0],
-                    'height': img.size[1],
-                    'taken_at': None,  # Would extract from EXIF
-                    'gps_latitude': None,  # Would extract from EXIF GPS
-                    'gps_longitude': None,  # Would extract from EXIF GPS
+                # Grunnleggende dimensjoner
+                width, height = img.size
+                
+                # Initialiser metadata med default-verdier
+                metadata = {
+                    'width': width,
+                    'height': height,
+                    'taken_at': None,
+                    'gps_latitude': None,
+                    'gps_longitude': None,
                 }
-        except Exception:
+                
+                # Hent EXIF-data
+                exif_dict = img.getexif()
+                if exif_dict:
+                    
+                    # Parse EXIF-tags
+                    for tag_id, value in exif_dict.items():
+                        tag = TAGS.get(tag_id, tag_id)
+                        
+                        # DateTime tatt (prioriter DateTimeOriginal)
+                        if tag == 'DateTimeOriginal' or (tag == 'DateTime' and metadata['taken_at'] is None):
+                            try:
+                                metadata['taken_at'] = datetime.strptime(value, '%Y:%m:%d %H:%M:%S')
+                            except (ValueError, TypeError):
+                                pass
+                        
+                        # GPS-data
+                        elif tag == 'GPSInfo':
+                            gps_data = {}
+                            for gps_tag_id, gps_value in value.items():
+                                gps_tag = GPSTAGS.get(gps_tag_id, gps_tag_id)
+                                gps_data[gps_tag] = gps_value
+                            
+                            # Konverter GPS-koordinater til desimalgrader
+                            lat = Photo._convert_gps_to_decimal(
+                                gps_data.get('GPSLatitude'),
+                                gps_data.get('GPSLatitudeRef')
+                            )
+                            lon = Photo._convert_gps_to_decimal(
+                                gps_data.get('GPSLongitude'), 
+                                gps_data.get('GPSLongitudeRef')
+                            )
+                            
+                            if lat is not None and lon is not None:
+                                metadata['gps_latitude'] = lat
+                                metadata['gps_longitude'] = lon
+                
+                return metadata
+                
+        except Exception as e:
+            print(f"Warning: Could not extract metadata from {file_path}: {e}")
             # Fallback for unsupported formats
             return {
                 'width': None,
@@ -246,6 +294,39 @@ class Photo(Base, TimestampMixin):
                 'gps_latitude': None,
                 'gps_longitude': None,
             }
+    
+    @staticmethod
+    def _convert_gps_to_decimal(coordinate, direction):
+        """
+        Konverter GPS-koordinater fra EXIF-format til desimalgrader
+        
+        Args:
+            coordinate: Tuple med (grader, minutter, sekunder)
+            direction: 'N', 'S', 'E', eller 'W'
+            
+        Returns:
+            float: Koordinat i desimalgrader, eller None hvis ugyldig
+        """
+        if not coordinate or not direction:
+            return None
+            
+        try:
+            # Konverter fra rasjonelle tall til float
+            degrees = float(coordinate[0])
+            minutes = float(coordinate[1]) if len(coordinate) > 1 else 0
+            seconds = float(coordinate[2]) if len(coordinate) > 2 else 0
+            
+            # Beregn desimalgrader
+            decimal = degrees + (minutes / 60.0) + (seconds / 3600.0)
+            
+            # Juster for retning (sør og vest er negative)
+            if direction in ['S', 'W']:
+                decimal = -decimal
+                
+            return decimal
+            
+        except (ValueError, TypeError, IndexError):
+            return None
     
     @staticmethod
     def _generate_hotpreview(file_path) -> Optional[bytes]:
@@ -288,8 +369,9 @@ class Photo(Base, TimestampMixin):
     def _exists_by_hash(cls, hothash: str, db_session=None) -> bool:
         """
         Sjekk om Photo allerede eksisterer med denne hashen.
-        
-        TODO: Implementer database query når vi har repository layer
         """
-        # Placeholder - in production use repository pattern
-        return False
+        if db_session is None:
+            return False
+        
+        existing = db_session.query(cls).filter_by(hothash=hothash).first()
+        return existing is not None

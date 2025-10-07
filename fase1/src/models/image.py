@@ -24,7 +24,7 @@ class Image(Base, TimestampMixin):
     Key design principles:
     - One record per physical file
     - File-specific data only (filename, size, rotation, EXIF)
-    - Links to Photo via photo_hash for shared content metadata
+    - Links to Photo via hothash for shared content metadata
     """
     __tablename__ = "images"
     
@@ -38,7 +38,7 @@ class Image(Base, TimestampMixin):
     exif_data = Column(LargeBinary)  # Raw EXIF data stored as binary blob
     
     # Link to shared photo content (the "concept" of this photo)
-    photo_hash = Column(String(64), ForeignKey('photos.hothash'), nullable=False, index=True)
+    hothash = Column(String(64), ForeignKey('photos.hothash'), nullable=False, index=True)
     
     # Import tracking (file-level)
     import_session_id = Column(Integer, ForeignKey('import_sessions.id'), nullable=True, index=True)
@@ -48,22 +48,55 @@ class Image(Base, TimestampMixin):
     import_session = relationship("ImportSession", back_populates="images")
     
     def __repr__(self):
-        photo_preview = getattr(self, 'photo_hash', 'Unknown')
+        photo_preview = getattr(self, 'hothash', 'Unknown')
         if isinstance(photo_preview, str) and len(photo_preview) > 8:
             photo_preview = photo_preview[:8] + '...'
-        return f"<Image(id={self.id}, filename={self.filename}, photo_hash={photo_preview})>"
+        return f"<Image(id={self.id}, filename={self.filename}, hothash={photo_preview})>"
+    
+    # ===== CONVENIENCE PROPERTIES =====
+    
+    @property
+    def hotpreview(self) -> Optional[bytes]:
+        """
+        Get hotpreview from associated Photo.
+        Convenient access to preview without needing to load Photo explicitly.
+        
+        Returns:
+            Binary hotpreview data from Photo, or None if no Photo loaded
+        """
+        return self.photo.hotpreview if self.photo else None
+    
+    @property 
+    def photo_metadata(self) -> dict:
+        """
+        Get key metadata from associated Photo for quick access.
+        
+        Returns:
+            Dictionary with commonly needed Photo metadata
+        """
+        if not self.photo:
+            return {}
+        
+        return {
+            'title': self.photo.title,
+            'width': self.photo.width,
+            'height': self.photo.height,
+            'taken_at': self.photo.taken_at,
+            'has_gps': self.photo.has_gps,
+            'rating': self.photo.rating,
+        }
     
     # ===== IMAGE CREATION FACTORY METHOD =====
     
     @classmethod
-    def create_from_file(cls, file_path, photo_hash: str, import_session_id: int) -> 'Image':
+    def create_from_file(cls, file_path, hothash: str, import_session_id: int) -> 'Image':
         """
         Enkel constructor for fil-metadata.
         Fokuserer kun på fil-spesifikke egenskaper.
         
         Args:
             file_path: Path eller string til bildefilen
-            photo_hash: Hash til tilknyttet Photo record
+            hothash: Hash til tilknyttet Photo record
             import_session_id: Referanse til import session
             
         Returns:
@@ -86,7 +119,7 @@ class Image(Base, TimestampMixin):
             filename=file_path_obj.name,
             file_size=file_size,
             exif_data=exif_data,
-            photo_hash=photo_hash,
+            hothash=hothash,
             import_session_id=import_session_id
         )
     

@@ -1,232 +1,410 @@
-<script>
-    import { onMount } from 'svelte';
-    import { getAuthors, getThumbnailUrl } from '$lib/api.js';
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { currentView } from '$lib/stores/app';
 
-    let authors = [];
-    let loading = true;
-    let error = null;
+	currentView.set('authors');
 
-    onMount(async () => {
-        try {
-            authors = await getAuthors();
-        } catch (err) {
-            error = err.message;
-        } finally {
-            loading = false;
-        }
-    });
+	let authors = [];
+	let loading = true;
+	let error = '';
+	let showAddForm = false;
+	let newAuthor = {
+		name: '',
+		email: '',
+		website: ''
+	};
+
+	onMount(async () => {
+		await loadAuthors();
+	});
+
+	async function loadAuthors() {
+		loading = true;
+		error = '';
+		
+		try {
+			const response = await fetch('http://localhost:8000/api/v1/authors/');
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+			}
+			const data = await response.json();
+			authors = data.data || [];
+		} catch (err) {
+			console.error('Failed to load authors:', err);
+			error = err.message || 'Failed to load authors';
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function addAuthor() {
+		if (!newAuthor.name.trim()) {
+			alert('Author name is required');
+			return;
+		}
+
+		try {
+			const response = await fetch('http://localhost:8000/api/v1/authors/', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					name: newAuthor.name.trim(),
+					email: newAuthor.email.trim() || null,
+					website: newAuthor.website.trim() || null
+				})
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+			}
+
+			// Reset form and reload authors
+			newAuthor = { name: '', email: '', website: '' };
+			showAddForm = false;
+			await loadAuthors();
+		} catch (err) {
+			console.error('Failed to add author:', err);
+			alert('Failed to add author: ' + err.message);
+		}
+	}
+
+	async function deleteAuthor(id) {
+		if (!confirm('Are you sure you want to delete this author?')) {
+			return;
+		}
+
+		try {
+			const response = await fetch(`http://localhost:8000/api/v1/authors/${id}/`, {
+				method: 'DELETE'
+			});
+
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+			}
+
+			await loadAuthors();
+		} catch (err) {
+			console.error('Failed to delete author:', err);
+			alert('Failed to delete author: ' + err.message);
+		}
+	}
+
+	function cancelAdd() {
+		showAddForm = false;
+		newAuthor = { name: '', email: '', website: '' };
+	}
 </script>
 
-<svelte:head>
-    <title>Forfattere - ImaLink</title>
-</svelte:head>
-
 <div class="authors-page">
-    <div class="page-header">
-        <h1>Fotografer</h1>
-        <p>Se alle fotografer i din samling</p>
-    </div>
+	<div class="page-header">
+		<h1>👤 Authors</h1>
+		<p>Manage photographers and content creators</p>
+		<div class="header-actions">
+			<button onclick={loadAuthors} class="refresh-btn">🔄 Refresh</button>
+			<button onclick={() => showAddForm = true} class="add-btn">➕ Add Author</button>
+		</div>
+	</div>
 
-    {#if loading}
-        <div class="loading">
-            <p>Laster fotografer...</p>
-        </div>
-    {:else if error}
-        <div class="error">
-            <h3>Feil ved lasting</h3>
-            <p>{error}</p>
-        </div>
-    {:else if authors.length === 0}
-        <div class="empty">
-            <h3>Ingen fotografer funnet</h3>
-            <p>Importer bilder med EXIF-data for å se fotografer.</p>
-        </div>
-    {:else}
-        <div class="authors-stats">
-            <p>{authors.length} fotografer funnet</p>
-        </div>
+	{#if showAddForm}
+		<div class="add-form">
+			<h3>Add New Author</h3>
+			<div class="form-group">
+				<label for="author-name">Name *</label>
+				<input 
+					id="author-name"
+					type="text" 
+					bind:value={newAuthor.name}
+					placeholder="Author name"
+					required
+				/>
+			</div>
+			<div class="form-group">
+				<label for="author-email">Email</label>
+				<input 
+					id="author-email"
+					type="email" 
+					bind:value={newAuthor.email}
+					placeholder="author@example.com"
+				/>
+			</div>
+			<div class="form-group">
+				<label for="author-website">Website</label>
+				<input 
+					id="author-website"
+					type="url" 
+					bind:value={newAuthor.website}
+					placeholder="https://example.com"
+				/>
+			</div>
+			<div class="form-actions">
+				<button onclick={addAuthor} class="save-btn">💾 Save</button>
+				<button onclick={cancelAdd} class="cancel-btn">❌ Cancel</button>
+			</div>
+		</div>
+	{/if}
 
-        <div class="authors-grid">
-            {#each authors as author (author.id)}
-                <div class="author-card">
-                    <div class="author-header">
-                        <div class="author-avatar">
-                            📷
-                        </div>
-                        <div class="author-info">
-                            <h3>{author.name}</h3>
-                            <p>{author.image_count || 0} bilder</p>
-                        </div>
-                    </div>
-
-                    {#if author.recent_images && author.recent_images.length > 0}
-                        <div class="author-images">
-                            <h4>Siste bilder:</h4>
-                            <div class="images-grid">
-                                {#each author.recent_images.slice(0, 4) as image (image.id)}
-                                    <div class="image-thumb">
-                                        <img 
-                                            src={getThumbnailUrl(image.id)} 
-                                            alt={image.filename}
-                                            loading="lazy"
-                                        />
-                                    </div>
-                                {/each}
-                            </div>
-                            {#if author.image_count > 4}
-                                <p class="more-images">
-                                    +{author.image_count - 4} flere bilder
-                                </p>
-                            {/if}
-                        </div>
-                    {/if}
-                </div>
-            {/each}
-        </div>
-    {/if}
+	{#if loading}
+		<div class="loading">
+			<div class="spinner"></div>
+			<p>Loading authors...</p>
+		</div>
+	{:else if error}
+		<div class="error">
+			<p>❌ {error}</p>
+			<button onclick={loadAuthors} class="retry-btn">Try Again</button>
+		</div>
+	{:else if authors.length === 0}
+		<div class="empty-state">
+			<h3>📋 No authors found</h3>
+			<p>Add your first author to get started!</p>
+			<button onclick={() => showAddForm = true} class="add-first-btn">➕ Add First Author</button>
+		</div>
+	{:else}
+		<div class="authors-grid">
+			{#each authors as author}
+				<div class="author-card">
+					<div class="author-info">
+						<h4 class="author-name">{author.name}</h4>
+						{#if author.email}
+							<p class="author-email">✉️ {author.email}</p>
+						{/if}
+						{#if author.website}
+							<p class="author-website">
+								🌐 <a href={author.website} target="_blank" rel="noopener noreferrer">
+									{author.website}
+								</a>
+							</p>
+						{/if}
+						<p class="author-stats">📸 {author.photo_count || 0} photos</p>
+						<p class="author-created">📅 Created: {new Date(author.created_at).toLocaleDateString()}</p>
+					</div>
+					<div class="author-actions">
+						<button onclick={() => deleteAuthor(author.id)} class="delete-btn">🗑️ Delete</button>
+					</div>
+				</div>
+			{/each}
+		</div>
+	{/if}
 </div>
 
 <style>
-    .authors-page {
-        max-width: 1000px;
-        margin: 0 auto;
-    }
+	.authors-page {
+		max-width: 1200px;
+		margin: 0 auto;
+	}
 
-    .page-header {
-        text-align: center;
-        margin-bottom: 2rem;
-    }
+	.page-header {
+		display: flex;
+		justify-content: space-between;
+		align-items: center;
+		margin-bottom: 2rem;
+		flex-wrap: wrap;
+		gap: 1rem;
+	}
 
-    .page-header h1 {
-        color: #2c3e50;
-        margin-bottom: 0.5rem;
-    }
+	.page-header h1 {
+		margin: 0;
+		font-size: 2rem;
+		color: #1f2937;
+	}
 
-    .page-header p {
-        color: #666;
-        margin: 0;
-    }
+	.page-header p {
+		margin: 0;
+		color: #6b7280;
+		flex-grow: 1;
+	}
 
-    .loading, .error, .empty {
-        text-align: center;
-        padding: 3rem 1rem;
-    }
+	.header-actions {
+		display: flex;
+		gap: 0.5rem;
+	}
 
-    .error {
-        background: #ffe6e6;
-        border-radius: 8px;
-        color: #d32f2f;
-    }
+	.refresh-btn, .add-btn, .retry-btn, .save-btn, .cancel-btn, .delete-btn, .add-first-btn {
+		border: none;
+		padding: 0.5rem 1rem;
+		border-radius: 0.375rem;
+		cursor: pointer;
+		font-weight: 500;
+		transition: background-color 0.2s ease;
+	}
 
-    .empty {
-        background: #f8f9fa;
-        border-radius: 8px;
-        color: #666;
-    }
+	.refresh-btn, .retry-btn {
+		background: #3b82f6;
+		color: white;
+	}
 
-    .authors-stats {
-        margin-bottom: 1rem;
-        text-align: right;
-        color: #666;
-        font-size: 0.9rem;
-    }
+	.refresh-btn:hover, .retry-btn:hover {
+		background: #2563eb;
+	}
 
-    .authors-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-        gap: 1.5rem;
-    }
+	.add-btn, .add-first-btn {
+		background: #10b981;
+		color: white;
+	}
 
-    .author-card {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        padding: 1.5rem;
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
+	.add-btn:hover, .add-first-btn:hover {
+		background: #059669;
+	}
 
-    .author-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-    }
+	.save-btn {
+		background: #10b981;
+		color: white;
+	}
 
-    .author-header {
-        display: flex;
-        align-items: center;
-        margin-bottom: 1.5rem;
-    }
+	.save-btn:hover {
+		background: #059669;
+	}
 
-    .author-avatar {
-        width: 50px;
-        height: 50px;
-        background: linear-gradient(135deg, #3498db, #2980b9);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        margin-right: 1rem;
-    }
+	.cancel-btn {
+		background: #6b7280;
+		color: white;
+	}
 
-    .author-info h3 {
-        margin: 0 0 0.25rem 0;
-        color: #2c3e50;
-        font-size: 1.1rem;
-    }
+	.cancel-btn:hover {
+		background: #4b5563;
+	}
 
-    .author-info p {
-        margin: 0;
-        color: #666;
-        font-size: 0.9rem;
-    }
+	.delete-btn {
+		background: #dc2626;
+		color: white;
+		font-size: 0.875rem;
+		padding: 0.375rem 0.75rem;
+	}
 
-    .author-images h4 {
-        margin: 0 0 1rem 0;
-        color: #2c3e50;
-        font-size: 0.9rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
+	.delete-btn:hover {
+		background: #b91c1c;
+	}
 
-    .images-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 0.5rem;
-        margin-bottom: 1rem;
-    }
+	.add-form {
+		background: white;
+		padding: 1.5rem;
+		border-radius: 0.5rem;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		margin-bottom: 2rem;
+	}
 
-    .image-thumb {
-        aspect-ratio: 1;
-        overflow: hidden;
-        border-radius: 4px;
-        background: #f5f5f5;
-    }
+	.add-form h3 {
+		margin: 0 0 1rem 0;
+		color: #1f2937;
+	}
 
-    .image-thumb img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
+	.form-group {
+		margin-bottom: 1rem;
+	}
 
-    .more-images {
-        margin: 0;
-        text-align: center;
-        color: #666;
-        font-size: 0.8rem;
-        font-style: italic;
-    }
+	.form-group label {
+		display: block;
+		margin-bottom: 0.5rem;
+		font-weight: 500;
+		color: #374151;
+	}
 
-    @media (max-width: 768px) {
-        .authors-grid {
-            grid-template-columns: 1fr;
-        }
-        
-        .author-card {
-            padding: 1rem;
-        }
-        
-        .images-grid {
-            grid-template-columns: repeat(3, 1fr);
-        }
-    }
+	.form-group input {
+		width: 100%;
+		padding: 0.5rem;
+		border: 1px solid #d1d5db;
+		border-radius: 0.375rem;
+		font-size: 1rem;
+	}
+
+	.form-group input:focus {
+		outline: none;
+		border-color: #3b82f6;
+		box-shadow: 0 0 0 1px #3b82f6;
+	}
+
+	.form-actions {
+		display: flex;
+		gap: 0.5rem;
+		margin-top: 1.5rem;
+	}
+
+	.loading {
+		text-align: center;
+		padding: 4rem 0;
+	}
+
+	.spinner {
+		border: 4px solid #f3f4f6;
+		border-left-color: #3b82f6;
+		border-radius: 50%;
+		width: 40px;
+		height: 40px;
+		animation: spin 1s linear infinite;
+		margin: 0 auto 1rem;
+	}
+
+	@keyframes spin {
+		to { transform: rotate(360deg); }
+	}
+
+	.error {
+		text-align: center;
+		padding: 4rem 0;
+		color: #dc2626;
+	}
+
+	.empty-state {
+		text-align: center;
+		padding: 4rem 0;
+		color: #6b7280;
+	}
+
+	.authors-grid {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+		gap: 1.5rem;
+	}
+
+	.author-card {
+		background: white;
+		border-radius: 0.5rem;
+		overflow: hidden;
+		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+		transition: transform 0.2s ease, box-shadow 0.2s ease;
+		display: flex;
+		flex-direction: column;
+	}
+
+	.author-card:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+	}
+
+	.author-info {
+		padding: 1.5rem;
+		flex-grow: 1;
+	}
+
+	.author-name {
+		margin: 0 0 0.75rem 0;
+		font-size: 1.25rem;
+		font-weight: 600;
+		color: #1f2937;
+	}
+
+	.author-email, .author-website, .author-stats, .author-created {
+		margin: 0.5rem 0;
+		font-size: 0.875rem;
+		color: #6b7280;
+	}
+
+	.author-website a {
+		color: #3b82f6;
+		text-decoration: none;
+		word-break: break-all;
+	}
+
+	.author-website a:hover {
+		text-decoration: underline;
+	}
+
+	.author-actions {
+		padding: 1rem 1.5rem;
+		border-top: 1px solid #f3f4f6;
+		display: flex;
+		justify-content: flex-end;
+	}
 </style>

@@ -20,7 +20,7 @@ class AuthorService:
         self.db = db
         self.author_repo = AuthorRepository(db)
     
-    async def get_authors(
+    def get_authors(
         self, 
         offset: int = 0, 
         limit: int = 100
@@ -43,7 +43,7 @@ class AuthorService:
             limit=limit
         )
     
-    async def get_author_by_id(self, author_id: int) -> AuthorResponse:
+    def get_author_by_id(self, author_id: int) -> AuthorResponse:
         """Get specific author by ID"""
         author = self.author_repo.get_by_id(author_id)
         if not author:
@@ -51,7 +51,7 @@ class AuthorService:
         
         return self._convert_to_response(author)
     
-    async def create_author(self, author_data: AuthorCreateRequest) -> AuthorResponse:
+    def create_author(self, author_data: AuthorCreateRequest) -> AuthorResponse:
         """Create new author with validation"""
         
         # Business Logic: Check for duplicate names
@@ -75,7 +75,7 @@ class AuthorService:
         author = self.author_repo.create(author_data)
         return self._convert_to_response(author)
     
-    async def update_author(
+    def update_author(
         self, 
         author_id: int, 
         update_data: AuthorUpdateRequest
@@ -111,7 +111,7 @@ class AuthorService:
         
         return self._convert_to_response(updated_author)
     
-    async def delete_author(self, author_id: int) -> bool:
+    def delete_author(self, author_id: int) -> bool:
         """Delete author with validation"""
         
         # Check author exists
@@ -128,7 +128,7 @@ class AuthorService:
         
         return self.author_repo.delete(author_id)
     
-    async def search_authors(self, query: str, limit: int = 50) -> List[AuthorResponse]:
+    def search_authors(self, query: str, limit: int = 50) -> List[AuthorResponse]:
         """Search authors by name, email, or bio"""
         
         # Business Logic: Validate search query
@@ -144,13 +144,13 @@ class AuthorService:
         
         return author_responses
     
-    async def get_author_statistics(self) -> AuthorStatistics:
+    def get_author_statistics(self) -> AuthorStatistics:
         """Get comprehensive author statistics"""
         
         base_stats = self.author_repo.get_statistics()
         
         # Get top authors by image count
-        top_authors_data = self.author_repo.get_top_authors_by_image_count(limit=5)
+        top_authors_data = self.author_repo.get_top_authors_by_photo_count(limit=5)
         top_authors = []
         
         for author_row in top_authors_data:
@@ -170,10 +170,10 @@ class AuthorService:
             top_authors=top_authors
         )
     
-    async def get_authors_with_images(self, limit: int = 100) -> List[AuthorResponse]:
-        """Get authors who have uploaded images"""
+    def get_authors_with_photos(self, limit: int = 100) -> List[AuthorResponse]:
+        """Get authors who have uploaded photos"""
         
-        authors = self.author_repo.get_authors_with_images(limit)
+        authors = self.author_repo.get_authors_with_photos(limit)
         
         author_responses = []
         for author in authors:

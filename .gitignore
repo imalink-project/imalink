@@ -72,6 +72,11 @@ dist/
 *.tsbuildinfo
 .eslintcache
 
+# Log files
+*.log
+server.log
+dev-server.log
+
 # Frontend build artifacts
 /frontend/build/
 /frontend/dist/
