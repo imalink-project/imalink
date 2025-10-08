@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { currentView } from '$lib/stores/app';
+	import { generateConsistentHash, generateHotpreview } from '$lib/services/hash-generation.service';
 
 	currentView.set('import');
 
@@ -383,6 +384,8 @@
 		});
 	}
 
+	// DEPRECATED: This function uses old individual Photo/Image creation
+	// TODO: Replace with batch import using File System Access API and POST /photos/batch
 	async function importToDatabase() {
 		if (!processResults || processResults.processed_count === 0) {
 			alert('No processed photos to import. Please process images first.');
@@ -415,9 +418,6 @@
 						continue;
 					}
 					
-					// Create hothash from base name
-					const hothash = btoa(photo.base_name + Date.now()).substring(0, 32);
-					
 					// Determine primary file for database record
 					const primaryFile = photo.jpeg_file || photo.raw_file;
 					if (!primaryFile) {
@@ -431,8 +431,37 @@
 					// Extract dimensions and date from EXIF if available
 					const exif = photo.exif_data || {};
 					
-					// Create Photo record first (contains visual metadata)
-					const photoPayload = {
+					// Generate consistent hothash using backend authority
+					const hothash = await generateConsistentHash(
+						primaryFile.filename,
+						primaryFile.size,
+						exif.width,
+						exif.height
+					);
+					
+					// Build all image files for this photo
+					const images = [];
+					if (photo.jpeg_file) {
+						images.push({
+							filename: photo.jpeg_file.filename,
+							hothash: hothash,
+							file_size: photo.jpeg_file.size,
+							exif_data: JSON.stringify(exif),
+							import_session_id: null
+						});
+					}
+					if (photo.raw_file) {
+						images.push({
+							filename: photo.raw_file.filename,
+							hothash: hothash,
+							file_size: photo.raw_file.size,
+							exif_data: JSON.stringify(exif),
+							import_session_id: null
+						});
+					}
+					
+					// Use new Photos batch API for single photo
+					const photoGroup = {
 						hothash: hothash,
 						hotpreview: photo.thumbnail || null,
 						width: exif.width || null,
@@ -440,45 +469,40 @@
 						taken_at: exif.dateTime || null,
 						gps_latitude: exif.gpsLatitude || null,
 						gps_longitude: exif.gpsLongitude || null,
+						title: null,
+						description: null,
+						tags: null,
+						rating: 0,
+						user_rotation: 0,
+						import_session_id: null,
+						images: images
+					};
+					
+					const batchRequest = {
+						photo_groups: [photoGroup],
 						author_id: selectedAuthorId || null
 					};
 					
-					const photoResponse = await fetch('http://localhost:8000/api/v1/photos/', {
+					const response = await fetch('http://localhost:8000/api/v1/photos/batch', {
 						method: 'POST',
 						headers: {
-							'Content-Type': 'application/json',
+							'Content-Type': 'application/json'
 						},
-						body: JSON.stringify(photoPayload)
-					});
-					
-					if (!photoResponse.ok) {
-						const errorText = await photoResponse.text();
-						throw new Error(`Photo creation failed - HTTP ${photoResponse.status}: ${errorText}`);
-					}
-					
-					// Create Image record (contains file-specific data)
-					const imagePayload = {
-						filename: primaryFile.filename,
-						hothash: hothash,
-						file_size: primaryFile.size
-					};
-					
-					const response = await fetch('http://localhost:8000/api/v1/images/', {
-						method: 'POST',
-						headers: {
-							'Content-Type': 'application/json',
-						},
-						body: JSON.stringify(imagePayload)
+						body: JSON.stringify(batchRequest)
 					});
 					
 					if (response.ok) {
-						const result = await response.json();
-						importedPhotos.push({
-							base_name: photo.base_name,
-							type: photo.type,
-							image_id: result.id,
-							filename: primaryFile.filename
-						});
+						const batchResult = await response.json();
+						if (batchResult.success && batchResult.results.length > 0 && batchResult.results[0].success) {
+							importedPhotos.push({
+								base_name: photo.base_name,
+								type: photo.type,
+								photo_id: batchResult.results[0].photo.hothash,
+								filename: primaryFile.filename
+							});
+						} else {
+							throw new Error(batchResult.results[0]?.error || 'Batch import failed');
+						}
 					} else {
 						const errorText = await response.text();
 						throw new Error(`HTTP ${response.status}: ${errorText}`);

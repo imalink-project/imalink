@@ -13,6 +13,8 @@ from schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, 
     PhotoSearchRequest, PhotoRotateRequest
 )
+from schemas.requests.photo_batch_requests import PhotoGroupBatchRequest
+from schemas.responses.photo_batch_responses import BatchPhotoResponse
 from schemas.common import PaginatedResponse, create_success_response
 from core.exceptions import APIException
 
@@ -79,6 +81,20 @@ async def create_photo(
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@router.post("/batch", response_model=BatchPhotoResponse, status_code=201)
+async def create_photo_batch(
+    batch_request: PhotoGroupBatchRequest,
+    photo_service: PhotoService = Depends(get_photo_service)
+):
+    """Create multiple photos with their associated images in batch"""
+    try:
+        return await photo_service.create_photo_batch(batch_request)
+    except APIException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Batch creation failed: {str(e)}")
 
 
 @router.put("/{hothash}", response_model=PhotoResponse)

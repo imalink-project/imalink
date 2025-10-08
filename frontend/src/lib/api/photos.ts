@@ -1,6 +1,6 @@
 // Photos API client
 import { apiClient } from './client';
-import type { Photo, PaginatedResponse, PhotoSearchRequest } from '../types/api';
+import type { Photo, PaginatedResponse, PhotoSearchRequest, PhotoGroupBatchRequest, BatchPhotoResponse } from '../types/api';
 
 export class PhotosApi {
   // Get paginated list of photos
@@ -56,6 +56,12 @@ export class PhotosApi {
   // Delete photo
   static async deletePhoto(hothash: string): Promise<void> {
     await apiClient.delete(`/photos/${hothash}`);
+  }
+
+  // Create multiple photos in batch (NEW - for File System Access API)
+  static async createBatch(batchRequest: PhotoGroupBatchRequest): Promise<BatchPhotoResponse> {
+    const response = await apiClient.post('/photos/batch', batchRequest);
+    return response.data;
   }
 }
 

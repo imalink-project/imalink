@@ -48,6 +48,10 @@ app.include_router(import_sessions_router, prefix="/api/v1/import_sessions", tag
 app.include_router(authors_router, prefix="/api/v1/authors", tags=["authors"])
 app.include_router(debug_router, prefix="/api/v1/debug", tags=["debug"])
 app.include_router(photos_router, prefix="/api/v1/photos", tags=["photos"])
+
+# Import test router after other imports to avoid circular dependencies
+from api.v1.test import router as test_router
+app.include_router(test_router, prefix="/api", tags=["testing"])
 app.include_router(filesystem_router, prefix="/api/v1/filesystem", tags=["filesystem"])
 
 # Debug endpoint to list all routes

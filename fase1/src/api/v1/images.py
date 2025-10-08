@@ -1,5 +1,13 @@
 """
-Modernized API endpoints for image operations using Service Layer
+Image API endpoints - READ-ONLY operations
+
+IMPORTANT ARCHITECTURAL NOTE:
+- Images can only be CREATED via Photo batch operations (POST /photos/batch)
+- Images cannot be created, updated, or deleted individually
+- All Image CRUD operations must go through the Photo API
+- Images are always part of a PhotoGroup and cannot exist standalone
+
+This API provides read-only access to Image data and related operations.
 """
 import asyncio
 from typing import Optional
@@ -201,56 +209,10 @@ async def rotate_image(
         raise HTTPException(status_code=500, detail=f"Failed to rotate image: {str(e)}")
 
 
-@router.put("/{image_id}", response_model=ImageResponse)
-async def update_image(
-    image_id: int,
-    update_data: ImageUpdateRequest,
-    image_service: ImageService = Depends(get_image_service)
-):
-    """Update image metadata"""
-    try:
-        return await image_service.update_image(image_id, update_data)
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to update image: {str(e)}")
+# Images cannot be updated or deleted individually - they are managed via Photo operations
+# Use PUT /photos/{hothash} and DELETE /photos/{hothash} instead
 
-
-@router.delete("/{image_id}")
-async def delete_image(
-    image_id: int,
-    image_service: ImageService = Depends(get_image_service)
-):
-    """Delete image and associated files"""
-    try:
-        success = await image_service.delete_image(image_id)
-        
-        if success:
-            return create_success_response(
-                message="Image deleted successfully",
-                image_id=image_id
-            )
-        else:
-            raise HTTPException(status_code=500, detail="Failed to delete image")
-            
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to delete image: {str(e)}")
-
-
-@router.post("/", response_model=ImageResponse, status_code=201)
-async def create_image(
-    image_data: ImageCreateRequest,
-    image_service: ImageService = Depends(get_image_service)
-):
-    """Create new image record"""
-    try:
-        return await image_service.create_image(image_data)
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create image: {str(e)}")
+# Images can only be created via Photo batch endpoint - standalone image creation is not allowed
 
 
 # Statistics and utility endpoints

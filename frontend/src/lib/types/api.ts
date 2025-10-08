@@ -86,3 +86,55 @@ export interface ApiResponse<T> {
   data: T;
   message?: string;
 }
+
+// Batch photo creation types (NEW - for File System Access API)
+export interface ImageCreateRequest {
+  filename: string;
+  hothash: string;
+  file_size?: number;
+  exif_data?: ArrayBuffer;
+  import_session_id?: number;
+}
+
+export interface PhotoGroupRequest {
+  hothash: string;
+  hotpreview?: string;
+  width?: number;
+  height?: number;
+  taken_at?: string;
+  gps_latitude?: number;
+  gps_longitude?: number;
+  title?: string;
+  description?: string;
+  tags?: string[];
+  rating?: number;
+  user_rotation?: number;
+  import_session_id?: number;
+  images: ImageCreateRequest[];
+}
+
+export interface PhotoGroupBatchRequest {
+  photo_groups: PhotoGroupRequest[];
+  author_id?: number;
+}
+
+export interface PhotoGroupResult {
+  success: boolean;
+  hothash: string;
+  photo?: Photo;
+  images_created: number;
+  error?: string;
+  images_failed: number;
+}
+
+export interface BatchPhotoResponse {
+  success: boolean;
+  total_requested: number;
+  photos_created: number;
+  photos_failed: number;
+  images_created: number;
+  images_failed: number;
+  processing_time_seconds: number;
+  results: PhotoGroupResult[];
+  error?: string;
+}

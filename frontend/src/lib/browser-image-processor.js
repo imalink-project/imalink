@@ -182,6 +182,9 @@ export async function processImageFiles(files, progressCallback = null) {
 /**
  * Submit processed images to backend API
  * Sends only metadata as JSON, no actual file upload
+ * 
+ * @deprecated This function uses the old individual Image creation API
+ * TODO: Replace with Photo batch API (POST /photos/batch) when implementing File System Access
  */
 export async function submitImagesToAPI(processedImages, authorId = null, apiBase = 'http://localhost:8000') {
     const results = [];
