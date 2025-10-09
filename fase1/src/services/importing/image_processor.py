@@ -27,6 +27,75 @@ class ImageProcessor:
     for consistency and maintainability.
     """
     
+    def extract_metadata_from_raw_exif(self, raw_exif_bytes: bytes, width: int, height: int) -> ImageMetadata:
+        """
+        Extract metadata from raw EXIF bytes (sent from frontend)
+        
+        Args:
+            raw_exif_bytes: Raw EXIF binary data
+            width: Image width (from frontend)
+            height: Image height (from frontend)
+            
+        Returns:
+            ImageMetadata with EXIF, GPS and timestamp data
+        """
+        exif_data = None
+        taken_at = None
+        gps_latitude = None
+        gps_longitude = None
+        
+        try:
+            # Parse raw EXIF bytes using piexif
+            import piexif
+            
+            exif_dict = piexif.load(raw_exif_bytes)
+            
+            # Convert to our JSON format for storage
+            json_exif = {}
+            for ifd_name, ifd in exif_dict.items():
+                if ifd_name == "thumbnail":
+                    continue  # Skip thumbnail data
+                    
+                if isinstance(ifd, dict):
+                    for tag_id, value in ifd.items():
+                        tag_name = piexif.TAGS[ifd_name].get(tag_id, {}).get("name", str(tag_id))
+                        try:
+                            # Convert bytes to string for JSON serialization
+                            if isinstance(value, bytes):
+                                json_exif[f"{ifd_name}.{tag_name}"] = value.decode('utf-8', errors='ignore')
+                            else:
+                                json_exif[f"{ifd_name}.{tag_name}"] = str(value)
+                        except:
+                            pass  # Skip problematic tags
+            
+            if json_exif:
+                exif_data = json.dumps(json_exif).encode('utf-8')
+            
+            # Extract date taken from EXIF dict
+            taken_at = self._extract_date_from_exif_dict(exif_dict)
+            
+            # Extract GPS coordinates from EXIF dict  
+            gps_latitude, gps_longitude = self._extract_gps_from_exif_dict(exif_dict)
+                    
+        except Exception as e:
+            print(f"Error extracting metadata from raw EXIF: {e}")
+            # Fallback: just store the raw EXIF bytes
+            try:
+                # Store raw bytes as base64 encoded JSON
+                import base64
+                exif_data = json.dumps({"raw_exif": base64.b64encode(raw_exif_bytes).decode('ascii')}).encode('utf-8')
+            except:
+                pass
+        
+        return ImageMetadata(
+            width=width,
+            height=height,
+            exif_data=exif_data,
+            taken_at=taken_at,
+            gps_latitude=gps_latitude,
+            gps_longitude=gps_longitude
+        )
+    
     def extract_metadata(self, image_path: Path) -> ImageMetadata:
         """
         Extract comprehensive metadata from image file
@@ -147,6 +216,87 @@ class ImageProcessor:
         """
         d, m, s = value
         return d + (m / 60.0) + (s / 3600.0)
+    
+    def _extract_date_from_exif_dict(self, exif_dict: dict) -> Optional[datetime]:
+        """
+        Extract date taken from parsed EXIF dictionary (piexif format)
+        """
+        try:
+            # Check Exif IFD for DateTimeOriginal (tag 36867)
+            if "Exif" in exif_dict and 36867 in exif_dict["Exif"]:
+                date_str = exif_dict["Exif"][36867].decode('ascii')
+                return datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
+            
+            # Fallback to DateTime (tag 306) in 0th IFD
+            if "0th" in exif_dict and 306 in exif_dict["0th"]:
+                date_str = exif_dict["0th"][306].decode('ascii')  
+                return datetime.strptime(date_str, '%Y:%m:%d %H:%M:%S')
+                
+        except Exception:
+            pass  # Date parsing failed
+            
+        return None
+    
+    def _extract_gps_from_exif_dict(self, exif_dict: dict) -> tuple[Optional[float], Optional[float]]:
+        """
+        Extract GPS coordinates from parsed EXIF dictionary (piexif format)
+        """
+        try:
+            if "GPS" not in exif_dict:
+                return None, None
+                
+            gps_info = exif_dict["GPS"]
+            
+            # Extract latitude
+            gps_latitude = None
+            if 2 in gps_info and 1 in gps_info:  # GPSLatitude and GPSLatitudeRef
+                lat_dms = gps_info[2]  # Degrees, minutes, seconds
+                lat_ref = gps_info[1].decode('ascii')  # N or S
+                
+                # Convert to decimal degrees
+                lat = self._convert_dms_to_decimal(lat_dms)
+                if lat_ref == 'S':
+                    lat = -lat
+                gps_latitude = lat
+            
+            # Extract longitude
+            gps_longitude = None  
+            if 4 in gps_info and 3 in gps_info:  # GPSLongitude and GPSLongitudeRef
+                lon_dms = gps_info[4]  # Degrees, minutes, seconds
+                lon_ref = gps_info[3].decode('ascii')  # E or W
+                
+                # Convert to decimal degrees
+                lon = self._convert_dms_to_decimal(lon_dms)
+                if lon_ref == 'W':
+                    lon = -lon
+                gps_longitude = lon
+                
+            return gps_latitude, gps_longitude
+            
+        except Exception:
+            pass  # GPS extraction failed
+            
+        return None, None
+    
+    def _convert_dms_to_decimal(self, dms_tuple) -> float:
+        """
+        Convert degrees/minutes/seconds tuple to decimal degrees
+        
+        Args:
+            dms_tuple: Tuple of ((deg_num, deg_den), (min_num, min_den), (sec_num, sec_den))
+            
+        Returns:
+            Decimal degrees as float
+        """
+        try:
+            # Each coordinate is a tuple of (numerator, denominator)
+            degrees = dms_tuple[0][0] / dms_tuple[0][1] if dms_tuple[0][1] != 0 else 0
+            minutes = dms_tuple[1][0] / dms_tuple[1][1] if dms_tuple[1][1] != 0 else 0  
+            seconds = dms_tuple[2][0] / dms_tuple[2][1] if dms_tuple[2][1] != 0 else 0
+            
+            return degrees + (minutes / 60.0) + (seconds / 3600.0)
+        except:
+            return 0.0
     
     def generate_thumbnail(self, image_path: Path, size: tuple = (300, 300)) -> Optional[bytes]:
         """

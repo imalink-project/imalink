@@ -197,39 +197,55 @@ export class BatchImportService {
      */
     private async processFile(fileInfo: any): Promise<PhotoGroupRequest | null> {
         try {
+            try {
             this.updateProgress({ currentFile: fileInfo.name });
 
-            // Process image (EXIF, thumbnail, etc.)
-            const processedImage = await processImage(fileInfo.file, {
-                generateThumbnails: this.options.generateThumbnails,
-                extractExif: this.options.extractExif,
-                thumbnailSize: 300
+            // Import the new raw EXIF extractor
+            const { extractRawExifBytesFromFile, getImageDimensionsFromFile } = await import('../image-processor/raw-exif-extractor.js');
+            
+            // Extract raw EXIF bytes (for backend processing)
+            let rawExifBytes: Uint8Array | null = null;
+            try {
+                const exifBytes = await extractRawExifBytesFromFile(fileInfo);
+                rawExifBytes = exifBytes ? new Uint8Array(exifBytes) : null;
+            } catch (error) {
+                console.warn(`EXIF extraction failed for ${fileInfo.name}:`, error);
+            }
+
+            // Get basic image dimensions (frontend still needs these)
+            const dimensions = await getImageDimensionsFromFile(fileInfo);
+
+            // Process image for thumbnail and hashing only
+            const processedImage = await processImage(fileInfo, {
+                generateThumbnails: this.options.generateThumbnails!,
+                extractExif: false  // We handle EXIF separately now
             });
 
             if (!processedImage.success) {
-                throw new Error(processedImage.error || 'Failed to process image');
+                throw new Error(`Image processing failed: ${processedImage.error}`);
             }
 
-            // Create hothash (simplified - should use proper hashing)
-            const hothash = this.generateHothash(fileInfo.name, fileInfo.size);
+            // Generate content hash (hothash)
+            const hothash = processedImage.hash || this.generateHothash(fileInfo.name, fileInfo.size);
 
-            // Create ImageCreateRequest
+            // Create ImageCreateRequest with raw EXIF bytes
             const imageRequest: ImageCreateRequest = {
                 filename: fileInfo.name,
                 hothash: hothash,
                 file_size: fileInfo.size,
-                exif_data: processedImage.exif ? new TextEncoder().encode(JSON.stringify(processedImage.exif)) : undefined
+                exif_data: rawExifBytes ? rawExifBytes.buffer as ArrayBuffer : undefined  // Send raw EXIF bytes to backend
             };
 
-            // Create PhotoGroupRequest
+            // Create PhotoGroupRequest with basic dimensions only
+            // Backend will extract all metadata from raw EXIF
             const photoGroup: PhotoGroupRequest = {
                 hothash: hothash,
-                hotpreview: processedImage.thumbnail,
-                width: processedImage.width,
-                height: processedImage.height,
-                taken_at: processedImage.taken_date ? processedImage.taken_date.toISOString() : undefined,
-                gps_latitude: processedImage.exif?.gps_latitude,
-                gps_longitude: processedImage.exif?.gps_longitude,
+                hotpreview: processedImage.thumbnail || undefined,
+                width: dimensions.width || undefined,
+                height: dimensions.height || undefined,
+                taken_at: undefined,  // Backend will extract from EXIF
+                gps_latitude: undefined,  // Backend will extract from EXIF
+                gps_longitude: undefined,  // Backend will extract from EXIF
                 images: [imageRequest]
             };
 

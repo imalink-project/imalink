@@ -275,8 +275,8 @@ class ImportSessionsBackgroundService:
                 storage_name = self._generate_storage_name(import_session)
                 
             if not archive_base_path:
-                # Use default base path
-                archive_base_path = Config.TEST_STORAGE_ROOT  # Use config path
+                # Use default base path for testing - in production this should come from user
+                archive_base_path = "/tmp/imalink-test-storage"  # Temporary fallback
             
             # Update import session with storage identifiers
             update_data = {

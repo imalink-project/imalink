@@ -164,8 +164,19 @@ class Photo(Base, TimestampMixin):
         
         # 7. Opprett Image records for alle filer i gruppen
         from .image import Image
+        from pathlib import Path
         for file_path in file_paths:
-            image = Image.create_from_file(file_path, hothash, import_session_id)
+            # Legacy support - direct Image creation for old background service
+            file_path_obj = Path(file_path)
+            file_size = file_path_obj.stat().st_size if file_path_obj.exists() else None
+            
+            image = Image(
+                filename=file_path_obj.name,
+                file_size=file_size,
+                exif_data=None,  # Old method doesn't extract EXIF
+                hothash=hothash,
+                import_session_id=import_session_id
+            )
             photo.files.append(image)
         
         return photo
@@ -263,24 +274,30 @@ class Photo(Base, TimestampMixin):
                         
                         # GPS-data
                         elif tag == 'GPSInfo':
-                            gps_data = {}
-                            for gps_tag_id, gps_value in value.items():
-                                gps_tag = GPSTAGS.get(gps_tag_id, gps_tag_id)
-                                gps_data[gps_tag] = gps_value
-                            
-                            # Konverter GPS-koordinater til desimalgrader
-                            lat = Photo._convert_gps_to_decimal(
-                                gps_data.get('GPSLatitude'),
-                                gps_data.get('GPSLatitudeRef')
-                            )
-                            lon = Photo._convert_gps_to_decimal(
-                                gps_data.get('GPSLongitude'), 
-                                gps_data.get('GPSLongitudeRef')
-                            )
-                            
-                            if lat is not None and lon is not None:
-                                metadata['gps_latitude'] = lat
-                                metadata['gps_longitude'] = lon
+                            # Check if GPSInfo contains actual GPS data (dict) or just an offset (int)
+                            if isinstance(value, dict) and hasattr(value, 'items'):
+                                gps_data = {}
+                                for gps_tag_id, gps_value in value.items():
+                                    gps_tag = GPSTAGS.get(gps_tag_id, gps_tag_id)
+                                    gps_data[gps_tag] = gps_value
+                                
+                                # Konverter GPS-koordinater til desimalgrader
+                                lat = Photo._convert_gps_to_decimal(
+                                    gps_data.get('GPSLatitude'),
+                                    gps_data.get('GPSLatitudeRef')
+                                )
+                                lon = Photo._convert_gps_to_decimal(
+                                    gps_data.get('GPSLongitude'), 
+                                    gps_data.get('GPSLongitudeRef')
+                                )
+                                
+                                if lat is not None and lon is not None:
+                                    metadata['gps_latitude'] = lat
+                                    metadata['gps_longitude'] = lon
+                            else:
+                                # GPSInfo contains an offset/reference, not actual GPS data
+                                # This is common when GPS data is not present or corrupted
+                                pass
                 
                 return metadata
                 

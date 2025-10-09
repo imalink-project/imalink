@@ -31,8 +31,8 @@ class ImportResponse(BaseModel):
     import_result_type: Optional[str] = Field(None, description="Classification: all_new, all_duplicates, mixed")
     user_feedback_message: Optional[str] = Field(None, description="User-friendly message about import result")
     
-    # Storage information (integrated from import_once)
-    storage_name: Optional[str] = Field(None, description="Unique storage folder name")
+    # Storage information (storage name without path)
+    storage_name: Optional[str] = Field(None, description="Storage name (directory name without path) with UUID suffix")
     archive_base_path: Optional[str] = Field(None, description="Base path where storage folder is located")
     files_copied: int = 0
     files_copy_skipped: int = 0

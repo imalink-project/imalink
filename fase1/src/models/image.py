@@ -86,65 +86,12 @@ class Image(Base, TimestampMixin):
             'rating': self.photo.rating,
         }
     
-    # ===== IMAGE CREATION FACTORY METHOD =====
-    
-    @classmethod
-    def create_from_file(cls, file_path, hothash: str, import_session_id: int) -> 'Image':
-        """
-        Enkel constructor for fil-metadata.
-        Fokuserer kun på fil-spesifikke egenskaper.
-        
-        Args:
-            file_path: Path eller string til bildefilen
-            hothash: Hash til tilknyttet Photo record
-            import_session_id: Referanse til import session
-            
-        Returns:
-            Ferdig Image record klar for database
-        """
-        from pathlib import Path
-        
-        # Ensure we have a Path object
-        file_path_obj = Path(file_path) if not isinstance(file_path, Path) else file_path
-        
-        # Extract file-specific metadata
-        file_size = None
-        if file_path_obj.exists():
-            file_size = file_path_obj.stat().st_size
-        
-        # Extract raw EXIF data for advanced users
-        exif_data = cls._extract_raw_exif(file_path_obj)
-        
-        return cls(
-            filename=file_path_obj.name,
-            file_size=file_size,
-            exif_data=exif_data,
-            hothash=hothash,
-            import_session_id=import_session_id
-        )
-    
-    @staticmethod
-    def _extract_raw_exif(file_path) -> Optional[bytes]:
-        """
-        Ekstraher rå EXIF data for avanserte brukere.
-        Lagrer som binary blob for full preservering.
-        
-        TODO: Integrer med exifread eller ImageProcessor
-        """
-        try:
-            from PIL import Image
-            from PIL.ExifTags import TAGS
-            
-            with Image.open(file_path) as img:
-                exif_dict = img.getexif()
-                if exif_dict:
-                    # For now, convert to string and encode to bytes
-                    # In production: Use proper EXIF binary serialization
-                    exif_str = str(dict(exif_dict))
-                    return exif_str.encode('utf-8')
-            
-            return None
-            
-        except Exception as e:
-            print(f"Warning: Could not extract EXIF from {file_path}: {e}")
-            return None
+    # ===== FRONTEND-DRIVEN ARCHITECTURE =====
+    # No factory methods needed - frontend sends all required data:
+    # - filename: From File API
+    # - file_size: From File.size property  
+    # - exif_data: Raw EXIF bytes for JPEG files, null for RAW files
+    # - hothash: Links to PhotoGroup
+    # - import_session_id: Import tracking
+    #
+    # Image records created directly from ImageCreateRequest data via ORM

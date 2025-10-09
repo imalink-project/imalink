@@ -81,11 +81,8 @@ class PhotoService:
         if photo_data.tags:
             self._validate_tags(photo_data.tags)
         
-        # Extract EXIF metadata from associated Images
-        enhanced_data = self._extract_metadata_from_images(photo_data)
-        
-        # Create the photo
-        photo = self.photo_repo.create(enhanced_data)
+        # Create the photo (EXIF metadata should already be provided by caller)
+        photo = self.photo_repo.create(photo_data)
         return self._convert_to_response(photo)
     
     async def update_photo(self, hothash: str, photo_data: PhotoUpdateRequest) -> PhotoResponse:
@@ -333,20 +330,23 @@ class PhotoService:
         """Create a completely new photo with all its images"""
         from repositories.image_repository import ImageRepository
         
-        # Create PhotoCreateRequest from PhotoGroupRequest
+        # Extract metadata from first image's raw EXIF if available
+        enhanced_photo_data = await self._extract_metadata_from_raw_exif_images(photo_group)
+        
+        # Create PhotoCreateRequest with enhanced metadata
         photo_data = PhotoCreateRequest(
-            hothash=photo_group.hothash,
-            hotpreview=photo_group.hotpreview,
-            width=photo_group.width,
-            height=photo_group.height,
-            taken_at=photo_group.taken_at,
-            gps_latitude=photo_group.gps_latitude,
-            gps_longitude=photo_group.gps_longitude,
-            title=photo_group.title,
-            description=photo_group.description,
-            tags=photo_group.tags,
-            rating=photo_group.rating,
-            import_session_id=photo_group.import_session_id,
+            hothash=enhanced_photo_data.hothash,
+            hotpreview=enhanced_photo_data.hotpreview,
+            width=enhanced_photo_data.width,
+            height=enhanced_photo_data.height,
+            taken_at=enhanced_photo_data.taken_at,
+            gps_latitude=enhanced_photo_data.gps_latitude,
+            gps_longitude=enhanced_photo_data.gps_longitude,
+            title=enhanced_photo_data.title,
+            description=enhanced_photo_data.description,
+            tags=enhanced_photo_data.tags,
+            rating=enhanced_photo_data.rating,
+            import_session_id=enhanced_photo_data.import_session_id,
             author_id=default_author_id  # Use default author if provided
         )
         
@@ -522,33 +522,64 @@ class PhotoService:
         
         return format_map.get(ext, "unknown")
     
-    def _extract_metadata_from_images(self, photo_data: PhotoCreateRequest) -> PhotoCreateRequest:
+    async def _extract_metadata_from_raw_exif_images(self, photo_group: PhotoGroupRequest) -> PhotoGroupRequest:
         """
-        Extract EXIF metadata from associated Images and enhance PhotoCreateRequest
+        Extract EXIF metadata from raw EXIF bytes in images and enhance PhotoGroupRequest
         
-        Since frontend already sends the EXIF data when creating Photos,
-        this method primarily serves as a validation step.
+        This method uses the ImageProcessor to extract metadata from raw EXIF data
+        instead of relying on frontend-parsed metadata.
         """
-        from repositories.image_repository import ImageRepository
+        from services.importing.image_processor import ImageProcessor
         
-        # Get image repository
-        image_repo = ImageRepository(self.db)
+        processor = ImageProcessor()
         
-        # Find existing image with this hothash to validate the relationship
-        existing_image = image_repo.get_by_hash(photo_data.hothash)
+        # Find the first image with raw EXIF data
+        primary_image = None
+        raw_exif_bytes = None
         
-        if existing_image:
-            print(f"Creating Photo for existing Image: {existing_image.filename}")
-            exif_data = existing_image.exif_data
-            if exif_data is not None:
-                print(f"  Image has EXIF data stored")
-            else:
-                print(f"  Image has no EXIF data stored")
+        for image in photo_group.images:
+            if image.exif_data and len(image.exif_data) > 0:
+                primary_image = image
+                raw_exif_bytes = image.exif_data
+                break
+        
+        if raw_exif_bytes and primary_image:
+            print(f"Extracting metadata from raw EXIF for {primary_image.filename}")
+            
+            # Use existing dimensions if available, otherwise use defaults
+            width = photo_group.width or 0
+            height = photo_group.height or 0
+            
+            try:
+                # Extract metadata using ImageProcessor
+                metadata = processor.extract_metadata_from_raw_exif(raw_exif_bytes, width, height)
+                
+                # Create enhanced PhotoGroupRequest with extracted metadata
+                enhanced_group = photo_group.model_copy()
+                
+                # Update with extracted metadata (only if not already provided)
+                if not enhanced_group.width and metadata.width:
+                    enhanced_group.width = metadata.width
+                if not enhanced_group.height and metadata.height:
+                    enhanced_group.height = metadata.height
+                if not enhanced_group.taken_at and metadata.taken_at:
+                    enhanced_group.taken_at = metadata.taken_at
+                if not enhanced_group.gps_latitude and metadata.gps_latitude:
+                    enhanced_group.gps_latitude = metadata.gps_latitude
+                if not enhanced_group.gps_longitude and metadata.gps_longitude:
+                    enhanced_group.gps_longitude = metadata.gps_longitude
+                
+                print(f"  Enhanced metadata: {metadata.width}x{metadata.height}, "
+                      f"taken: {metadata.taken_at}, GPS: {metadata.gps_latitude}, {metadata.gps_longitude}")
+                
+                return enhanced_group
+                
+            except Exception as e:
+                print(f"Failed to extract metadata from raw EXIF: {e}")
         else:
-            print(f"Warning: No Image found with hothash {photo_data.hothash}")
+            print(f"No raw EXIF data found in images for {photo_group.hothash}")
         
-        # Return the original data - frontend should have already extracted and sent EXIF
-        # This architecture assumes the frontend extracts EXIF and includes it in the PhotoCreateRequest
-        return photo_data
+        # Return original photo group if no EXIF processing possible
+        return photo_group
 
 

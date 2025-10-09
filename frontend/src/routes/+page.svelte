@@ -37,7 +37,7 @@ loading = false;
 <div class="page-header">
 <h1>📸 Photos</h1>
 <p>Browse your photo collection</p>
-<button on:click={loadPhotos} class="refresh-btn">🔄 Refresh</button>
+<button on:click={loadPhotos} class="btn btn-primary">🔄 Refresh</button>
 </div>
 
 {#if loading}
@@ -48,7 +48,7 @@ loading = false;
 {:else if error}
 <div class="error">
 <p>❌ {error}</p>
-<button on:click={loadPhotos} class="retry-btn">Try Again</button>
+<button on:click={loadPhotos} class="btn btn-primary">Try Again</button>
 </div>
 {:else if photos.length === 0}
 <div class="empty-state">
@@ -125,56 +125,44 @@ class="photo-thumbnail"
 
 <style>
 .photos-page {
-padding: 2rem;
+padding: var(--spacing-xl);
 max-width: 1200px;
 margin: 0 auto;
 }
 
 .page-header {
 text-align: center;
-margin-bottom: 2rem;
+margin-bottom: var(--spacing-xl);
 }
 
 .page-header h1 {
-font-size: 2.5rem;
-margin: 0 0 0.5rem 0;
-color: #1f2937;
+font-size: var(--font-size-3xl);
+margin: 0 0 var(--spacing-sm) 0;
+color: var(--color-gray-800);
+font-weight: var(--font-weight-bold);
 }
 
 .page-header p {
-font-size: 1.1rem;
-color: #6b7280;
-margin: 0 0 1rem 0;
+font-size: var(--font-size-lg);
+color: var(--color-gray-500);
+margin: 0 0 var(--spacing-md) 0;
 }
 
-.refresh-btn, .retry-btn {
-background: #3b82f6;
-color: white;
-border: none;
-padding: 0.75rem 1.5rem;
-border-radius: 0.5rem;
-cursor: pointer;
-font-size: 1rem;
-transition: background-color 0.2s ease;
-}
-
-.refresh-btn:hover, .retry-btn:hover {
-background: #2563eb;
-}
+/* Buttons now use global utility classes */
 
 .loading {
 text-align: center;
-padding: 3rem;
+padding: var(--spacing-2xl);
 }
 
 .spinner {
 width: 40px;
 height: 40px;
-border: 4px solid #e5e7eb;
-border-top: 4px solid #3b82f6;
-border-radius: 50%;
+border: 4px solid var(--color-gray-200);
+border-top: 4px solid var(--color-primary);
+border-radius: var(--radius-full);
 animation: spin 1s linear infinite;
-margin: 0 auto 1rem auto;
+margin: 0 auto var(--spacing-md) auto;
 }
 
 @keyframes spin {
@@ -184,58 +172,59 @@ margin: 0 auto 1rem auto;
 
 .error {
 text-align: center;
-padding: 3rem;
-color: #dc2626;
+padding: var(--spacing-2xl);
+color: var(--color-error);
 }
 
 .empty-state {
 text-align: center;
-padding: 3rem;
+padding: var(--spacing-2xl);
 }
 
 .empty-state h3 {
-font-size: 1.5rem;
-margin: 0 0 1rem 0;
-color: #374151;
+font-size: var(--font-size-2xl);
+margin: 0 0 var(--spacing-md) 0;
+color: var(--color-gray-700);
 }
 
 .empty-state p {
-color: #6b7280;
-margin: 0 0 1.5rem 0;
+color: var(--color-gray-500);
+margin: 0 0 var(--spacing-lg) 0;
 }
 
 .import-link {
 display: inline-block;
-background: #10b981;
+background: var(--color-success);
 color: white;
 text-decoration: none;
-padding: 0.75rem 1.5rem;
-border-radius: 0.5rem;
-transition: background-color 0.2s ease;
+padding: var(--spacing-sm) var(--spacing-lg);
+border-radius: var(--radius-lg);
+font-weight: var(--font-weight-medium);
+transition: background-color var(--transition-normal);
 }
 
 .import-link:hover {
-background: #059669;
+background: var(--color-success-hover);
 }
 
 .photos-grid {
 display: grid;
 grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-gap: 1.5rem;
-margin-top: 2rem;
+gap: var(--spacing-lg);
+margin-top: var(--spacing-xl);
 }
 
 .photo-card {
-background: white;
-border-radius: 0.5rem;
+background: var(--bg-card);
+border-radius: var(--radius-lg);
 overflow: hidden;
-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-transition: transform 0.2s ease, box-shadow 0.2s ease;
+box-shadow: var(--shadow-md);
+transition: transform var(--transition-normal), box-shadow var(--transition-normal);
 }
 
 .photo-card:hover {
 transform: translateY(-2px);
-box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+box-shadow: var(--shadow-xl);
 }
 
 .photo-thumbnail {
@@ -250,51 +239,51 @@ height: 200px;
 display: flex;
 align-items: center;
 justify-content: center;
-background: #f3f4f6;
-font-size: 3rem;
-color: #9ca3af;
+background: var(--color-gray-100);
+font-size: var(--font-size-3xl);
+color: var(--color-gray-400);
 }
 
 .photo-info {
-padding: 1rem;
+padding: var(--spacing-md);
 }
 
 .photo-filename {
-margin: 0 0 0.5rem 0;
-font-size: 1rem;
-font-weight: 600;
-color: #1f2937;
+margin: 0 0 var(--spacing-sm) 0;
+font-size: var(--font-size-base);
+font-weight: var(--font-weight-semibold);
+color: var(--color-gray-800);
 word-break: break-word;
 }
 
 .photo-date, .photo-title, .photo-description, .photo-author, .photo-dimensions, 
 .photo-rating, .photo-gps, .photo-raw, .photo-files, .photo-tags, .photo-imported {
-margin: 0.25rem 0;
-font-size: 0.875rem;
-color: #6b7280;
-line-height: 1.4;
+margin: var(--spacing-xs) 0;
+font-size: var(--font-size-sm);
+color: var(--color-gray-500);
+line-height: var(--line-height-normal);
 }
 
 .photo-rating {
-color: #f59e0b;
-font-weight: 500;
+color: var(--color-warning);
+font-weight: var(--font-weight-medium);
 }
 
 .photo-gps {
-color: #059669;
+color: var(--color-success-hover);
 font-family: monospace;
 }
 
 .photo-raw {
-color: #8b5cf6;
-font-weight: 500;
+color: var(--color-purple);
+font-weight: var(--font-weight-medium);
 }
 
 .photo-imported {
-color: #9ca3af;
-font-size: 0.75rem;
-margin-top: 0.5rem;
-padding-top: 0.5rem;
-border-top: 1px solid #e5e7eb;
+color: var(--color-gray-400);
+font-size: var(--font-size-xs);
+margin-top: var(--spacing-sm);
+padding-top: var(--spacing-sm);
+border-top: 1px solid var(--border-light);
 }
 </style>

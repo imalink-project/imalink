@@ -12,7 +12,8 @@ from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks, UploadFi
 from core.dependencies import get_import_session_service
 from core.config import Config
 from services.import_session_service import ImportSessionService
-from schemas.requests.import_session_requests import ImportStartRequest, ImportTestRequest
+from models.import_session import ImportSession
+from schemas.requests.import_session_requests import ImportStartRequest, ImportTestRequest, SetStorageNameRequest
 from schemas.responses.import_session_responses import (
     ImportResponse, ImportStartResponse, ImportListResponse,
     ImportTestResponse, ImportProgressResponse, ImportCancelResponse
@@ -274,7 +275,8 @@ async def get_storage_info(
         from pathlib import Path
         
         # Generate storage info similar to import_once
-        base_storage = Path(Config.TEST_STORAGE_ROOT)  # Use config path
+        # NOTE: This endpoint is deprecated - storage root should come from frontend
+        base_storage = Path("/tmp/imalink-test-storage")  # Temporary fallback for testing
         
         if subfolder:
             storage_path = base_storage / subfolder
@@ -294,4 +296,246 @@ async def get_storage_info(
         raise HTTPException(
             status_code=500,
             detail=f"Error getting storage information: {str(e)}"
+        )
+
+
+# === DEPRECATED STORAGE SYSTEM ENDPOINTS ===
+# These endpoints are deprecated - frontend now handles all file copying
+# via File System Access API. Backend only stores user's chosen directory name.
+
+@router.post("/{import_id}/prepare-storage")
+async def prepare_storage(
+    import_id: int,
+    session_name: Optional[str] = None,
+    import_service: ImportSessionService = Depends(get_import_session_service)
+) -> Dict[str, Any]:
+    """
+    DEPRECATED: Prepare permanent storage for an ImportSession
+    
+    This endpoint is deprecated. Frontend now handles all file copying
+    via File System Access API. Use PATCH /{import_id}/storage-directory instead.
+    """
+    try:
+        from database.connection import get_db_sync
+        from services.storage_service import StorageService
+        
+        db = get_db_sync()
+        storage_service = StorageService(db)
+        
+        result = await storage_service.prepare_storage(import_id, session_name)
+        
+        if not result.success:
+            raise HTTPException(status_code=400, detail=result.message)
+        
+        return {
+            "success": True,
+            "message": result.message,
+            "total_size_mb": result.total_size_mb,
+            "import_id": import_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error preparing storage for import {import_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error preparing storage: {str(e)}"
+        )
+
+
+@router.post("/{import_id}/copy-to-permanent-storage")
+async def copy_to_permanent_storage(
+    import_id: int,
+    background_tasks: BackgroundTasks,
+    import_service: ImportSessionService = Depends(get_import_session_service)
+) -> Dict[str, Any]:
+    """
+    Start copying files to permanent storage
+    
+    Begins background process to copy all ImportSession files to the
+    UUID-based permanent storage directory. Use /storage-status to monitor progress.
+    """
+    try:
+        from database.connection import get_db_sync
+        from services.storage_service import StorageService
+        
+        db = get_db_sync()
+        storage_service = StorageService(db)
+        
+        # Check if storage is prepared
+        import_session = db.query(ImportSession).filter(ImportSession.id == import_id).first()
+        if not import_session:
+            raise HTTPException(status_code=404, detail="ImportSession not found")
+        
+        if import_session.storage_uuid is None:
+            raise HTTPException(
+                status_code=400, 
+                detail="Storage not prepared. Call /prepare-storage first."
+            )
+        
+        # Start background copy task
+        async def copy_files_background():
+            try:
+                await storage_service.copy_files_to_storage(import_id)
+            except Exception as e:
+                logger.error(f"Background storage copy failed for import {import_id}: {e}")
+        
+        background_tasks.add_task(copy_files_background)
+        
+        return {
+            "success": True,
+            "message": "Storage copy started in background",
+            "import_id": import_id,
+            "storage_uuid": import_session.storage_uuid,
+            "storage_name": import_session.storage_name
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error starting storage copy for import {import_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error starting storage copy: {str(e)}"
+        )
+
+
+@router.get("/{import_id}/storage-status")
+async def get_storage_status(
+    import_id: int,
+    import_service: ImportSessionService = Depends(get_import_session_service)
+) -> Dict[str, Any]:
+    """
+    Get storage operation status and progress
+    
+    Returns current status of storage copy operation including:
+    - Overall status (not_started, in_progress, completed, failed)
+    - Progress percentage and file counts
+    - Storage directory information
+    - Error details if any
+    """
+    try:
+        from database.connection import get_db_sync
+        from services.storage_service import StorageService
+        
+        db = get_db_sync()
+        storage_service = StorageService(db)
+        
+        progress = storage_service.get_storage_status(import_id)
+        if not progress:
+            raise HTTPException(status_code=404, detail="ImportSession not found")
+        
+        # Get ImportSession for additional info
+        import_session = db.query(ImportSession).filter(ImportSession.id == import_id).first()
+        
+        return {
+            "import_id": import_id,
+            "status": progress.status,
+            "progress_percentage": progress.progress_percentage,
+            "files_processed": progress.files_processed,
+            "total_files": progress.total_files,
+            "files_copied": progress.files_copied,
+            "files_skipped": progress.files_skipped,
+            "total_size_mb": progress.total_size_mb,
+            "current_file": progress.current_file,
+            "errors": progress.errors,
+            "started_at": progress.started_at.isoformat() if progress.started_at else None,
+            "completed_at": progress.completed_at.isoformat() if progress.completed_at else None,
+            "storage_uuid": import_session.storage_uuid if import_session else None,
+            "storage_name": import_session.storage_name if import_session else None,
+            "has_permanent_storage": import_session.has_permanent_storage if import_session else False
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting storage status for import {import_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error getting storage status: {str(e)}"
+        )
+
+
+@router.post("/{import_id}/verify-storage")
+async def verify_storage(
+    import_id: int,
+    import_service: ImportSessionService = Depends(get_import_session_service)
+) -> Dict[str, Any]:
+    """
+    Verify storage integrity
+    
+    Checks that all files were copied correctly to permanent storage
+    by comparing file existence and sizes.
+    """
+    try:
+        from database.connection import get_db_sync
+        from services.storage_service import StorageService
+        
+        db = get_db_sync()
+        storage_service = StorageService(db)
+        
+        result = storage_service.verify_storage_integrity(import_id)
+        
+        return {
+            "import_id": import_id,
+            "success": result.success,
+            "message": result.message,
+            "files_verified": result.files_copied,
+            "errors": result.errors
+        }
+        
+    except Exception as e:
+        logger.error(f"Error verifying storage for import {import_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error verifying storage: {str(e)}"
+        )
+
+
+@router.patch("/{import_id}/storage-name")
+async def set_storage_name(
+    import_id: int,
+    request: SetStorageNameRequest,
+    import_service: ImportSessionService = Depends(get_import_session_service)
+) -> Dict[str, Any]:
+    """
+    Set storage name (directory name without path) chosen by user in frontend
+    
+    Frontend handles all file copying via File System Access API.
+    Backend just stores the storage name (e.g. "20241009_import_vacation_abc12345").
+    storage_root is managed only in UI and never sent to backend.
+    """
+    try:
+        from database.connection import get_db_sync
+        
+        db = get_db_sync()
+        import_session = db.query(ImportSession).filter(ImportSession.id == import_id).first()
+        
+        if not import_session:
+            raise HTTPException(status_code=404, detail="ImportSession not found")
+        
+        # Update storage name with user's choice
+        storage_name = request.storage_name
+        setattr(import_session, 'storage_name', storage_name)
+        
+        # Mark copy status as user-managed (not backend-managed)
+        setattr(import_session, 'copy_status', 'user_managed')
+        
+        db.commit()
+        
+        return {
+            "success": True,
+            "message": f"Storage name set to: {storage_name}",
+            "import_id": import_id,
+            "storage_name": storage_name
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error setting storage name for import {import_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error setting storage name: {str(e)}"
         )

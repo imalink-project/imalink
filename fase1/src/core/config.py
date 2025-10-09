@@ -16,17 +16,12 @@ class Config:
     DATA_DIRECTORY: str = f"{TEMP}/00imalink_data"
     DATABASE_URL: str = f"sqlite:///{DATA_DIRECTORY}/imalink.db"
     
-    # File directories
-#    IMAGE_POOL_DIRECTORY: str = os.getenv("IMAGE_POOL_DIRECTORY", "C:/temp/imalink_data/imalink_pool")
-    IMAGE_POOL_DIRECTORY: str = f"{DATA_DIRECTORY}/imalink_pool"
+    # Storage for imported files
+    STORAGE_ROOT: str = f"{TEMP}/imalink-storage"
     
-#    TEST_IMPORT_DIRECTORY: str = os.getenv("TEST_IMPORT_DIRECTORY", "/mnt/c/temp/00imalink_import")
-    TEST_IMPORT_DIRECTORY: str = f"{TEMP}/PHOTOS_SRC_TEST_MICRO"
-    TEST_STORAGE_ROOT: str = f"{TEMP}/storage"
+    # Note: IMAGE_POOL and frontend-related paths removed - handled by frontend
+    # Image processing quality settings handled by services as needed
      
-    # Image processing
-    POOL_QUALITY: int = int(os.getenv("POOL_QUALITY", "85"))
-    
     # Optional cloud storage
     AWS_ACCESS_KEY_ID: Optional[str] = os.getenv("AWS_ACCESS_KEY_ID")
     AWS_SECRET_ACCESS_KEY: Optional[str] = os.getenv("AWS_SECRET_ACCESS_KEY") 
@@ -50,7 +45,8 @@ class Config:
     def ensure_directories(cls) -> None:
         """Ensure all required directories exist"""
         directories = [
-            cls.IMAGE_POOL_DIRECTORY
+            cls.DATA_DIRECTORY,
+            cls.STORAGE_ROOT
         ]
         
         for directory in directories:
@@ -60,8 +56,7 @@ class Config:
     def get_pool_config(cls) -> dict:
         """Get image pool specific configuration"""
         return {
-            "pool_root": cls.IMAGE_POOL_DIRECTORY,
-            "quality": cls.POOL_QUALITY
+            "quality": 85  # Default quality - can be made configurable per service if needed
         }
 
 # Global config instance

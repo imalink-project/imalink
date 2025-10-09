@@ -62,7 +62,7 @@
 	<div class="page-header">
 		<h1>📊 Database Status</h1>
 		<p>Development database information and table statistics</p>
-		<button onclick={loadDatabaseInfo} disabled={loading} class="refresh-btn">
+		<button onclick={loadDatabaseInfo} disabled={loading} class="btn btn-primary">
 			{#if loading}
 				<div class="spinner-small"></div> Loading...
 			{:else}
@@ -184,63 +184,44 @@
 	.status-page {
 		max-width: 1200px;
 		margin: 0 auto;
-		padding: 2rem;
+		padding: var(--spacing-xl);
 	}
 
 	.page-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 2rem;
+		margin-bottom: var(--spacing-xl);
 		flex-wrap: wrap;
-		gap: 1rem;
+		gap: var(--spacing-md);
 	}
 
 	.page-header h1 {
-		color: #1f2937;
+		color: var(--color-gray-800);
 		margin: 0;
+		font-weight: var(--font-weight-bold);
 	}
 
 	.page-header p {
-		color: #6b7280;
+		color: var(--color-gray-500);
 		margin: 0;
 		flex: 1;
 	}
 
-	.refresh-btn {
-		background-color: #3b82f6;
-		color: white;
-		border: none;
-		padding: 0.5rem 1rem;
-		border-radius: 6px;
-		cursor: pointer;
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
-		font-weight: 500;
-	}
-
-	.refresh-btn:hover:not(:disabled) {
-		background-color: #2563eb;
-	}
-
-	.refresh-btn:disabled {
-		background-color: #9ca3af;
-		cursor: not-allowed;
-	}
+	/* Refresh button now uses global .btn .btn-primary utility classes */
 
 	.loading {
 		text-align: center;
-		padding: 3rem;
-		color: #6b7280;
+		padding: var(--spacing-2xl);
+		color: var(--color-gray-500);
 	}
 
 	.spinner, .spinner-small {
-		border: 2px solid #f3f4f6;
-		border-top: 2px solid #3b82f6;
-		border-radius: 50%;
+		border: 2px solid var(--color-gray-100);
+		border-top: 2px solid var(--color-primary);
+		border-radius: var(--radius-full);
 		animation: spin 1s linear infinite;
-		margin: 0 auto 1rem;
+		margin: 0 auto var(--spacing-md);
 	}
 
 	.spinner {
@@ -258,33 +239,34 @@
 	}
 
 	.database-overview {
-		margin-bottom: 2rem;
+		margin-bottom: var(--spacing-xl);
 	}
 
 	.overview-card {
-		background: white;
-		border-radius: 8px;
-		padding: 1.5rem;
-		box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-		border: 1px solid #e5e7eb;
+		background: var(--bg-card);
+		border-radius: var(--radius-lg);
+		padding: var(--spacing-lg);
+		box-shadow: var(--shadow-md);
+		border: 1px solid var(--border-light);
 	}
 
 	.overview-card h3 {
 		margin-top: 0;
-		color: #1f2937;
+		color: var(--color-gray-800);
+		font-weight: var(--font-weight-semibold);
 	}
 
 	.overview-stats {
 		display: grid;
-		gap: 1rem;
+		gap: var(--spacing-md);
 	}
 
 	.stat {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		padding: 0.5rem 0;
-		border-bottom: 1px solid #f3f4f6;
+		padding: var(--spacing-sm) 0;
+		border-bottom: 1px solid var(--color-gray-100);
 	}
 
 	.stat:last-child {
@@ -292,172 +274,175 @@
 	}
 
 	.stat-label {
-		font-weight: 500;
-		color: #374151;
+		font-weight: var(--font-weight-medium);
+		color: var(--color-gray-700);
 	}
 
 	.stat-value {
 		font-family: monospace;
-		color: #6b7280;
+		color: var(--color-gray-500);
 	}
 
 	.database-url {
-		font-size: 0.875rem;
+		font-size: var(--font-size-sm);
 		max-width: 400px;
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
 
 	.dev-mode {
-		color: #059669 !important;
-		font-weight: 600;
+		color: var(--color-success-hover) !important;
+		font-weight: var(--font-weight-semibold);
 	}
 
 	.tables-section {
-		margin-bottom: 2rem;
+		margin-bottom: var(--spacing-xl);
 	}
 
 	.tables-section h2 {
-		color: #1f2937;
-		margin-bottom: 1rem;
+		color: var(--color-gray-800);
+		margin-bottom: var(--spacing-md);
+		font-weight: var(--font-weight-bold);
 	}
 
 	.table-card {
-		background: white;
-		border-radius: 8px;
-		padding: 1.5rem;
-		margin-bottom: 1.5rem;
-		box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-		border: 1px solid #e5e7eb;
+		background: var(--bg-card);
+		border-radius: var(--radius-lg);
+		padding: var(--spacing-lg);
+		margin-bottom: var(--spacing-lg);
+		box-shadow: var(--shadow-md);
+		border: 1px solid var(--border-light);
 	}
 
 	.table-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 1rem;
+		margin-bottom: var(--spacing-md);
 		flex-wrap: wrap;
-		gap: 1rem;
+		gap: var(--spacing-md);
 	}
 
 	.table-header h3 {
 		margin: 0;
-		color: #1f2937;
+		color: var(--color-gray-800);
+		font-weight: var(--font-weight-semibold);
 	}
 
 	.table-stats {
 		display: flex;
-		gap: 1rem;
-		font-size: 0.875rem;
+		gap: var(--spacing-md);
+		font-size: var(--font-size-sm);
 	}
 
 	.row-count {
-		background-color: #dbeafe;
-		color: #1e40af;
-		padding: 0.25rem 0.5rem;
-		border-radius: 4px;
-		font-weight: 500;
+		background-color: var(--bg-info);
+		color: var(--color-primary-hover);
+		padding: var(--spacing-xs) var(--spacing-sm);
+		border-radius: var(--radius-sm);
+		font-weight: var(--font-weight-medium);
 	}
 
 	.column-count {
-		background-color: #ecfdf5;
-		color: #047857;
-		padding: 0.25rem 0.5rem;
-		border-radius: 4px;
-		font-weight: 500;
+		background-color: var(--bg-success);
+		color: var(--color-success-hover);
+		padding: var(--spacing-xs) var(--spacing-sm);
+		border-radius: var(--radius-sm);
+		font-weight: var(--font-weight-medium);
 	}
 
 	.columns-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-		gap: 1rem;
+		gap: var(--spacing-md);
 	}
 
 	.column-card {
-		background: #f9fafb;
-		border: 1px solid #e5e7eb;
-		border-radius: 6px;
-		padding: 1rem;
+		background: var(--color-gray-50);
+		border: 1px solid var(--border-light);
+		border-radius: var(--radius-md);
+		padding: var(--spacing-md);
 	}
 
 	.column-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 0.5rem;
+		margin-bottom: var(--spacing-sm);
 	}
 
 	.column-name {
-		font-weight: 600;
-		color: #1f2937;
+		font-weight: var(--font-weight-semibold);
+		color: var(--color-gray-800);
 		display: flex;
 		align-items: center;
-		gap: 0.5rem;
+		gap: var(--spacing-sm);
 	}
 
 	.pk-badge {
-		background-color: #fbbf24;
-		color: #92400e;
-		font-size: 0.75rem;
-		padding: 0.125rem 0.375rem;
-		border-radius: 4px;
-		font-weight: 600;
+		background-color: var(--color-warning);
+		color: var(--color-warning-hover);
+		font-size: var(--font-size-xs);
+		padding: var(--spacing-xs) var(--spacing-sm);
+		border-radius: var(--radius-sm);
+		font-weight: var(--font-weight-semibold);
 	}
 
 	.column-type {
 		font-family: monospace;
-		font-size: 0.875rem;
-		font-weight: 600;
+		font-size: var(--font-size-sm);
+		font-weight: var(--font-weight-semibold);
 	}
 
 	.column-details {
 		display: flex;
-		gap: 0.5rem;
+		gap: var(--spacing-sm);
 		flex-wrap: wrap;
 	}
 
 	.constraint, .default {
-		font-size: 0.75rem;
-		padding: 0.125rem 0.375rem;
-		border-radius: 4px;
-		font-weight: 500;
+		font-size: var(--font-size-xs);
+		padding: var(--spacing-xs) var(--spacing-sm);
+		border-radius: var(--radius-sm);
+		font-weight: var(--font-weight-medium);
 	}
 
 	.constraint {
-		background-color: #fef3c7;
-		color: #92400e;
+		background-color: var(--bg-warning);
+		color: var(--color-warning-hover);
 	}
 
 	.default {
-		background-color: #e0e7ff;
-		color: #3730a3;
+		background-color: var(--bg-info);
+		color: var(--color-primary-hover);
 	}
 
 	.quick-stats h2 {
-		color: #1f2937;
-		margin-bottom: 1rem;
+		color: var(--color-gray-800);
+		margin-bottom: var(--spacing-md);
+		font-weight: var(--font-weight-bold);
 	}
 
 	.stats-grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: 1rem;
-		margin-bottom: 2rem;
+		gap: var(--spacing-md);
+		margin-bottom: var(--spacing-xl);
 	}
 
 	.stat-card {
-		background: white;
-		border-radius: 8px;
-		padding: 1.5rem;
-		box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-		border: 1px solid #e5e7eb;
+		background: var(--bg-card);
+		border-radius: var(--radius-lg);
+		padding: var(--spacing-lg);
+		box-shadow: var(--shadow-md);
+		border: 1px solid var(--border-light);
 		display: flex;
 		align-items: center;
-		gap: 1rem;
+		gap: var(--spacing-md);
 	}
 
 	.stat-icon {
-		font-size: 2rem;
+		font-size: var(--font-size-3xl);
 	}
 
 	.stat-info {
@@ -465,58 +450,58 @@
 	}
 
 	.stat-title {
-		font-weight: 500;
-		color: #6b7280;
-		font-size: 0.875rem;
+		font-weight: var(--font-weight-medium);
+		color: var(--color-gray-500);
+		font-size: var(--font-size-sm);
 		text-transform: capitalize;
 	}
 
 	.stat-number {
-		font-size: 1.875rem;
-		font-weight: 700;
-		color: #1f2937;
+		font-size: var(--font-size-3xl);
+		font-weight: var(--font-weight-bold);
+		color: var(--color-gray-800);
 	}
 
 	.error {
-		background-color: #fef2f2;
-		border: 1px solid #fecaca;
-		border-radius: 6px;
-		padding: 1rem;
-		margin: 1rem 0;
-		color: #991b1b;
+		background-color: var(--bg-error);
+		border: 1px solid var(--border-error);
+		border-radius: var(--radius-md);
+		padding: var(--spacing-md);
+		margin: var(--spacing-md) 0;
+		color: var(--color-error);
 	}
 
 	.navigation {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-top: 2rem;
-		padding-top: 2rem;
-		border-top: 1px solid #e5e7eb;
+		margin-top: var(--spacing-xl);
+		padding-top: var(--spacing-xl);
+		border-top: 1px solid var(--border-light);
 	}
 
 	.back-link, .danger-link {
 		text-decoration: none;
-		font-weight: 500;
-		padding: 0.5rem 1rem;
-		border-radius: 4px;
-		transition: background-color 0.2s;
+		font-weight: var(--font-weight-medium);
+		padding: var(--spacing-sm) var(--spacing-md);
+		border-radius: var(--radius-sm);
+		transition: background-color var(--transition-normal);
 	}
 
 	.back-link {
-		color: #3b82f6;
+		color: var(--color-primary);
 	}
 
 	.back-link:hover {
-		background-color: #eff6ff;
+		background-color: var(--bg-info);
 	}
 
 	.danger-link {
-		color: #dc2626;
-		border: 1px solid #fecaca;
+		color: var(--color-error);
+		border: 1px solid var(--border-error);
 	}
 
 	.danger-link:hover {
-		background-color: #fef2f2;
+		background-color: var(--bg-error);
 	}
 </style>

@@ -43,6 +43,14 @@ def get_photo_service(db: Session = Depends(get_db)) -> PhotoService:
     return PhotoService(db)
 
 
+# File Location Service Dependencies
+def get_file_location_service_with_default_storage(db: Session = Depends(get_db)):
+    """Get FileLocationService with default storage root from config"""
+    from core.config import config
+    from services.file_location_service import FileLocationService
+    return FileLocationService(db, config.STORAGE_ROOT)
+
+
 # Import Once functionality has been integrated into ImportSessionService
 
 

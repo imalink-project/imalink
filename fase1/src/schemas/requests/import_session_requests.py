@@ -21,7 +21,10 @@ class ImportStartRequest(BaseModel):
 
 
 class ImportTestRequest(BaseModel):
-    """Request to test single file import"""
-    file_path: str = Field(..., description="Path to single image file")
-    source_description: str = Field("Test import", description="Description of import source")
-    author_id: Optional[int] = Field(None, description="Author ID for the image")
+    """Test request schema"""
+    test_parameter: str = Field("test", description="Test parameter for endpoint verification")
+
+
+class SetStorageNameRequest(BaseModel):
+    """Request to set storage name for import session"""
+    storage_name: str = Field(..., description="Storage name (directory name without path) with UUID suffix")
