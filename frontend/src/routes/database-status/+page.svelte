@@ -1,8 +1,7 @@
 <script lang="ts">
-	import { currentView } from '$lib/stores/app';
-	import { onMount } from 'svelte';
-
-	currentView.set('database-status');
+import { currentView } from '$lib/stores/app';
+import { onMount } from 'svelte';
+import { Button, Card, PageHeader } from '$lib/components/ui';	currentView.set('database-status');
 
 	let loading = false;
 	let error = '';
@@ -59,17 +58,19 @@
 </script>
 
 <div class="status-page">
-	<div class="page-header">
-		<h1>📊 Database Status</h1>
-		<p>Development database information and table statistics</p>
-		<button onclick={loadDatabaseInfo} disabled={loading} class="btn btn-primary">
+	<PageHeader 
+		title="Database Status" 
+		icon="📊"
+		description="Development database information and table statistics"
+	>
+		<Button variant="primary" onclick={loadDatabaseInfo} disabled={loading}>
 			{#if loading}
 				<div class="spinner-small"></div> Loading...
 			{:else}
 				🔄 Refresh
 			{/if}
-		</button>
-	</div>
+		</Button>
+	</PageHeader>
 
 	{#if error}
 		<div class="error">
@@ -84,7 +85,7 @@
 		</div>
 	{:else if databaseInfo}
 		<div class="database-overview">
-			<div class="overview-card">
+			<Card>
 				<h3>📂 Database Overview</h3>
 				<div class="overview-stats">
 					<div class="stat">
@@ -102,14 +103,14 @@
 						</span>
 					</div>
 				</div>
-			</div>
+			</Card>
 		</div>
 
 		<div class="tables-section">
 			<h2>📋 Table Details</h2>
 			
 			{#each Object.entries(databaseInfo.tables) as [tableName, tableInfo]}
-				<div class="table-card">
+				<Card>
 					<div class="table-header">
 						<h3>🗂️ {tableName}</h3>
 						<div class="table-stats">
@@ -146,7 +147,7 @@
 							</div>
 						{/each}
 					</div>
-				</div>
+				</Card>
 			{/each}
 		</div>
 
@@ -187,26 +188,7 @@
 		padding: var(--spacing-xl);
 	}
 
-	.page-header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: var(--spacing-xl);
-		flex-wrap: wrap;
-		gap: var(--spacing-md);
-	}
-
-	.page-header h1 {
-		color: var(--color-gray-800);
-		margin: 0;
-		font-weight: var(--font-weight-bold);
-	}
-
-	.page-header p {
-		color: var(--color-gray-500);
-		margin: 0;
-		flex: 1;
-	}
+	/* Page header styling now handled by PageHeader component */
 
 	/* Refresh button now uses global .btn .btn-primary utility classes */
 
@@ -242,19 +224,7 @@
 		margin-bottom: var(--spacing-xl);
 	}
 
-	.overview-card {
-		background: var(--bg-card);
-		border-radius: var(--radius-lg);
-		padding: var(--spacing-lg);
-		box-shadow: var(--shadow-md);
-		border: 1px solid var(--border-light);
-	}
-
-	.overview-card h3 {
-		margin-top: 0;
-		color: var(--color-gray-800);
-		font-weight: var(--font-weight-semibold);
-	}
+	/* Overview card styling now handled by Card component */
 
 	.overview-stats {
 		display: grid;
@@ -305,14 +275,7 @@
 		font-weight: var(--font-weight-bold);
 	}
 
-	.table-card {
-		background: var(--bg-card);
-		border-radius: var(--radius-lg);
-		padding: var(--spacing-lg);
-		margin-bottom: var(--spacing-lg);
-		box-shadow: var(--shadow-md);
-		border: 1px solid var(--border-light);
-	}
+	/* Table card styling now handled by Card component */
 
 	.table-header {
 		display: flex;

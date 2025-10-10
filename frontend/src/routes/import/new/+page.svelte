@@ -2,6 +2,8 @@
 	import { onMount } from 'svelte';
 	import { currentView } from '$lib/stores/app';
 	import { selectDirectory, isFileSystemAccessSupported, scanDirectoryForImages } from '$lib/services/file-system-access.service.js';
+	import { SelectWithHistory } from '$lib/components/ui';
+	import { HISTORY_KEYS } from '$lib/services/input-history.service';
 
 	currentView.set('imports');
 
@@ -92,7 +94,7 @@
 			progressInfo = 'Skanner for bildefiler...';
 			const imageFiles = await scanDirectoryForImages(importDirectoryHandle!, {
 				supportedFormats: ['.jpg', '.jpeg', '.png', '.tiff', '.tif', '.dng', '.arw', '.cr2', '.nef', '.orf', '.rw2'],
-				recursive: true,
+				recursive: false,  // Kun skann valgt katalog, ikke undermapper
 				progressCallback: (progress: any) => {
 					progressInfo = `Skanner: ${progress.scanned} filer funnet...`;
 				}
@@ -114,7 +116,7 @@
 				body: JSON.stringify({
 					source_path: '/tmp',  // Dummy-sti for frontend-drevet import
 					source_description: `Frontend import from ${importDirectoryHandle.name}: ${imageFiles.length} files`,
-					default_author_id: selectedAuthorId || null
+					default_author_id: selectedAuthorId ? parseInt(selectedAuthorId) : null
 				})
 			});
 
@@ -193,32 +195,187 @@
 			// Steg 6: Send filmetadata til backend for databaselagring
 			progressInfo = 'Sender metadata til backend...';
 			
-			// Prosesser filene for å lage metadata
-			const photoGroups: any[] = [];
+			// Definer RAW-filformater
+			const RAW_EXTENSIONS = ['.dng', '.arw', '.cr2', '.nef', '.orf', '.rw2', '.raw'];
+			const JPEG_EXTENSIONS = ['.jpg', '.jpeg'];
+			
+			// Grupper filer basert på basename (uten extension)
+			const filesByBasename = new Map<string, any[]>();
+			
 			for (const imageFile of imageFiles as any[]) {
+				// Ekstraher basename uten extension
+				const nameLower = imageFile.name.toLowerCase();
+				const lastDot = imageFile.name.lastIndexOf('.');
+				const basename = lastDot > 0 ? imageFile.name.substring(0, lastDot) : imageFile.name;
+				
+				if (!filesByBasename.has(basename)) {
+					filesByBasename.set(basename, []);
+				}
+				filesByBasename.get(basename)!.push(imageFile);
+			}
+			
+			// Prosesser hver gruppe av filer med samme basename
+			const photoGroups: any[] = [];
+			
+			for (const [basename, files] of filesByBasename.entries()) {
 				try {
-					const file = await imageFile.handle.getFile();
-					
-					// Generer hothash basert på filnavn og størrelse  
-					const hothash = btoa(`${imageFile.name}_${file.size}_${file.lastModified}`).substring(0, 32);
-					
-					// Opprett PhotoGroup med grunnleggende metadata
-					photoGroups.push({
-						hothash: hothash,
-						width: null, // Kan ekstraheres fra EXIF senere
-						height: null,
-						taken_at: new Date(file.lastModified).toISOString(),
-						title: imageFile.name,
-						import_session_id: sessionId,
-						images: [{
-							filename: imageFile.name,
+					// Hvis det bare er én fil, behandle den som et eget Photo
+					if (files.length === 1) {
+						const imageFile = files[0];
+						const file = await imageFile.handle.getFile();
+						const hothash = btoa(`${imageFile.name}_${file.size}_${file.lastModified}`).substring(0, 32);
+						
+						// Prøv å få dimensjoner hvis det er JPEG
+						let width = null;
+						let height = null;
+						let takenAt = new Date(file.lastModified).toISOString();
+						
+						const ext = imageFile.name.substring(imageFile.name.lastIndexOf('.')).toLowerCase();
+						if (JPEG_EXTENSIONS.includes(ext)) {
+							try {
+								const imageUrl = URL.createObjectURL(file);
+								const img = new Image();
+								await new Promise((resolve, reject) => {
+									img.onload = resolve;
+									img.onerror = reject;
+									img.src = imageUrl;
+								});
+								width = img.width;
+								height = img.height;
+								URL.revokeObjectURL(imageUrl);
+							} catch (imgError) {
+								console.log(`Could not extract image dimensions for ${imageFile.name}: ${imgError}`);
+							}
+						}
+						
+						photoGroups.push({
 							hothash: hothash,
-							file_size: file.size,
-							import_session_id: sessionId
-						}]
+							width: width,
+							height: height,
+							taken_at: takenAt,
+							title: imageFile.name,
+							import_session_id: sessionId,
+							images: [{
+								filename: imageFile.name,
+								hothash: hothash,
+								file_size: file.size,
+								import_session_id: sessionId
+							}]
+						});
+						continue; // Neste basename
+					}
+					
+					// Hvis flere filer, sjekk om det er et gyldig RAW+JPEG-par
+					const jpegFiles = files.filter(f => {
+						const ext = f.name.substring(f.name.lastIndexOf('.')).toLowerCase();
+						return JPEG_EXTENSIONS.includes(ext);
 					});
+					
+					const rawFiles = files.filter(f => {
+						const ext = f.name.substring(f.name.lastIndexOf('.')).toLowerCase();
+						return RAW_EXTENSIONS.includes(ext);
+					});
+					
+					// Kun grupper hvis det er nøyaktig 1 JPEG + 1 RAW
+					if (jpegFiles.length === 1 && rawFiles.length === 1) {
+						// Dette er et gyldig RAW+JPEG-par
+						const sortedFiles = [jpegFiles[0], rawFiles[0]]; // JPEG først
+						const primaryFile = sortedFiles[0];
+						const primaryFileHandle = await primaryFile.handle.getFile();
+						
+						// Generer hothash basert på primærfilens metadata
+						const hothash = btoa(`${primaryFile.name}_${primaryFileHandle.size}_${primaryFileHandle.lastModified}`).substring(0, 32);
+						
+						// Ekstraher dimensjoner fra JPEG
+						let width = null;
+						let height = null;
+						let takenAt = new Date(primaryFileHandle.lastModified).toISOString();
+						
+						try {
+							const imageUrl = URL.createObjectURL(primaryFileHandle);
+							const img = new Image();
+							await new Promise((resolve, reject) => {
+								img.onload = resolve;
+								img.onerror = reject;
+								img.src = imageUrl;
+							});
+							width = img.width;
+							height = img.height;
+							URL.revokeObjectURL(imageUrl);
+						} catch (imgError) {
+							console.log(`Could not extract image dimensions for ${primaryFile.name}: ${imgError}`);
+						}
+						
+						// Opprett images array med alle filer i gruppen
+						const images: any[] = [];
+						for (const imageFile of sortedFiles) {
+							const file = await imageFile.handle.getFile();
+							images.push({
+								filename: imageFile.name,
+								hothash: hothash,
+								file_size: file.size,
+								import_session_id: sessionId
+							});
+						}
+						
+						// Opprett ETT PhotoGroup for RAW+JPEG-paret
+						photoGroups.push({
+							hothash: hothash,
+							width: width,
+							height: height,
+							taken_at: takenAt,
+							title: primaryFile.name,
+							import_session_id: sessionId,
+							images: images
+						});
+					} else {
+						// Hvis ikke et gyldig par, behandle hver fil separat
+						for (const imageFile of files) {
+							const file = await imageFile.handle.getFile();
+							const hothash = btoa(`${imageFile.name}_${file.size}_${file.lastModified}`).substring(0, 32);
+							
+							// Prøv å få dimensjoner hvis det er JPEG
+							let width = null;
+							let height = null;
+							let takenAt = new Date(file.lastModified).toISOString();
+							
+							const ext = imageFile.name.substring(imageFile.name.lastIndexOf('.')).toLowerCase();
+							if (JPEG_EXTENSIONS.includes(ext)) {
+								try {
+									const imageUrl = URL.createObjectURL(file);
+									const img = new Image();
+									await new Promise((resolve, reject) => {
+										img.onload = resolve;
+										img.onerror = reject;
+										img.src = imageUrl;
+									});
+									width = img.width;
+									height = img.height;
+									URL.revokeObjectURL(imageUrl);
+								} catch (imgError) {
+									console.log(`Could not extract image dimensions for ${imageFile.name}: ${imgError}`);
+								}
+							}
+							
+							photoGroups.push({
+								hothash: hothash,
+								width: width,
+								height: height,
+								taken_at: takenAt,
+								title: imageFile.name,
+								import_session_id: sessionId,
+								images: [{
+									filename: imageFile.name,
+									hothash: hothash,
+									file_size: file.size,
+									import_session_id: sessionId
+								}]
+							});
+						}
+					}
+					
 				} catch (metaError: any) {
-					console.error(`Feil ved metadata-generering for ${imageFile.name}:`, metaError);  
+					console.error(`Feil ved metadata-generering for ${basename}:`, metaError);  
 				}
 			}
 
@@ -323,13 +480,15 @@
 		</div>
 
 		<div class="form-section">
-			<h3>👤 Author (Optional)</h3>
-			<select bind:value={selectedAuthorId} disabled={importing} class="author-select">
-				<option value="">No author</option>
-				{#each authors as author}
-					<option value="{author.id}">{author.name}</option>
-				{/each}
-			</select>
+			<SelectWithHistory
+				label="👤 Author (Optional)"
+				bind:value={selectedAuthorId}
+				options={authors.map(author => ({ value: author.id, label: author.name }))}
+				placeholder="Velg forfatter..."
+				disabled={importing}
+				historyConfig={{ key: HISTORY_KEYS.AUTHOR_NAMES, maxItems: 10 }}
+				help="Velg en forfatter for alle importerte bilder"
+			/>
 		</div>
 
 		<div class="action-buttons">
@@ -444,20 +603,7 @@
 
 
 
-	.author-select {
-		width: 100%;
-		padding: var(--spacing-sm);
-		border: 1px solid var(--border-medium);
-		border-radius: var(--radius-lg);
-		font-size: var(--font-size-sm);
-		background: var(--bg-card);
-		transition: border-color var(--transition-normal);
-	}
 
-	.author-select:disabled {
-		background: var(--color-gray-100);
-		cursor: not-allowed;
-	}
 
 	.help-text {
 		margin-top: var(--spacing-sm);

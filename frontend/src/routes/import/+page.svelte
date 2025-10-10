@@ -1,11 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { currentView } from '$lib/stores/app';
+	import { Button, Card, PageHeader } from '$lib/components/ui';
 
 	currentView.set('imports');
 
-	let error = '';
-	let importSessions: any[] = [];
+	let error = $state('');
+	let importSessions = $state<any[]>([]);
 
 	// Hent importsessjoner ved lasting
 	onMount(async () => {
@@ -15,8 +16,13 @@
 	async function fetchImportSessions() {
 		try {
 			const response = await fetch('/api/import-sessions');
-			importSessions = await response.json();
+			if (!response.ok) {
+				throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+			}
+			const data = await response.json();
+			importSessions = data.imports || [];
 		} catch (e) {
+			console.error('Error fetching import sessions:', e);
 			error = 'Kunne ikke hente importsessjoner';
 		}
 	}
@@ -51,13 +57,14 @@
 </svelte:head>
 
 <div class="import-container">
-	<div class="header">
-		<div class="header-content">
-			<h1>📥 Import Oversikt</h1>
-			<p>Oversikt over alle importsessjoner</p>
-		</div>
-		<a href="/import/new" class="btn-primary">➕ Ny import</a>
-	</div>
+	<PageHeader 
+		title="📥 Import Oversikt" 
+		description="Oversikt over alle importsessjoner"
+	>
+		<Button variant="primary" onclick={() => window.location.href = '/import/new'}>
+			➕ Ny import
+		</Button>
+	</PageHeader>
 
 	{#if error}
 		<div class="error-message">
@@ -66,7 +73,7 @@
 	{/if}
 
 	<!-- Import sessions oversikt -->
-	<div class="sessions-section">
+	<Card>
 		<h3>� Alle importsessjoner</h3>
 		{#if importSessions.length === 0}
 			<div class="empty-state">
@@ -87,17 +94,17 @@
 					<div class="table-row">
 						<div class="col col-id">{session.id}</div>
 						<div class="col col-author">{session.author?.name || 'Ikke satt'}</div>
-						<div class="col col-source" title={session.source_directory}>
-							{session.source_directory.length > 30
-								? '...' + session.source_directory.slice(-30)
-								: session.source_directory}
+						<div class="col col-source" title={session.source_path}>
+							{session.source_path?.length > 30
+								? '...' + session.source_path.slice(-30)
+								: session.source_path}
 						</div>
 						<div class="col col-status">
 							<span class="status-badge {getStatusClass(session.status)}">
 								{getStatusText(session.status)}
 							</span>
 						</div>
-						<div class="col col-date">{formatDate(session.created_at)}</div>
+						<div class="col col-date">{formatDate(session.started_at)}</div>
 						<div class="col col-storage">
 							{session.storage_name || 'Ikke satt'}
 						</div>
@@ -105,7 +112,7 @@
 				{/each}
 			</div>
 		{/if}
-	</div>
+	</Card>
 </div>
 
 <style>
@@ -115,31 +122,7 @@
 		padding: var(--spacing-xl);
 	}
 
-	.header {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-bottom: var(--spacing-xl);
-		flex-wrap: wrap;
-		gap: var(--spacing-md);
-	}
 
-	.header-content {
-		flex: 1;
-	}
-
-	.header h1 {
-		color: var(--color-gray-800);
-		margin-bottom: var(--spacing-sm);
-		font-weight: var(--font-weight-bold);
-		margin: 0;
-	}
-
-	.header p {
-		color: var(--color-gray-500);
-		font-size: var(--font-size-lg);
-		margin: var(--spacing-xs) 0 0 0;
-	}
 
 	.error-message {
 		background: var(--bg-error);
@@ -161,24 +144,7 @@
 
 
 
-	.btn-primary {
-		background: var(--color-primary);
-		color: white;
-		border: none;
-		padding: var(--spacing-md) var(--spacing-lg);
-		border-radius: var(--radius-lg);
-		font-size: var(--font-size-base);
-		font-weight: var(--font-weight-semibold);
-		cursor: pointer;
-		text-decoration: none;
-		display: inline-block;
-		transition: all var(--transition-normal);
-	}
 
-	.btn-primary:hover {
-		background: var(--color-primary-hover);
-		transform: translateY(-1px);
-	}
 
 	.link-primary {
 		color: var(--color-primary);
@@ -191,14 +157,7 @@
 		text-decoration: underline;
 	}
 
-	.sessions-section {
-		background: var(--color-gray-50);
-		border: 1px solid var(--border-light);
-		border-radius: var(--radius-xl);
-		padding: var(--spacing-xl);
-	}
-
-	.sessions-section h3 {
+	h3 {
 		margin: 0 0 var(--spacing-lg) 0;
 		color: var(--color-gray-700);
 		font-weight: var(--font-weight-semibold);

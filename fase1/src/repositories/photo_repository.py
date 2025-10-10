@@ -113,7 +113,8 @@ class PhotoRepository:
         )
         
         self.db.add(photo)
-        self.db.flush()  # Get the hash assigned
+        self.db.commit()
+        self.db.refresh(photo)
         return photo
     
     def update(self, hothash: str, photo_data: PhotoUpdateRequest) -> Optional[Photo]:

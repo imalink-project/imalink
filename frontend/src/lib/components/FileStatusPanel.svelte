@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { Button, Input } from '$lib/components/ui';
+	
 	export let importSessionId: number;
 	export let storageRoot: string = '';
 
@@ -36,7 +38,7 @@
 				storageStatus.error_message = `Failed to load storage status: ${response.status}`;
 			}
 		} catch (error) {
-			storageStatus.error_message = `Error loading storage status: ${error.message}`;
+			storageStatus.error_message = `Error loading storage status: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		} finally {
 			isLoading = false;
 		}
@@ -69,7 +71,7 @@
 				storageStatus.error_message = `Failed to configure storage root: ${response.status}`;
 			}
 		} catch (error) {
-			storageStatus.error_message = `Error configuring storage root: ${error.message}`;
+			storageStatus.error_message = `Error configuring storage root: ${error instanceof Error ? error.message : 'Unknown error'}`;
 		} finally {
 			isLoading = false;
 		}
@@ -99,19 +101,17 @@
 	<div class="config-section">
 		<h4>Storage Root Configuration</h4>
 		<div class="config-row">
-			<input
-				type="text"
+			<Input
 				bind:value={newStorageRoot}
 				placeholder="Enter storage root path (e.g., X:, X:\my photo storage)"
-				class="storage-input"
 			/>
-			<button 
-				class="btn btn-primary" 
-				on:click={configureStorageRoot}
+			<Button 
+				variant="primary" 
+				onclick={configureStorageRoot}
 				disabled={isLoading || !newStorageRoot.trim()}
 			>
 				{isLoading ? 'Configuring...' : 'Set Root'}
-			</button>
+			</Button>
 		</div>
 		{#if storageRoot}
 			<div class="current-root">
@@ -167,13 +167,13 @@
 		</div>
 
 		<div class="action-buttons">
-			<button 
-				class="btn btn-outline" 
-				on:click={loadStorageStatus}
+			<Button 
+				variant="outline" 
+				onclick={loadStorageStatus}
 				disabled={isLoading}
 			>
 				Refresh Status
-			</button>
+			</Button>
 		</div>
 	{/if}
 </div>
@@ -213,21 +213,7 @@
 		align-items: center;
 	}
 
-	.storage-input {
-		flex: 1;
-		padding: var(--spacing-sm);
-		border: 1px solid var(--border-medium);
-		border-radius: var(--radius-md);
-		font-size: var(--font-size-sm);
-		font-family: monospace;
-		transition: border-color var(--transition-normal), box-shadow var(--transition-normal);
-	}
-
-	.storage-input:focus {
-		outline: none;
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 1px var(--color-primary);
-	}
+	/* Storage input styling now handled by Input component */
 
 	.current-root {
 		margin-top: var(--spacing-sm);
@@ -309,38 +295,5 @@
 		gap: var(--spacing-sm);
 	}
 
-	.btn {
-		padding: var(--spacing-sm) var(--spacing-md);
-		border-radius: var(--radius-md);
-		font-size: var(--font-size-sm);
-		font-weight: var(--font-weight-medium);
-		cursor: pointer;
-		transition: all var(--transition-normal);
-		border: 1px solid transparent;
-	}
-
-	.btn:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
-
-	.btn-primary {
-		background: var(--color-primary);
-		color: white;
-	}
-
-	.btn-primary:hover:not(:disabled) {
-		background: var(--color-primary-hover);
-	}
-
-	.btn-outline {
-		background: white;
-		color: var(--color-gray-700);
-		border-color: var(--border-medium);
-	}
-
-	.btn-outline:hover:not(:disabled) {
-		background: var(--color-gray-50);
-		border-color: var(--border-dark);
-	}
+	/* Button styling now handled by Button component */
 </style>

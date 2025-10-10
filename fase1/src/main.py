@@ -49,6 +49,10 @@ app.include_router(authors_router, prefix="/api/v1/authors", tags=["authors"])
 app.include_router(debug_router, prefix="/api/v1/debug", tags=["debug"])
 app.include_router(photos_router, prefix="/api/v1/photos", tags=["photos"])
 
+# Import and include timeline router
+from api.v1.timeline import router as timeline_router
+app.include_router(timeline_router, prefix="/api/v1/timeline", tags=["timeline"])
+
 # Import test router after other imports to avoid circular dependencies
 from api.v1.test import router as test_router
 app.include_router(test_router, prefix="/api", tags=["testing"])

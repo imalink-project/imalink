@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { currentView } from '$lib/stores/app';
+	import { Button, Card, PageHeader } from '$lib/components/ui';
 
 	currentView.set('clear-database');
 
@@ -45,10 +46,10 @@
 </script>
 
 <div class="clear-database-page">
-	<div class="page-header">
-		<h1>🗑️ Clear Database</h1>
-		<p class="warning">⚠️ Development tool - Use with extreme caution!</p>
-	</div>
+	<PageHeader 
+		title="🗑️ Clear Database" 
+		description="⚠️ Development tool - Use with extreme caution!"
+	/>
 
 	{#if error}
 		<div class="error">
@@ -83,17 +84,17 @@
 			<p>Only use during development when you need a clean database state.</p>
 		</div>
 
-		<button 
+		<Button 
 			onclick={clearDatabase}
 			disabled={clearing}
-			class="clear-btn"
+			variant="error"
 		>
 			{#if clearing}
 				<div class="spinner-small"></div> Clearing Database...
 			{:else}
 				🗑️ Clear All Database Data
 			{/if}
-		</button>
+		</Button>
 	</div>
 
 	<div class="navigation">

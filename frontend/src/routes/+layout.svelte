@@ -22,6 +22,7 @@
 			<a href="/import" class="nav-link" class:active={$currentView === 'imports'}>Import</a>
 			<a href="/authors" class="nav-link" class:active={$currentView === 'authors'}>Authors</a>
 			{#if import.meta.env.DEV}
+				<a href="/timeline-demo" class="nav-link dev-link" class:active={$currentView === 'timeline'}>📅 Timeline</a>
 				<a href="/database-status" class="nav-link dev-link" class:active={$currentView === 'database-status'}>📊 Status</a>
 				<a href="/clear-database" class="nav-link dev-link danger" class:active={$currentView === 'clear-database'}>🗑️ Clear</a>
 			{/if}
@@ -231,49 +232,7 @@
 		cursor: not-allowed;
 	}
 
-	:global(.btn-primary) {
-		background: var(--color-primary);
-		color: white;
-	}
-
-	:global(.btn-primary:hover:not(:disabled)) {
-		background: var(--color-primary-hover);
-		transform: translateY(-1px);
-	}
-
-	:global(.btn-success) {
-		background: var(--color-success);
-		color: white;
-	}
-
-	:global(.btn-success:hover:not(:disabled)) {
-		background: var(--color-success-hover);
-	}
-
-	:global(.btn-error) {
-		background: var(--color-error);
-		color: white;
-	}
-
-	:global(.btn-error:hover:not(:disabled)) {
-		background: var(--color-error-hover);
-	}
-
-	:global(.btn-outline) {
-		background: white;
-		color: var(--color-gray-700);
-		border-color: var(--border-medium);
-	}
-
-	:global(.btn-outline:hover:not(:disabled)) {
-		background: var(--color-gray-50);
-		border-color: var(--border-dark);
-	}
-
-	:global(.btn-sm) {
-		padding: var(--spacing-xs) var(--spacing-sm);
-		font-size: var(--font-size-xs);
-	}
+	/* Global button styles removed - using Button component instead */
 
 	:global(.btn-lg) {
 		padding: var(--spacing-md) var(--spacing-xl);

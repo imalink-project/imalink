@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { currentView } from '$lib/stores/app';
+	import { Button, Card, PageHeader, Input } from '$lib/components/ui';
 
 	currentView.set('authors');
 
@@ -98,51 +99,42 @@
 </script>
 
 <div class="authors-page">
-	<div class="page-header">
-		<h1>👤 Authors</h1>
-		<p>Manage photographers and content creators</p>
-		<div class="header-actions">
-			<button onclick={loadAuthors} class="refresh-btn">🔄 Refresh</button>
-			<button onclick={() => showAddForm = true} class="add-btn">➕ Add Author</button>
-		</div>
-	</div>
+	<PageHeader 
+		title="👤 Authors" 
+		description="Manage photographers and content creators"
+	>
+		<Button variant="outline" onclick={loadAuthors}>🔄 Refresh</Button>
+		<Button variant="primary" onclick={() => showAddForm = true}>➕ Add Author</Button>
+	</PageHeader>
 
 	{#if showAddForm}
-		<div class="add-form">
+		<Card>
 			<h3>Add New Author</h3>
-			<div class="form-group">
-				<label for="author-name">Name *</label>
-				<input 
-					id="author-name"
-					type="text" 
+			<div class="form-grid">
+				<Input 
+					label="Name *" 
 					bind:value={newAuthor.name}
 					placeholder="Author name"
 					required
 				/>
-			</div>
-			<div class="form-group">
-				<label for="author-email">Email</label>
-				<input 
-					id="author-email"
-					type="email" 
+				<Input 
+					label="Email" 
+					type="email"
 					bind:value={newAuthor.email}
 					placeholder="author@example.com"
 				/>
-			</div>
-			<div class="form-group">
-				<label for="author-website">Website</label>
-				<input 
-					id="author-website"
-					type="url" 
+				<Input 
+					label="Website" 
+					type="url"
 					bind:value={newAuthor.website}
 					placeholder="https://example.com"
 				/>
 			</div>
 			<div class="form-actions">
-				<button onclick={addAuthor} class="save-btn">💾 Save</button>
-				<button onclick={cancelAdd} class="cancel-btn">❌ Cancel</button>
+				<Button variant="success" onclick={addAuthor}>💾 Save</Button>
+				<Button variant="outline" onclick={cancelAdd}>❌ Cancel</Button>
 			</div>
-		</div>
+		</Card>
 	{/if}
 
 	{#if loading}

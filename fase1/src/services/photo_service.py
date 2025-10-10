@@ -208,10 +208,16 @@ class PhotoService:
             if existing_photo:
                 # Photo exists - handle partial duplicates by adding missing files
                 photo_group.hothash = consistent_hash  # Use consistent hash
+                # Also update hothash on all images to match
+                for img in photo_group.images:
+                    img.hothash = consistent_hash
                 return await self._handle_duplicate_photo(existing_photo, photo_group)
             
             # Photo doesn't exist - create new photo with all images
             photo_group.hothash = consistent_hash  # Use consistent hash
+            # Also update hothash on all images to match
+            for img in photo_group.images:
+                img.hothash = consistent_hash
             return await self._create_new_photo_group(photo_group, default_author_id)
             
         except Exception as e:
@@ -333,10 +339,13 @@ class PhotoService:
         # Extract metadata from first image's raw EXIF if available
         enhanced_photo_data = await self._extract_metadata_from_raw_exif_images(photo_group)
         
+        # Generate hotpreview from the first JPEG file in storage
+        hotpreview_data = await self._generate_hotpreview_from_storage(enhanced_photo_data)
+        
         # Create PhotoCreateRequest with enhanced metadata
         photo_data = PhotoCreateRequest(
             hothash=enhanced_photo_data.hothash,
-            hotpreview=enhanced_photo_data.hotpreview,
+            hotpreview=hotpreview_data,
             width=enhanced_photo_data.width,
             height=enhanced_photo_data.height,
             taken_at=enhanced_photo_data.taken_at,
@@ -364,8 +373,14 @@ class PhotoService:
                 image = image_repo.create(image_data)
                 images_created += 1
             except Exception as e:
-                print(f"Failed to create image {image_data.filename}: {str(e)}")
                 images_failed += 1
+        
+        # Flush to ensure images are persisted before refresh
+        self.db.flush()
+        
+        # Refresh photo to load associated images with eager loading
+        from sqlalchemy.orm import selectinload
+        self.db.refresh(photo, ['files'])
         
         # Convert to response
         photo_response = self._convert_to_response(photo)
@@ -581,5 +596,76 @@ class PhotoService:
         
         # Return original photo group if no EXIF processing possible
         return photo_group
+
+    async def _generate_hotpreview_from_storage(self, photo_group: PhotoGroupRequest) -> Optional[str]:
+        """
+        Generate hotpreview (base64 JPEG thumbnail) from the first JPEG file in storage.
+        Returns base64-encoded JPEG data suitable for inline display.
+        """
+        import os
+        from pathlib import Path
+        from core.config import settings
+        from PIL import Image, ImageOps
+        from io import BytesIO
+        import base64
+        
+        # Find first JPEG file
+        jpeg_image = None
+        for image in photo_group.images:
+            ext = Path(image.filename).suffix.lower()
+            if ext in ['.jpg', '.jpeg']:
+                jpeg_image = image
+                break
+        
+        if not jpeg_image:
+            print(f"No JPEG file found for preview generation in {photo_group.hothash}")
+            return None
+        
+        # Get import session to find storage location
+        from repositories.import_session_repository import ImportSessionRepository
+        from core.config import Config
+        session_repo = ImportSessionRepository(self.db)
+        
+        if not photo_group.import_session_id:
+            print(f"No import session ID for {photo_group.hothash}")
+            return None
+            
+        import_session = session_repo.get_import_by_id(photo_group.import_session_id)
+        if not import_session or not import_session.storage_name:
+            print(f"No storage name found for import session {photo_group.import_session_id}")
+            return None
+        
+        # Build file path - storage_name is the directory name under STORAGE_ROOT
+        storage_path = Path(Config.STORAGE_ROOT) / import_session.storage_name / jpeg_image.filename
+        
+        if not storage_path.exists():
+            print(f"File not found for preview: {storage_path}")
+            return None
+        
+        try:
+            # Open image and apply EXIF rotation
+            with Image.open(storage_path) as img:
+                img = ImageOps.exif_transpose(img)
+                
+                # Create thumbnail (max 300x300, maintain aspect ratio)
+                img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+                
+                # Convert to RGB for consistent output
+                img = img.convert('RGB')
+                
+                # Convert to JPEG bytes
+                buffer = BytesIO()
+                img.save(buffer, format='JPEG', quality=85)
+                jpeg_bytes = buffer.getvalue()
+                
+                # Convert to base64 string (without data URL prefix)
+                base64_str = base64.b64encode(jpeg_bytes).decode('utf-8')
+                
+                print(f"Generated hotpreview for {jpeg_image.filename}: {len(base64_str)} chars")
+                return base64_str
+                
+        except Exception as e:
+            print(f"Failed to generate hotpreview for {jpeg_image.filename}: {e}")
+            return None
 
 

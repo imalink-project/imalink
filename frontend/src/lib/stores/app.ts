@@ -17,7 +17,7 @@ export const importSessionsLoading: Writable<boolean> = writable(false);
 export const importSessionsError: Writable<string | null> = writable(null);
 
 // UI state
-export const currentView: Writable<'photos' | 'imports' | 'authors'> = writable('photos');
+export const currentView: Writable<'photos' | 'imports' | 'authors' | 'database-status' | 'clear-database' | 'timeline'> = writable('photos');
 export const sidebarOpen: Writable<boolean> = writable(false);
 
 // Derived stores

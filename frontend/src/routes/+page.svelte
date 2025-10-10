@@ -1,10 +1,12 @@
 <script lang="ts">
 import { onMount } from 'svelte';
 import { currentView } from '$lib/stores/app';
+import { Button, PageHeader } from '$lib/components/ui';
+import PhotoGrid from '$lib/components/domain/PhotoGrid.svelte';
 
 currentView.set('photos');
 
-let photos = [];
+let photos: any[] = [];
 let loading = true;
 let error = '';
 
@@ -26,7 +28,7 @@ const data = await response.json();
 photos = data.data || [];
 } catch (err) {
 console.error('Failed to load photos:', err);
-error = err.message || 'Failed to load photos';
+error = err instanceof Error ? err.message : 'Failed to load photos';
 } finally {
 loading = false;
 }
@@ -34,13 +36,13 @@ loading = false;
 </script>
 
 <div class="photos-page">
-<div class="page-header">
-<h1>📸 Photos</h1>
-<p>Browse your photo collection</p>
-<button on:click={loadPhotos} class="btn btn-primary">🔄 Refresh</button>
-</div>
-
-{#if loading}
+	<PageHeader 
+		title="Photos" 
+		icon="📸"
+		description="Browse your photo collection"
+	>
+		<Button variant="primary" onclick={loadPhotos}>🔄 Refresh</Button>
+	</PageHeader>{#if loading}
 <div class="loading">
 <div class="spinner"></div>
 <p>Loading photos...</p>
@@ -48,7 +50,7 @@ loading = false;
 {:else if error}
 <div class="error">
 <p>❌ {error}</p>
-<button on:click={loadPhotos} class="btn btn-primary">Try Again</button>
+<Button variant="primary" onclick={loadPhotos}>Try Again</Button>
 </div>
 {:else if photos.length === 0}
 <div class="empty-state">
@@ -57,69 +59,12 @@ loading = false;
 <a href="/import" class="import-link">Go to Import</a>
 </div>
 {:else}
-<div class="photos-grid">
-{#each photos as photo}
-<div class="photo-card">
-{#if photo.hotpreview}
-<img 
-src="data:image/jpeg;base64,{photo.hotpreview}" 
-alt={photo.primary_filename || photo.hothash}
-class="photo-thumbnail"
+<PhotoGrid 
+	{photos}
+	layout="grid"
+	cardVariant="grid"
+	showActions={false}
 />
-{:else}
-<div class="photo-placeholder">
-📸
-</div>
-{/if}
-
-<div class="photo-info">
-<h4 class="photo-filename">{photo.primary_filename || photo.hothash}</h4>
-
-{#if photo.taken_at}
-<p class="photo-date">📅 {new Date(photo.taken_at).toLocaleDateString()} {new Date(photo.taken_at).toLocaleTimeString()}</p>
-{/if}
-
-{#if photo.title}
-<p class="photo-title">📝 {photo.title}</p>
-{/if}
-
-{#if photo.description}
-<p class="photo-description">📄 {photo.description}</p>
-{/if}
-
-{#if photo.author?.name}
-<p class="photo-author">👤 {photo.author.name}</p>
-{/if}
-
-{#if photo.width && photo.height}
-<p class="photo-dimensions">📐 {photo.width} × {photo.height}px</p>
-{/if}
-
-{#if photo.rating > 0}
-<p class="photo-rating">⭐ {'★'.repeat(photo.rating)}{'☆'.repeat(5 - photo.rating)}</p>
-{/if}
-
-{#if photo.has_gps}
-<p class="photo-gps">📍 GPS: {photo.gps_latitude?.toFixed(4)}, {photo.gps_longitude?.toFixed(4)}</p>
-{/if}
-
-{#if photo.has_raw_companion}
-<p class="photo-raw">📸 RAW + JPEG</p>
-{/if}
-
-{#if photo.files && photo.files.length > 0}
-<p class="photo-files">📁 {photo.files.length} file{photo.files.length > 1 ? 's' : ''}</p>
-{/if}
-
-{#if photo.tags && photo.tags.length > 0}
-<p class="photo-tags">🏷️ {photo.tags.join(', ')}</p>
-{/if}
-
-<p class="photo-imported">⏰ Imported {new Date(photo.created_at).toLocaleDateString()}</p>
-</div>
-</div>
-{/each}
-</div>
 {/if}
 </div>
 
@@ -130,23 +75,7 @@ max-width: 1200px;
 margin: 0 auto;
 }
 
-.page-header {
-text-align: center;
-margin-bottom: var(--spacing-xl);
-}
-
-.page-header h1 {
-font-size: var(--font-size-3xl);
-margin: 0 0 var(--spacing-sm) 0;
-color: var(--color-gray-800);
-font-weight: var(--font-weight-bold);
-}
-
-.page-header p {
-font-size: var(--font-size-lg);
-color: var(--color-gray-500);
-margin: 0 0 var(--spacing-md) 0;
-}
+/* Page header styling now handled by PageHeader component */
 
 /* Buttons now use global utility classes */
 
@@ -207,83 +136,5 @@ transition: background-color var(--transition-normal);
 background: var(--color-success-hover);
 }
 
-.photos-grid {
-display: grid;
-grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-gap: var(--spacing-lg);
-margin-top: var(--spacing-xl);
-}
-
-.photo-card {
-background: var(--bg-card);
-border-radius: var(--radius-lg);
-overflow: hidden;
-box-shadow: var(--shadow-md);
-transition: transform var(--transition-normal), box-shadow var(--transition-normal);
-}
-
-.photo-card:hover {
-transform: translateY(-2px);
-box-shadow: var(--shadow-xl);
-}
-
-.photo-thumbnail {
-width: 100%;
-height: 200px;
-object-fit: cover;
-}
-
-.photo-placeholder {
-width: 100%;
-height: 200px;
-display: flex;
-align-items: center;
-justify-content: center;
-background: var(--color-gray-100);
-font-size: var(--font-size-3xl);
-color: var(--color-gray-400);
-}
-
-.photo-info {
-padding: var(--spacing-md);
-}
-
-.photo-filename {
-margin: 0 0 var(--spacing-sm) 0;
-font-size: var(--font-size-base);
-font-weight: var(--font-weight-semibold);
-color: var(--color-gray-800);
-word-break: break-word;
-}
-
-.photo-date, .photo-title, .photo-description, .photo-author, .photo-dimensions, 
-.photo-rating, .photo-gps, .photo-raw, .photo-files, .photo-tags, .photo-imported {
-margin: var(--spacing-xs) 0;
-font-size: var(--font-size-sm);
-color: var(--color-gray-500);
-line-height: var(--line-height-normal);
-}
-
-.photo-rating {
-color: var(--color-warning);
-font-weight: var(--font-weight-medium);
-}
-
-.photo-gps {
-color: var(--color-success-hover);
-font-family: monospace;
-}
-
-.photo-raw {
-color: var(--color-purple);
-font-weight: var(--font-weight-medium);
-}
-
-.photo-imported {
-color: var(--color-gray-400);
-font-size: var(--font-size-xs);
-margin-top: var(--spacing-sm);
-padding-top: var(--spacing-sm);
-border-top: 1px solid var(--border-light);
-}
+/* Photo grid and card styling now handled by PhotoGrid and PhotoCard components */
 </style>

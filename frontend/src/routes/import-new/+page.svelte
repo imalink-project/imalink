@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { currentView } from '$lib/stores/app';
+	import { Button, Card, PageHeader } from '$lib/components/ui';
 	import FileStatusPanel from '$lib/components/FileStatusPanel.svelte';
 
 	currentView.set('import');
@@ -164,11 +165,12 @@
 </script>
 
 <div class="import-page">
-	<div class="page-header">
-		<h1>📥 Import Images</h1>
-		<p>Import images from a directory into the storage system</p>
-		<button on:click={reset} class="reset-btn">🔄 Reset</button>
-	</div>
+	<PageHeader 
+		title="📥 Import Images" 
+		description="Import images from a directory into the storage system"
+	>
+		<Button variant="outline" onclick={reset}>🔄 Reset</Button>
+	</PageHeader>
 
 	{#if error}
 		<div class="error">
