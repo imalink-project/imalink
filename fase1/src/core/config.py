@@ -51,13 +51,6 @@ class Config:
         
         for directory in directories:
             Path(directory).mkdir(parents=True, exist_ok=True)
-    
-    @classmethod
-    def get_pool_config(cls) -> dict:
-        """Get image pool specific configuration"""
-        return {
-            "quality": 85  # Default quality - can be made configurable per service if needed
-        }
 
 # Global config instance
 config = Config()

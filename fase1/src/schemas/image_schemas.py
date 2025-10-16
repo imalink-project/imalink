@@ -142,15 +142,3 @@ class ImageHotpreviewResponse(BaseModel):
     
     class Config:
         arbitrary_types_allowed = True
-
-
-class ImagePoolResponse(BaseModel):
-    """Response model for image pool requests"""
-    image_id: int = Field(..., description="Image ID")
-    pool_size: str = Field(..., description="Pool size (small/medium/large)")
-    file_path: str = Field(..., description="Path to pooled image file")
-    width: int = Field(..., description="Pool image width")
-    height: int = Field(..., description="Pool image height")
-    
-    class Config:
-        from_attributes = True

@@ -71,19 +71,9 @@ class ImageProcessor:
             print(f"Error generating thumbnail for {file_path}: {e}")
             return None
     
-    async def get_pool_image(self, file_path: str, pool_size: str, rotation: int) -> Optional[str]:
-        """Get or create pooled image"""
-        # TODO: Implement pool image generation
-        return file_path
-    
     async def cleanup_image_files(self, file_path: str, image_id: int) -> None:
         """Clean up image files"""
         # TODO: Implement file cleanup
-        pass
-    
-    async def invalidate_pool_cache(self, image_id: int) -> None:
-        """Invalidate pool cache"""
-        # TODO: Implement cache invalidation
         pass
 
 
@@ -238,21 +228,6 @@ class ImageService:
     # NOTE: search_images removed - use get_images (list_images) with search_params instead
     # The standard list method already supports filtering and searching
     
-    async def get_image_pool(self, image_id: int, pool_size: str) -> Optional[str]:
-        """Get pooled image path for specific size"""
-        image = self.image_repo.get_by_id(image_id)
-        if not image:
-            raise NotFoundError("Image", image_id)
-        
-        # NOTE: user_rotation now in Photo model, not Image
-        # For pool image generation, we don't apply rotation (it's applied in Photo display)
-        # Business Logic: Generate pool image if needed
-        return await self.image_processor.get_pool_image(
-            getattr(image, 'file_path', ''), 
-            pool_size, 
-            0  # No rotation at Image level
-        )
-    
     # NOTE: get_recent_images removed - use list_images with sort_by=created_at instead
     # NOTE: get_images_by_author removed - author is a Photo-level concern, not Image-level
     
@@ -311,10 +286,6 @@ class ImageService:
         # Note: We no longer have full file path, so disable file cleanup for now
         # await self.image_processor.cleanup_image_files(image.filename, image.id)
         pass
-    
-    async def _invalidate_pool_cache(self, image_id: int) -> None:
-        """Invalidate cached pool images for image"""
-        await self.image_processor.invalidate_pool_cache(image_id)
     
     async def _generate_hothash_from_hotpreview(self, hotpreview: bytes) -> str:
         """

@@ -40,8 +40,7 @@ async def test_service_integration():
         service_methods = [
             'get_images', 'get_image_by_id', 'create_image', 
             'update_image', 'delete_image',
-            'get_image_thumbnail',
-            'get_image_pool'
+            'get_image_thumbnail'
         ]
         
         for method in service_methods:

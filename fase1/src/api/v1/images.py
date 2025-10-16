@@ -81,48 +81,6 @@ async def get_hotpreview(
         raise HTTPException(status_code=500, detail=f"Failed to retrieve hot preview: {str(e)}")
 
 
-@router.get("/{image_id}/pool/{size}")
-async def get_pool_image(
-    image_id: int,
-    size: str,
-    image_service: ImageService = Depends(get_image_service)
-):
-    """
-    Get optimized image version from pool
-    
-    Available sizes:
-    - small: 400x400 max (for gallery grid view)
-    - medium: 800x800 max (for standard viewing)  
-    - large: 1200x1200 max (for detailed viewing)
-    """
-    try:
-        # Validate size parameter
-        valid_sizes = ["small", "medium", "large"]
-        if size not in valid_sizes:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Invalid size '{size}'. Must be one of: {', '.join(valid_sizes)}"
-            )
-        
-        pool_image_path = await image_service.get_image_pool(image_id, size)
-        
-        if not pool_image_path:
-            raise HTTPException(status_code=404, detail="Pool image not found")
-        
-        return FileResponse(
-            path=pool_image_path,
-            media_type="image/jpeg",
-            headers={
-                "Cache-Control": "public, max-age=86400",  # Cache for 24 hours
-                "Content-Type": "image/jpeg"
-            }
-        )
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve pool image: {str(e)}")
-
-
 # NOTE: /search endpoint removed - use GET /images with query parameters instead
 # The standard list endpoint supports filtering and sorting
 
