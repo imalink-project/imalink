@@ -1,5 +1,5 @@
 """
-Image model for storing individual file metadata
+ImageFile model for storing individual file metadata
 """
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
@@ -14,16 +14,16 @@ if TYPE_CHECKING:
     from .photo import Photo
 
 
-class Image(Base, TimestampMixin):
+class ImageFile(Base, TimestampMixin):
     """
     File-level image model - represents a single physical image file
     
-    ARCHITECTURE: Image is the PRIMARY entry point
-    Images are created via POST /images, and automatically create/link to Photos:
-    - Image.hotpreview is REQUIRED (hotpreview binary data)
+    ARCHITECTURE: ImageFile is the PRIMARY entry point
+    ImageFiles are created via POST /image-files, and automatically create/link to Photos:
+    - ImageFile.hotpreview is REQUIRED (hotpreview binary data)
     - Photo.hothash is generated from hotpreview via SHA256
-    - First Image with new hotpreview → Creates new Photo (becomes master)
-    - Subsequent Images with same hotpreview → Link to existing Photo
+    - First ImageFile with new hotpreview → Creates new Photo (becomes master)
+    - Subsequent ImageFiles with same hotpreview → Link to existing Photo
     - JPEG/RAW pairs naturally share same Photo (same visual content)
     
     Key design principles:
@@ -33,7 +33,7 @@ class Image(Base, TimestampMixin):
     - Immutable after creation (no UPDATE operations)
     - Delete only via Photo cascade (no individual DELETE)
     """
-    __tablename__ = "images"
+    __tablename__ = "image_files"
     
     id = Column(Integer, primary_key=True, index=True)
     
@@ -52,8 +52,8 @@ class Image(Base, TimestampMixin):
     import_session_id = Column(Integer, ForeignKey('import_sessions.id'), nullable=True, index=True)
     
     # Relationships
-    photo = relationship("Photo", back_populates="files", foreign_keys=[photo_hothash])
-    import_session = relationship("ImportSession", back_populates="images")
+    photo = relationship("Photo", back_populates="image_files", foreign_keys=[photo_hothash])
+    import_session = relationship("ImportSession", back_populates="image_files")
     
     def __repr__(self):
-        return f"<Image(id={self.id}, filename={self.filename})>"
+        return f"<ImageFile(id={self.id}, filename={self.filename})>"

@@ -9,16 +9,16 @@ from fastapi import Depends
 from database.connection import get_db
 
 # Service imports
-from services.image_service import ImageService
+from services.image_file_service import ImageFileService
 from services.author_service import AuthorService
 from services.import_session_service import ImportSessionService
 from services.photo_service import PhotoService
 
 
-# Image Service Dependencies
-def get_image_service(db: Session = Depends(get_db)) -> ImageService:
-    """Get ImageService instance with database dependency"""
-    return ImageService(db)
+# ImageFile Service Dependencies
+def get_image_file_service(db: Session = Depends(get_db)) -> ImageFileService:
+    """Get ImageFileService instance with database dependency"""
+    return ImageFileService(db)
 
 
 # Note: Selections functionality was considered but not implemented

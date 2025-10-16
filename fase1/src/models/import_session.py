@@ -43,12 +43,12 @@ class ImportSession(Base, TimestampMixin):
     
     # Relationships
     default_author = relationship("Author", back_populates="imports")
-    images = relationship("Image", back_populates="import_session", cascade="all, delete-orphan")
+    image_files = relationship("ImageFile", back_populates="import_session", cascade="all, delete-orphan")
     
     @property
     def images_count(self) -> int:
-        """Count of images in this import session"""
-        return len(self.images) if self.images else 0
+        """Count of image files in this import session"""
+        return len(self.image_files) if self.image_files else 0
     
     def __repr__(self):
         title_info = f"'{self.title}'" if getattr(self, 'title', None) else "Untitled"

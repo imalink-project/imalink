@@ -24,7 +24,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 
 from models.base import Base
 from models.photo import Photo
-from models.image import Image
+from models.image_file import ImageFile
 from models.import_session import ImportSession
 # from services.import_sessions_background_service import ImportSessionsBackgroundService  # DELETED - old architecture
 from repositories.import_session_repository import ImportSessionRepository
@@ -107,20 +107,20 @@ class TestFullImportWorkflow:
         print(f"📷 Created {len(photos)} Photo records")
         
         # 5. Verify Images were created
-        images = in_memory_db.query(Image).all()
-        assert len(images) > 0, "Should have created Image records"
+        images = in_memory_db.query(ImageFile).all()
+        assert len(images) > 0, "Should have created ImageFile records"
         assert len(images) >= len(photos), "Should have at least as many Images as Photos"
         
-        print(f"🖼️ Created {len(images)} Image records")
+        print(f"🖼️ Created {len(images)} ImageFile records")
         
         # 6. Verify relationships are correct
         for photo in photos:
             assert len(photo.files) > 0, f"Photo {photo.hothash[:8]} should have associated files"
             for image in photo.files:
-                assert image.hothash == photo.hothash, "Image and Photo should have same hothash"
-                assert image.import_session_id == import_session.id, "Image should reference import session"
+                assert image.hothash == photo.hothash, "ImageFile and Photo should have same hothash"
+                assert image.import_session_id == import_session.id, "ImageFile should reference import session"
         
-        print("✅ All Photo-Image relationships verified")
+        print("✅ All Photo-ImageFile relationships verified")
         
         # 7. Check specific file types were processed
         jpeg_images = [img for img in images if img.filename.lower().endswith('.jpg')]
@@ -188,14 +188,14 @@ class TestFullImportWorkflow:
         
         # 5. Verify database didn't get duplicate Photos
         final_photos = in_memory_db.query(Photo).all()
-        final_images = in_memory_db.query(Image).all()
+        final_images = in_memory_db.query(ImageFile).all()
         
         print(f"📊 After second import: {len(final_photos)} photos, {len(final_images)} images")
         
         # Photo count should be the same (no duplicates created)
         assert len(final_photos) == original_photos, "Should not create duplicate Photos"
         
-        # Image count might be higher if we track per-import, but let's check the logic
+        # ImageFile count might be higher if we track per-import, but let's check the logic
         print(f"✅ Duplicate detection working: {updated_session2.duplicates_skipped} duplicates skipped")
     
     def test_import_with_mixed_file_types(self, temp_import_dir, in_memory_db):

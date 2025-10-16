@@ -1,5 +1,5 @@
 """
-Image-related Pydantic schemas for API requests and responses
+ImageFile-related Pydantic schemas for API requests and responses
 Provides type-safe data models for image operations
 """
 from typing import Optional, List
@@ -17,14 +17,14 @@ class AuthorSummary(BaseModel):
         from_attributes = True
 
 
-class ImageResponse(BaseModel):
+class ImageFileResponse(BaseModel):
     """Complete image response model"""
     id: int
     photo_hothash: Optional[str] = Field(None, description="Photo hothash - links to Photo")
     filename: str = Field(..., description="Filename with extension (e.g. IMG_1234.jpg)")
     file_size: Optional[int] = Field(None, description="File size in bytes")
     
-    # NEW: hotpreview is now stored in Image
+    # NEW: hotpreview is now stored in ImageFile
     has_hotpreview: bool = Field(False, description="Whether hotpreview is available")
     
     # Computed fields (provided by service layer)
@@ -37,8 +37,8 @@ class ImageResponse(BaseModel):
     taken_at: Optional[datetime] = Field(None, description="When photo was taken (from EXIF)")
     
     # Dimensions
-    width: Optional[int] = Field(None, description="Image width in pixels")
-    height: Optional[int] = Field(None, description="Image height in pixels")
+    width: Optional[int] = Field(None, description="ImageFile width in pixels")
+    height: Optional[int] = Field(None, description="ImageFile height in pixels")
     
     # Location
     gps_latitude: Optional[float] = Field(None, description="GPS latitude")
@@ -47,10 +47,10 @@ class ImageResponse(BaseModel):
     
     # NOTE: User metadata moved to separate ImageMetadata table
     # title, description, tags, rating will be handled by ImageMetadataService
-    # These fields removed from Image model to support multiple files per motif (JPEG/RAW)
+    # These fields removed from ImageFile model to support multiple files per motif (JPEG/RAW)
     
-    # NOTE: user_rotation removed - rotation is a Photo-level concern, not Image-level
-    # NOTE: author removed - author is a Photo-level concern, not Image-level
+    # NOTE: user_rotation removed - rotation is a Photo-level concern, not ImageFile-level
+    # NOTE: author removed - author is a Photo-level concern, not ImageFile-level
     
     # Import info available via import_session_id relationship in service layer
     
@@ -75,11 +75,11 @@ class ImageResponse(BaseModel):
     # NOTE: tags validator removed since tags moved to ImageMetadata table
 
 
-class ImageCreateRequest(BaseModel):
+class ImageFileCreateRequest(BaseModel):
     """Request model for creating new images - file-specific data only"""
     filename: str = Field(..., min_length=1, max_length=255, description="Filename with extension")
     
-    # NEW ARCHITECTURE: hotpreview stored in Image, photo_hothash auto-generated
+    # NEW ARCHITECTURE: hotpreview stored in ImageFile, photo_hothash auto-generated
     # - hotpreview: Hotpreview binary data (required to generate photo_hothash)
     # - photo_hothash: Auto-calculated from hotpreview via SHA256 hash
     hotpreview: Optional[bytes] = Field(None, description="Hotpreview image binary data (required)")
@@ -96,17 +96,17 @@ class ImageCreateRequest(BaseModel):
     # NOTE: Visual metadata (taken_at, width, height, GPS, author_id) belongs to Photo model
 
 
-class ImageUpdateRequest(BaseModel):
+class ImageFileUpdateRequest(BaseModel):
     """Request model for updating existing images"""
     # NOTE: title, description, tags, rating moved to ImageMetadata table
     # NOTE: user_rotation removed - rotation is a Photo-level concern
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
 
 
-class ImageSearchRequest(BaseModel):
+class ImageFileSearchRequest(BaseModel):
     """Request model for image search"""
     q: Optional[str] = Field(None, description="Search query (filename)")
-    # NOTE: author_id removed - author is a Photo-level concern, not Image-level
+    # NOTE: author_id removed - author is a Photo-level concern, not ImageFile-level
     # NOTE: tags, rating search moved to ImageMetadata table
     taken_after: Optional[datetime] = Field(None, description="Taken after date")
     taken_before: Optional[datetime] = Field(None, description="Taken before date")
@@ -122,4 +122,4 @@ class ImageSearchRequest(BaseModel):
     sort_order: str = Field("desc", pattern="^(asc|desc)$", description="Sort order")
 
 
-# NOTE: ImageRotateRequest removed - rotation is a Photo-level concern, not Image-level
+# NOTE: ImageRotateRequest removed - rotation is a Photo-level concern, not ImageFile-level

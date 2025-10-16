@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, desc, asc, func, text, String
 from datetime import datetime
 
-from models import Photo, Author, Image
+from models import Photo, Author, ImageFile
 from schemas.photo_schemas import PhotoCreateRequest, PhotoUpdateRequest, PhotoSearchRequest
 
 
@@ -23,7 +23,7 @@ class PhotoRepository:
             self.db.query(Photo)
             .options(
                 joinedload(Photo.author),
-                joinedload(Photo.files)
+                joinedload(Photo.image_files)
             )
             .filter(Photo.hothash == hothash)
             .first()
@@ -47,7 +47,7 @@ class PhotoRepository:
         """Get photos with optional filtering and pagination"""
         query = self.db.query(Photo).options(
             joinedload(Photo.author),
-            joinedload(Photo.files)
+            joinedload(Photo.image_files)
         )
         
         # Apply filters
@@ -80,8 +80,8 @@ class PhotoRepository:
         # Convert tags list to JSON if provided
         tags_json = photo_data.tags if photo_data.tags else []
         
-        # NOTE: hotpreview removed - stored in Image model instead
-        # Access via photo.files[0].hotpreview (first Image = master)
+        # NOTE: hotpreview removed - stored in ImageFile model instead
+        # Access via photo.image_files[0].hotpreview (first ImageFile = master)
         
         photo = Photo(
             hothash=photo_data.hothash,
@@ -137,11 +137,11 @@ class PhotoRepository:
     def get_hotpreview(self, hothash: str) -> Optional[bytes]:
         """
         Get hotpreview data for photo
-        NOTE: hotpreview is now stored in Image model (first Image = master)
+        NOTE: hotpreview is now stored in ImageFile model (first ImageFile = master)
         """
         photo = self.db.query(Photo).filter(Photo.hothash == hothash).first()
-        if photo and photo.files and len(photo.files) > 0:
-            return photo.files[0].hotpreview
+        if photo and photo.image_files and len(photo.image_files) > 0:
+            return photo.image_files[0].hotpreview
         return None
     
     def _apply_filters(
@@ -212,18 +212,18 @@ class PhotoRepository:
         
         # Filter by RAW file availability
         if search_params.has_raw is not None:
-            # This requires joining with Image table to check file types
+            # This requires joining with ImageFile table to check file types
             if search_params.has_raw:
                 # Photo must have at least one RAW file
-                query = query.join(Photo.files).filter(
-                    Image.filename.op("~*")(r'\.(cr2|nef|arw|dng|orf|rw2|raw)$')
+                query = query.join(Photo.image_files).filter(
+                    ImageFile.filename.op("~*")(r'\.(cr2|nef|arw|dng|orf|rw2|raw)$')
                 ).distinct()
             else:
                 # Photo must not have any RAW files
                 raw_subquery = (
                     self.db.query(Photo.hothash)
-                    .join(Photo.files)
-                    .filter(Image.filename.op("~*")(r'\.(cr2|nef|arw|dng|orf|rw2|raw)$'))
+                    .join(Photo.image_files)
+                    .filter(ImageFile.filename.op("~*")(r'\.(cr2|nef|arw|dng|orf|rw2|raw)$'))
                 )
                 query = query.filter(~Photo.hothash.in_(raw_subquery))
         

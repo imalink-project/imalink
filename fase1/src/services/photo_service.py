@@ -9,14 +9,14 @@ import json
 import time
 
 from repositories.photo_repository import PhotoRepository
-from repositories.image_repository import ImageRepository
+from repositories.image_file_repository import ImageFileRepository
 from schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, PhotoSearchRequest,
     AuthorSummary, ImageFileSummary
 )
 from schemas.common import PaginatedResponse, create_paginated_response
 from core.exceptions import NotFoundError, DuplicatePhotoError, ValidationError
-from models import Photo, Image
+from models import Photo, ImageFile
 
 
 class PhotoService:
@@ -67,9 +67,9 @@ class PhotoService:
         
         return self._convert_to_response(photo)
     
-    # NOTE: Photo creation removed - Photos are now created automatically via Image service
-    # When an Image is created without hothash, a new Photo is auto-generated
-    # This architecture change makes Image the entry point for photo management
+    # NOTE: Photo creation removed - Photos are now created automatically via ImageFile service
+    # When an ImageFile is created without hothash, a new Photo is auto-generated
+    # This architecture change makes ImageFile the entry point for photo management
     
     def update_photo(self, hothash: str, photo_data: PhotoUpdateRequest) -> PhotoResponse:
         """Update existing photo"""
@@ -124,8 +124,8 @@ class PhotoService:
         
         # Convert associated image files
         files = []
-        if photo.files:
-            for image_file in photo.files:
+        if photo.image_files:
+            for image_file in photo.image_files:
                 file_format = self._get_file_format(image_file.filename)
                 files.append(ImageFileSummary(
                     id=image_file.id,

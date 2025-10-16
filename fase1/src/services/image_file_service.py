@@ -1,6 +1,6 @@
 """
-Image Service - Business Logic Layer for Image operations
-Orchestrates image operations and implements business rules
+ImageFile Service - Business Logic Layer for ImageFile operations
+Orchestrates image_file operations and implements business rules
 """
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
@@ -9,24 +9,24 @@ import json
 import hashlib
 import base64
 
-from repositories.image_repository import ImageRepository
+from repositories.image_file_repository import ImageFileRepository
 from repositories.photo_repository import PhotoRepository
-from schemas.image_schemas import (
-    ImageResponse, ImageCreateRequest, ImageUpdateRequest, 
-    ImageSearchRequest
+from schemas.image_file_schemas import (
+    ImageFileResponse, ImageFileCreateRequest, ImageFileUpdateRequest, 
+    ImageFileSearchRequest
 )
 from schemas.photo_schemas import PhotoCreateRequest
 from schemas.common import PaginatedResponse, create_paginated_response
 from core.exceptions import NotFoundError, DuplicateImageError, ValidationError
-from models import Photo, Image
+from models import Photo, ImageFile
 
 
 # Placeholder ImageProcessor class (would be implemented separately)
 class ImageProcessor:
-    """Image processing utilities"""
+    """ImageFile processing utilities"""
     
     def has_raw_companion(self, file_path: str) -> bool:
-        """Check if image has RAW companion file"""
+        """Check if image_file has RAW companion file"""
         # TODO: Implement RAW companion detection
         return False
     
@@ -35,16 +35,16 @@ class ImageProcessor:
         return Path(file_path).exists()
     
     def generate_hotpreview(self, file_path: str) -> Optional[bytes]:
-        """Generate hotpreview for image with EXIF rotation and stripped metadata"""
+        """Generate hotpreview for image_file with EXIF rotation and stripped metadata"""
         try:
-            from PIL import Image, ImageOps
+            from PIL import ImageFile, ImageOps
             import io
             
             if not Path(file_path).exists():
                 return None
                 
-            # Open and resize image to hotpreview size
-            with Image.open(file_path) as img:
+            # Open and resize image_file to hotpreview size
+            with ImageFile.open(file_path) as img:
                 # CRITICAL: Apply EXIF rotation before any processing
                 img_fixed = ImageOps.exif_transpose(img.copy())
                 
@@ -58,7 +58,7 @@ class ImageProcessor:
                 
                 # Create hotpreview using PIL's thumbnail method (maintaining aspect ratio)
                 if img_fixed:
-                    img_fixed.thumbnail((200, 200), Image.Resampling.LANCZOS)
+                    img_fixed.thumbnail((200, 200), ImageFile.Resampling.LANCZOS)
                     
                     # Save as JPEG bytes
                     hotpreview_io = io.BytesIO()
@@ -72,36 +72,36 @@ class ImageProcessor:
             return None
     
     def cleanup_image_files(self, file_path: str, image_id: int) -> None:
-        """Clean up image files"""
+        """Clean up image_file files"""
         # TODO: Implement file cleanup
         pass
 
 
-class ImageService:
-    """Service class for Image business logic"""
+class ImageFileService:
+    """Service class for ImageFile business logic"""
     
     def __init__(self, db: Session):
         self.db = db
-        self.image_repo = ImageRepository(db)
+        self.image_file_repo = ImageFileRepository(db)
         self.photo_repo = PhotoRepository(db)
         self.image_processor = ImageProcessor()
     
-    def get_images(
+    def get_image_files(
         self, 
         offset: int = 0, 
         limit: int = 100,
-        search_params: Optional[ImageSearchRequest] = None
-    ) -> PaginatedResponse[ImageResponse]:
+        search_params: Optional[ImageFileSearchRequest] = None
+    ) -> PaginatedResponse[ImageFileResponse]:
         """Get paginated list of images with optional filtering"""
         
         # Get images and total count
-        images = self.image_repo.get_images(offset, limit, search_params)
-        total = self.image_repo.count_images(search_params)
+        images = self.image_file_repo.get_image_files(offset, limit, search_params)
+        total = self.image_file_repo.count_images(search_params)
         
         # Convert to response models with business logic
         image_responses = []
-        for image in images:
-            image_response = self._convert_to_response(image)
+        for image_file in images:
+            image_response = self._convert_to_response(image_file)
             image_responses.append(image_response)
         
         return create_paginated_response(
@@ -111,33 +111,33 @@ class ImageService:
             limit=limit
         )
     
-    def get_image_by_id(self, image_id: int) -> ImageResponse:
-        """Get specific image by ID"""
-        image = self.image_repo.get_by_id(image_id)
-        if not image:
-            raise NotFoundError("Image", image_id)
+    def get_image_file_by_id(self, image_id: int) -> ImageFileResponse:
+        """Get specific image_file by ID"""
+        image_file = self.image_file_repo.get_by_id(image_id)
+        if not image_file:
+            raise NotFoundError("ImageFile", image_id)
         
-        return self._convert_to_response(image)
+        return self._convert_to_response(image_file)
     
-    def create_image(self, image_data: ImageCreateRequest) -> ImageResponse:
-        """Create new image with business logic validation"""
+    def create_image_file(self, image_data: ImageFileCreateRequest) -> ImageFileResponse:
+        """Create new image_file with business logic validation"""
         
         # Business Logic: No duplicate check needed - Images are unique files
         # Duplicate detection happens at Photo level via hothash
         
-        # Create image record
-        image = self.image_repo.create(image_data)
+        # Create image_file record
+        image_file = self.image_file_repo.create(image_data)
         
-        return self._convert_to_response(image)
+        return self._convert_to_response(image_file)
     
-    def create_image_with_photo(self, image_data: ImageCreateRequest) -> ImageResponse:
+    def create_image_file_with_photo(self, image_data: ImageFileCreateRequest) -> ImageFileResponse:
         """
-        Create new image with automatic Photo creation/association
+        Create new image_file with automatic Photo creation/association
         
         New architecture: Images drive Photo creation
-        - Image has hotpreview - REQUIRED
-        - Photo.hothash automatically generated from Image.hotpreview via SHA256
-        - First Image with new hotpreview → creates new Photo
+        - ImageFile has hotpreview - REQUIRED
+        - Photo.hothash automatically generated from ImageFile.hotpreview via SHA256
+        - First ImageFile with new hotpreview → creates new Photo
         - Subsequent Images with same hotpreview → added to existing Photo
         
         Flow:
@@ -145,12 +145,12 @@ class ImageService:
         2. Generate hothash from hotpreview (SHA256)
         3. Check if Photo with this hothash exists
         4. If not exists → create new Photo
-        5. Create Image with photo_hothash
+        5. Create ImageFile with photo_hothash
         """
         
         # 1. Validate hotpreview is provided
         if not image_data.hotpreview:
-            raise ValidationError("hotpreview is required when creating Image")
+            raise ValidationError("hotpreview is required when creating ImageFile")
         
         # 2. Generate hothash from hotpreview
         hothash = self._generate_hothash_from_hotpreview(image_data.hotpreview)
@@ -160,123 +160,123 @@ class ImageService:
         
         # 4. If Photo doesn't exist, create it
         if not existing_photo:
-            # Extract metadata from Image for Photo creation
+            # Extract metadata from ImageFile for Photo creation
             photo_data = self._extract_photo_metadata_from_image(image_data, hothash)
             
             # Create Photo
             photo = self.photo_repo.create(photo_data)
         
-        # 5. Create Image with the generated photo_hothash
+        # 5. Create ImageFile with the generated photo_hothash
         image_data_dict = image_data.model_dump()
         image_data_dict['photo_hothash'] = hothash
         
-        image = self.image_repo.create(image_data_dict)
+        image_file = self.image_file_repo.create(image_data_dict)
         
-        return self._convert_to_response(image)
+        return self._convert_to_response(image_file)
     
-    def update_image(
+    def update_image_file(
         self, 
         image_id: int, 
-        update_data: ImageUpdateRequest
-    ) -> ImageResponse:
-        """Update existing image"""
+        update_data: ImageFileUpdateRequest
+    ) -> ImageFileResponse:
+        """Update existing image_file"""
         
-        # Check image exists
-        existing_image = self.image_repo.get_by_id(image_id)
+        # Check image_file exists
+        existing_image = self.image_file_repo.get_by_id(image_id)
         if not existing_image:
-            raise NotFoundError("Image", image_id)
+            raise NotFoundError("ImageFile", image_id)
         
-        # Convert update data to dict (only Image model fields)
+        # Convert update data to dict (only ImageFile model fields)
         update_dict = update_data.dict(exclude_unset=True)
         
-        # Update image
-        updated_image = self.image_repo.update(image_id, update_dict)
+        # Update image_file
+        updated_image = self.image_file_repo.update(image_id, update_dict)
         if not updated_image:
-            raise NotFoundError("Image", image_id)
+            raise NotFoundError("ImageFile", image_id)
         
         return self._convert_to_response(updated_image)
     
-    def delete_image(self, image_id: int) -> bool:
-        """Delete image with cleanup"""
+    def delete_image_file(self, image_id: int) -> bool:
+        """Delete image_file with cleanup"""
         
-        # Check image exists
-        image = self.image_repo.get_by_id(image_id)
-        if not image:
-            raise NotFoundError("Image", image_id)
+        # Check image_file exists
+        image_file = self.image_file_repo.get_by_id(image_id)
+        if not image_file:
+            raise NotFoundError("ImageFile", image_id)
         
         # Business Logic: Cleanup associated files
-        self._cleanup_image_files(image)
+        self._cleanup_image_files(image_file)
         
         # Delete from database
-        return self.image_repo.delete(image_id)
+        return self.image_file_repo.delete(image_id)
     
-    # NOTE: rotate_image removed - rotation is a Photo-level concern, not Image-level
+    # NOTE: rotate_image removed - rotation is a Photo-level concern, not ImageFile-level
     
     def get_image_hotpreview(self, image_id: int) -> Optional[bytes]:
-        """Get image hotpreview binary data"""
-        image = self.image_repo.get_by_id(image_id)
-        if not image:
-            raise NotFoundError("Image", image_id)
+        """Get image_file hotpreview binary data"""
+        image_file = self.image_file_repo.get_by_id(image_id)
+        if not image_file:
+            raise NotFoundError("ImageFile", image_id)
         
         # Return stored hotpreview
-        if getattr(image, 'hotpreview', None):
-            return getattr(image, 'hotpreview')
+        if getattr(image_file, 'hotpreview', None):
+            return getattr(image_file, 'hotpreview')
         
         # Business Logic: Return hotpreview if available
-        if getattr(image, 'hotpreview', None):
-            return getattr(image, 'hotpreview')
+        if getattr(image_file, 'hotpreview', None):
+            return getattr(image_file, 'hotpreview')
         
         return None
     
-    # NOTE: search_images removed - use get_images (list_images) with search_params instead
+    # NOTE: search_images removed - use get_image_files (list_images) with search_params instead
     # The standard list method already supports filtering and searching
     
     # NOTE: get_recent_images removed - use list_images with sort_by=created_at instead
-    # NOTE: get_images_by_author removed - author is a Photo-level concern, not Image-level
+    # NOTE: get_image_files_by_author removed - author is a Photo-level concern, not ImageFile-level
     
     # Private helper methods
     
-    def _convert_to_response(self, image) -> ImageResponse:
+    def _convert_to_response(self, image_file) -> ImageFileResponse:
         """Convert database model to response model with business logic"""
         
         # Business Logic: Detect RAW companion
         has_raw_companion = False
-        if hasattr(image, 'filename') and image.filename:
+        if hasattr(image_file, 'filename') and image_file.filename:
             # Note: We no longer have full file path, only filename
             # For now, disable RAW companion detection
             has_raw_companion = False
         
         # Business Logic: Check hotpreview availability
         # Note: We no longer have full file path, so hotpreview is always stored
-        has_hotpreview = bool(getattr(image, 'hotpreview', None))
+        has_hotpreview = bool(getattr(image_file, 'hotpreview', None))
         
-        # NOTE: author removed - author is a Photo-level concern, not Image-level
+        # NOTE: author removed - author is a Photo-level concern, not ImageFile-level
         
-        # Image model doesn't have tags - they're in Photo model
+        # ImageFile model doesn't have tags - they're in Photo model
         tags = []
-        if image.photo and image.photo.tags:
-            tags = image.photo.tags if isinstance(image.photo.tags, list) else []
+        if image_file.photo and image_file.photo.tags:
+            tags = image_file.photo.tags if isinstance(image_file.photo.tags, list) else []
         
         # Compute derived values from filename
-        filename = getattr(image, 'filename', '')
+        filename = getattr(image_file, 'filename', '')
         from utils.file_utils import get_file_format
         computed_format = get_file_format(filename) if filename else None
         
-        return ImageResponse(
-            id=getattr(image, 'id'),
-            photo_hothash=getattr(image, 'photo_hothash', None),
+        return ImageFileResponse(
+            id=getattr(image_file, 'id'),
+            photo_hothash=getattr(image_file, 'photo_hothash', None),
             filename=filename,
-            file_size=getattr(image, 'file_size', None),
-            has_hotpreview=bool(getattr(image, 'hotpreview', None)),
+            file_size=getattr(image_file, 'file_size', None),
+            has_hotpreview=bool(getattr(image_file, 'hotpreview', None)),
             # Computed fields
             file_format=computed_format,
             file_path=None,  # Could be computed by storage service if needed
             original_filename=filename,  # Could be computed from import session if needed
-            created_at=getattr(image, 'created_at'),
-            taken_at=None,  # taken_at is in Photo model, not Image
-            width=None,  # width/height are in Photo model, not Image
+            created_at=getattr(image_file, 'created_at'),
+            taken_at=None,  # taken_at is in Photo model, not ImageFile
+            width=None,  # width/height are in Photo model, not ImageFile
             height=None,
-            gps_latitude=None,  # GPS is in Photo model, not Image
+            gps_latitude=None,  # GPS is in Photo model, not ImageFile
             gps_longitude=None,
             has_gps=False,  # GPS is in Photo model
             # NOTE: title, description, tags, rating, user_rotation, author in Photo model
@@ -284,8 +284,8 @@ class ImageService:
             has_raw_companion=computed_format in ['cr2', 'nef', 'arw', 'dng', 'orf', 'rw2', 'raw'] if computed_format else False
         )
     
-    def _cleanup_image_files(self, image) -> None:
-        """Clean up files associated with image"""
+    def _cleanup_image_files(self, image_file) -> None:
+        """Clean up files associated with image_file"""
         # Note: We no longer have full file path, so disable file cleanup for now
         pass
     
@@ -297,9 +297,9 @@ class ImageService:
         hothash = hashlib.sha256(hotpreview).hexdigest()
         return hothash
     
-    def _generate_hothash_from_image(self, image_data: ImageCreateRequest) -> str:
+    def _generate_hothash_from_image(self, image_data: ImageFileCreateRequest) -> str:
         """
-        Generate hothash from image data
+        Generate hothash from image_file data
         Uses filename and file_size to create a unique hash
         """
         # Create hash from available data
@@ -309,13 +309,13 @@ class ImageService:
     
     def _extract_photo_metadata_from_image(
         self, 
-        image_data: ImageCreateRequest, 
+        image_data: ImageFileCreateRequest, 
         hothash: str
     ) -> PhotoCreateRequest:
         """
-        Extract Photo metadata from Image data
-        This creates the Photo record for the first (master) Image
-        NOTE: hotpreview is stored in Image, not Photo
+        Extract Photo metadata from ImageFile data
+        This creates the Photo record for the first (master) ImageFile
+        NOTE: hotpreview is stored in ImageFile, not Photo
         """
         # Extract EXIF metadata if available
         width = None
@@ -328,7 +328,7 @@ class ImageService:
             # Parse EXIF data to extract metadata
             # This is a simplified version - in production, use proper EXIF parsing
             try:
-                from PIL import Image as PILImage
+                from PIL import ImageFile as PILImage
                 from PIL.ExifTags import TAGS
                 import io
                 
