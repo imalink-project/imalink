@@ -23,8 +23,7 @@ class PhotoRepository:
             self.db.query(Photo)
             .options(
                 joinedload(Photo.author),
-                joinedload(Photo.files),
-                joinedload(Photo.import_session)
+                joinedload(Photo.files)
             )
             .filter(Photo.hothash == hothash)
             .first()
@@ -48,8 +47,7 @@ class PhotoRepository:
         """Get photos with optional filtering and pagination"""
         query = self.db.query(Photo).options(
             joinedload(Photo.author),
-            joinedload(Photo.files),
-            joinedload(Photo.import_session)
+            joinedload(Photo.files)
         )
         
         # Apply filters

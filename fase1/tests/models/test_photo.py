@@ -140,14 +140,14 @@ class TestPhotoCreationFromSingleFile:
         assert photo.width > 0
         assert photo.height > 0
         
-        # Verify hotpreview generation
-        assert photo.hotpreview is not None
-        assert len(photo.hotpreview) > 0
+        # Verify hotpreview generation (stored in Image, not Photo)
+        assert photo.files[0].hotpreview is not None
+        assert len(photo.files[0].hotpreview) > 0
         
         # Verify Image file creation
         assert len(photo.files) == 1
         assert photo.files[0].filename == Path(jpg_single_file).name
-        assert photo.files[0].hothash == photo.hothash
+        assert photo.files[0].photo_hothash == photo.hothash
         
         print(f"✅ Single JPEG: {photo.width}x{photo.height}, hash={photo.hothash[:8]}...")
     
@@ -206,9 +206,9 @@ class TestPhotoCreationFromFilePair:
         expected_filenames = {Path(f).name for f in jpg_dng_pair_files}
         assert created_filenames == expected_filenames
         
-        # Verify all files have same hothash
+        # Verify all files link to same photo via photo_hothash
         for image_file in photo.files:
-            assert image_file.hothash == photo.hothash
+            assert image_file.photo_hothash == photo.hothash
         
         # Verify has_raw_companion property
         assert photo.has_raw_companion is True
