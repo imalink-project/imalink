@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from repositories.author_repository import AuthorRepository
 from schemas.responses.author_responses import (
-    AuthorResponse, AuthorListResponse, AuthorStatistics
+    AuthorResponse, AuthorListResponse
 )
 from schemas.requests.author_requests import AuthorCreateRequest, AuthorUpdateRequest
 from schemas.common import PaginatedResponse, create_paginated_response
@@ -127,60 +127,6 @@ class AuthorService:
             )
         
         return self.author_repo.delete(author_id)
-    
-    def search_authors(self, query: str, limit: int = 50) -> List[AuthorResponse]:
-        """Search authors by name, email, or bio"""
-        
-        # Business Logic: Validate search query
-        if not query or len(query.strip()) < 2:
-            raise ValidationError("Search query must be at least 2 characters")
-        
-        authors = self.author_repo.search_authors(query.strip(), limit)
-        
-        author_responses = []
-        for author in authors:
-            author_response = self._convert_to_response(author)
-            author_responses.append(author_response)
-        
-        return author_responses
-    
-    def get_author_statistics(self) -> AuthorStatistics:
-        """Get comprehensive author statistics"""
-        
-        base_stats = self.author_repo.get_statistics()
-        
-        # Get top authors by image count
-        top_authors_data = self.author_repo.get_top_authors_by_photo_count(limit=5)
-        top_authors = []
-        
-        for author_row in top_authors_data:
-            # Handle tuple from query result
-            if isinstance(author_row, tuple):
-                author = author_row[0]  # Author object
-                # image_count = author_row[1]  # Count (available if needed)
-            else:
-                author = author_row
-            
-            top_authors.append(self._convert_to_response(author))
-        
-        return AuthorStatistics(
-            total_authors=base_stats["total_authors"],
-            authors_with_images=base_stats["authors_with_images"],
-            avg_images_per_author=base_stats["avg_images_per_author"],
-            top_authors=top_authors
-        )
-    
-    def get_authors_with_photos(self, limit: int = 100) -> List[AuthorResponse]:
-        """Get authors who have uploaded photos"""
-        
-        authors = self.author_repo.get_authors_with_photos(limit)
-        
-        author_responses = []
-        for author in authors:
-            author_response = self._convert_to_response(author)
-            author_responses.append(author_response)
-        
-        return author_responses
     
     # Private helper methods
     

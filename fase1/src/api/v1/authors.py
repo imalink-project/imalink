@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from database.connection import get_db
 from services.author_service import AuthorService
 from schemas.responses.author_responses import (
-    AuthorResponse, AuthorListResponse, AuthorStatistics
+    AuthorResponse, AuthorListResponse
 )
 from schemas.requests.author_requests import AuthorCreateRequest, AuthorUpdateRequest
 from schemas.common import PaginatedResponse, SingleResponse
@@ -87,43 +87,3 @@ async def delete_author(
     success = author_service.delete_author(author_id)
     return {"message": "Author deleted successfully"}
 
-
-@router.get("/search/", response_model=AuthorListResponse)
-async def search_authors(
-    q: str = Query(..., min_length=2, description="Search query"),
-    limit: int = Query(50, ge=1, le=100, description="Max results to return"),
-    author_service: AuthorService = Depends(get_author_service)
-):
-    """
-    Search authors by name, email, or bio
-    """
-    authors = author_service.search_authors(q, limit)
-    return AuthorListResponse(
-        authors=authors,
-        total=len(authors)
-    )
-
-
-@router.get("/statistics/", response_model=AuthorStatistics)
-async def get_author_statistics(
-    author_service: AuthorService = Depends(get_author_service)
-):
-    """
-    Get comprehensive author statistics
-    """
-    return author_service.get_author_statistics()
-
-
-@router.get("/with-images/", response_model=AuthorListResponse)
-async def get_authors_with_images(
-    limit: int = Query(100, ge=1, le=500, description="Max results to return"),
-    author_service: AuthorService = Depends(get_author_service)
-):
-    """
-    Get authors who have uploaded images
-    """
-    authors = author_service.get_authors_with_photos(limit)
-    return AuthorListResponse(
-        authors=authors,
-        total=len(authors)
-    )
