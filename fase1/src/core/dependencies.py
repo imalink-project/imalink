@@ -9,7 +9,7 @@ from fastapi import Depends
 from database.connection import get_db
 
 # Service imports
-from services.image_service_new import ImageService
+from services.image_service import ImageService
 from services.author_service import AuthorService
 from services.import_session_service import ImportSessionService
 from services.photo_service import PhotoService

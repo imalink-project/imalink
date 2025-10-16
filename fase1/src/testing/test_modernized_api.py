@@ -30,7 +30,7 @@ async def test_service_integration():
     
     try:
         from dependencies import get_image_service
-        from services.image_service_new import ImageService
+        from services.image_service import ImageService
         
         # Check dependency injection
         assert callable(get_image_service)

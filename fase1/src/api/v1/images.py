@@ -25,7 +25,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from fastapi.responses import FileResponse
 
 from core.dependencies import get_image_service
-from services.image_service_new import ImageService
+from services.image_service import ImageService
 from schemas.image_schemas import (
     ImageResponse, ImageCreateRequest, ImageUpdateRequest
 )

@@ -81,7 +81,7 @@ async def test_image_service():
     print("\n🧪 Testing Image Service...")
     
     try:
-        from services.image_service_new import ImageService, ImageProcessor
+        from services.image_service import ImageService, ImageProcessor
         
         # Test ImageProcessor placeholder
         processor = ImageProcessor()
@@ -182,7 +182,7 @@ async def main():
         print("\n🏗️ Current Architecture:")
         print("   ├── schemas/image_schemas.py ✅")
         print("   ├── repositories/image_repository.py ✅")
-        print("   ├── services/image_service_new.py ✅")
+        print("   ├── services/image_service.py ✅")
         print("   ├── dependencies.py ✅")
         print("   └── exceptions.py ✅")
     else:
