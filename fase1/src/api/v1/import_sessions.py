@@ -12,10 +12,9 @@ All file operations are handled by the client application.
 import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
 
-from database.connection import get_db
-from models.import_session import ImportSession
+from core.dependencies import get_import_session_service
+from services.import_session_service import ImportSessionService
 from schemas.requests.import_session_requests import (
     ImportSessionCreateRequest, 
     ImportSessionUpdateRequest
@@ -24,6 +23,7 @@ from schemas.responses.import_session_responses import (
     ImportSessionResponse,
     ImportSessionListResponse
 )
+from core.exceptions import NotFoundError, ValidationError
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -32,7 +32,7 @@ router = APIRouter()
 @router.post("/", response_model=ImportSessionResponse, status_code=201)
 async def create_import_session(
     request: ImportSessionCreateRequest,
-    db: Session = Depends(get_db)
+    service: ImportSessionService = Depends(get_import_session_service)
 ):
     """
     Create a new import session (user's reference metadata).
@@ -40,27 +40,19 @@ async def create_import_session(
     Client has already imported the images - this just records metadata.
     """
     try:
-        # Create new import session
-        import_session = ImportSession(
+        response = service.create_simple_session(
             title=request.title,
             description=request.description,
             storage_location=request.storage_location,
             default_author_id=request.default_author_id
         )
         
-        db.add(import_session)
-        db.commit()
-        db.refresh(import_session)
-        
-        logger.info(f"Created import session {import_session.id}: {import_session.title}")
-        
-        # Use model_validate to convert SQLAlchemy model to Pydantic
-        response = ImportSessionResponse.model_validate(import_session)
-        response.images_count = 0  # No images yet
+        logger.info(f"Created import session: {request.title}")
         return response
         
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        db.rollback()
         logger.error(f"Error creating import session: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to create import session: {str(e)}")
 
@@ -68,75 +60,56 @@ async def create_import_session(
 @router.get("/{import_id}", response_model=ImportSessionResponse)
 async def get_import_session(
     import_id: int,
-    db: Session = Depends(get_db)
+    service: ImportSessionService = Depends(get_import_session_service)
 ):
     """Get a specific import session by ID"""
-    import_session = db.query(ImportSession).filter(ImportSession.id == import_id).first()
-    
-    if not import_session:
-        raise HTTPException(status_code=404, detail=f"Import session {import_id} not found")
-    
-    return ImportSessionResponse.model_validate(import_session)
+    try:
+        return service.get_session_by_id(import_id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error retrieving import session {import_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve import session: {str(e)}")
 
 
 @router.get("/", response_model=ImportSessionListResponse)
 async def list_import_sessions(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    db: Session = Depends(get_db)
+    service: ImportSessionService = Depends(get_import_session_service)
 ):
     """List all import sessions with pagination"""
-    total = db.query(ImportSession).count()
-    
-    sessions = (
-        db.query(ImportSession)
-        .order_by(ImportSession.imported_at.desc())
-        .offset(offset)
-        .limit(limit)
-        .all()
-    )
-    
-    # Convert to response format using model_validate
-    session_responses = [ImportSessionResponse.model_validate(s) for s in sessions]
-    
-    return ImportSessionListResponse(
-        sessions=session_responses,
-        total=total
-    )
+    try:
+        return service.list_simple_sessions(limit=limit, offset=offset)
+    except Exception as e:
+        logger.error(f"Error listing import sessions: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to list import sessions: {str(e)}")
 
 
 @router.patch("/{import_id}", response_model=ImportSessionResponse)
 async def update_import_session(
     import_id: int,
     request: ImportSessionUpdateRequest,
-    db: Session = Depends(get_db)
+    service: ImportSessionService = Depends(get_import_session_service)
 ):
     """Update import session metadata"""
-    import_session = db.query(ImportSession).filter(ImportSession.id == import_id).first()
-    
-    if not import_session:
-        raise HTTPException(status_code=404, detail=f"Import session {import_id} not found")
-    
     try:
-        # Update fields using setattr to avoid type errors
-        if request.title is not None:
-            setattr(import_session, 'title', request.title)
-        if request.description is not None:
-            setattr(import_session, 'description', request.description)
-        if request.storage_location is not None:
-            setattr(import_session, 'storage_location', request.storage_location)
-        if request.default_author_id is not None:
-            setattr(import_session, 'default_author_id', request.default_author_id)
-        
-        db.commit()
-        db.refresh(import_session)
+        response = service.update_simple_session(
+            session_id=import_id,
+            title=request.title,
+            description=request.description,
+            storage_location=request.storage_location,
+            default_author_id=request.default_author_id
+        )
         
         logger.info(f"Updated import session {import_id}")
+        return response
         
-        return ImportSessionResponse.model_validate(import_session)
-        
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        db.rollback()
         logger.error(f"Error updating import session {import_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to update import session: {str(e)}")
 
@@ -144,7 +117,7 @@ async def update_import_session(
 @router.delete("/{import_id}", status_code=204)
 async def delete_import_session(
     import_id: int,
-    db: Session = Depends(get_db)
+    service: ImportSessionService = Depends(get_import_session_service)
 ):
     """
     Delete an import session.
@@ -152,18 +125,12 @@ async def delete_import_session(
     WARNING: This will also delete all images associated with this import session
     due to cascade delete. Use with caution.
     """
-    import_session = db.query(ImportSession).filter(ImportSession.id == import_id).first()
-    
-    if not import_session:
-        raise HTTPException(status_code=404, detail=f"Import session {import_id} not found")
-    
     try:
-        db.delete(import_session)
-        db.commit()
-        
+        service.delete_session(import_id)
         logger.info(f"Deleted import session {import_id}")
         
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        db.rollback()
         logger.error(f"Error deleting import session {import_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to delete import session: {str(e)}")

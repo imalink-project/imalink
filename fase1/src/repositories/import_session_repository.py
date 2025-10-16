@@ -253,3 +253,61 @@ class ImportSessionRepository:
             .order_by(ImportSession.started_at)
             .all()
         )
+    
+    # === Simple CRUD Operations (for basic API) ===
+    
+    def create_simple(
+        self,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        storage_location: Optional[str] = None,
+        default_author_id: Optional[int] = None
+    ) -> ImportSession:
+        """Create a simple ImportSession (user metadata only)"""
+        session = ImportSession(
+            title=title,
+            description=description,
+            storage_location=storage_location,
+            default_author_id=default_author_id
+        )
+        
+        self.db.add(session)
+        self.db.commit()
+        self.db.refresh(session)
+        return session
+    
+    def update_simple(
+        self,
+        session_id: int,
+        title: Optional[str] = None,
+        description: Optional[str] = None,
+        storage_location: Optional[str] = None,
+        default_author_id: Optional[int] = None
+    ) -> Optional[ImportSession]:
+        """Update simple ImportSession fields"""
+        session = self.get_import_by_id(session_id)
+        if not session:
+            return None
+        
+        if title is not None:
+            setattr(session, 'title', title)
+        if description is not None:
+            setattr(session, 'description', description)
+        if storage_location is not None:
+            setattr(session, 'storage_location', storage_location)
+        if default_author_id is not None:
+            setattr(session, 'default_author_id', default_author_id)
+        
+        self.db.commit()
+        self.db.refresh(session)
+        return session
+    
+    def delete(self, session_id: int) -> bool:
+        """Delete ImportSession by ID (cascade deletes Images)"""
+        session = self.get_import_by_id(session_id)
+        if not session:
+            return False
+        
+        self.db.delete(session)
+        self.db.commit()
+        return True
