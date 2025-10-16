@@ -15,8 +15,12 @@ Flet krever GTK 3 for Linux desktop:
 
 **Ubuntu/Debian:**
 ```bash
+sudo apt-get update
 sudo apt-get install libgtk-3-0 libgdk-pixbuf2.0-0
+sudo apt-get install --only-upgrade libstdc++6
 ```
+
+**Merk:** For Ubuntu 20.04, bruker vi Flet 0.23.2 (nyere versjoner krever Ubuntu 22.04+)
 
 **Arch Linux:**
 ```bash

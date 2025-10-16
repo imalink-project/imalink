@@ -4,8 +4,12 @@
 
 For Linux, installer GTK 3:
 ```bash
-sudo apt-get install libgtk-3-0 libgdk-pixbuf2.0-0  # Ubuntu/Debian
+sudo apt-get update
+sudo apt-get install libgtk-3-0 libgdk-pixbuf2.0-0
+sudo apt-get install --only-upgrade libstdc++6
 ```
+
+**Merk:** Bruker Flet 0.23.2 for kompatibilitet med Ubuntu 20.04
 
 ## 1. Installer avhengigheter
 
