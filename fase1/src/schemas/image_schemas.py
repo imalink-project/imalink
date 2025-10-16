@@ -75,15 +75,6 @@ class ImageResponse(BaseModel):
     # NOTE: tags validator removed since tags moved to ImageMetadata table
 
 
-class ImageListResponse(BaseModel):
-    """Response for image listing endpoints"""
-    images: List[ImageResponse] = Field(..., description="Array of images")
-    total: int = Field(..., description="Total number of images matching criteria")
-    
-    class Config:
-        from_attributes = True
-
-
 class ImageCreateRequest(BaseModel):
     """Request model for creating new images - file-specific data only"""
     filename: str = Field(..., min_length=1, max_length=255, description="Filename with extension")
@@ -132,13 +123,3 @@ class ImageSearchRequest(BaseModel):
 
 
 # NOTE: ImageRotateRequest removed - rotation is a Photo-level concern, not Image-level
-
-
-class ImageHotpreviewResponse(BaseModel):
-    """Response model for hot preview requests"""
-    image_id: int = Field(..., description="Image ID")
-    hotpreview_data: bytes = Field(..., description="Hot preview binary data")
-    content_type: str = Field("image/jpeg", description="MIME type")
-    
-    class Config:
-        arbitrary_types_allowed = True

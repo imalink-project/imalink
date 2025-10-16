@@ -1,7 +1,6 @@
 """
 API endpoints for photo operations using Service Layer
 """
-import asyncio
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from fastapi.responses import StreamingResponse

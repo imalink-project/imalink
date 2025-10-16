@@ -3,9 +3,7 @@ API endpoints for Author management - Modernized with Service Layer
 """
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
 
-from database.connection import get_db
 from services.author_service import AuthorService
 from schemas.responses.author_responses import (
     AuthorResponse, AuthorListResponse

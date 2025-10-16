@@ -9,7 +9,6 @@ IMPORTANT ARCHITECTURAL NOTE:
 
 This API provides read-only access to Image data and related operations.
 """
-import asyncio
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from fastapi.responses import FileResponse

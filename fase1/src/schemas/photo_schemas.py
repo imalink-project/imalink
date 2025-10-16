@@ -139,12 +139,3 @@ class PhotoSearchRequest(BaseModel):
     # Sorting
     sort_by: str = Field("taken_at", description="Sort field (taken_at, created_at, rating, title)")
     sort_order: str = Field("desc", pattern="^(asc|desc)$", description="Sort order")
-
-
-class PhotoHotpreviewResponse(BaseModel):
-    """Response model for hotpreview requests"""
-    hothash: str = Field(..., description="Photo hash identifier")
-    hotpreview_data: bytes = Field(..., description="Hotpreview binary data")
-    content_type: str = Field("image/jpeg", description="MIME type")
-    width: Optional[int] = Field(None, description="Hotpreview width")
-    height: Optional[int] = Field(None, description="Hotpreview height")
