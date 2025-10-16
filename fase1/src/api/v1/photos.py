@@ -144,20 +144,6 @@ async def get_hotpreview(
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
-@router.get("/statistics/overview")
-async def get_statistics(
-    photo_service: PhotoService = Depends(get_photo_service)
-):
-    """Get photo collection statistics"""
-    try:
-        stats = await photo_service.get_photo_statistics()
-        return create_success_response(message="Statistics retrieved successfully", data=stats)
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-
 # Additional utility endpoints
 
 @router.get("/{hothash}/files", response_model=list[dict])

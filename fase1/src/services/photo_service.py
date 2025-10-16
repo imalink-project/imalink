@@ -120,10 +120,6 @@ class PhotoService:
             search_params=search_params
         )
     
-    async def get_photo_statistics(self) -> Dict[str, Any]:
-        """Get photo collection statistics"""
-        return self.photo_repo.get_statistics()
-    
     def _convert_to_response(self, photo: Photo) -> PhotoResponse:
         """Convert Photo model to PhotoResponse"""
         
