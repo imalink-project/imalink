@@ -86,7 +86,7 @@ class ImageService:
         self.photo_repo = PhotoRepository(db)
         self.image_processor = ImageProcessor()
     
-    async def get_images(
+    def get_images(
         self, 
         offset: int = 0, 
         limit: int = 100,
@@ -101,7 +101,7 @@ class ImageService:
         # Convert to response models with business logic
         image_responses = []
         for image in images:
-            image_response = await self._convert_to_response(image)
+            image_response = self._convert_to_response(image)
             image_responses.append(image_response)
         
         return create_paginated_response(
@@ -111,15 +111,15 @@ class ImageService:
             limit=limit
         )
     
-    async def get_image_by_id(self, image_id: int) -> ImageResponse:
+    def get_image_by_id(self, image_id: int) -> ImageResponse:
         """Get specific image by ID"""
         image = self.image_repo.get_by_id(image_id)
         if not image:
             raise NotFoundError("Image", image_id)
         
-        return await self._convert_to_response(image)
+        return self._convert_to_response(image)
     
-    async def create_image(self, image_data: ImageCreateRequest) -> ImageResponse:
+    def create_image(self, image_data: ImageCreateRequest) -> ImageResponse:
         """Create new image with business logic validation"""
         
         # Business Logic: No duplicate check needed - Images are unique files
@@ -128,9 +128,9 @@ class ImageService:
         # Create image record
         image = self.image_repo.create(image_data)
         
-        return await self._convert_to_response(image)
+        return self._convert_to_response(image)
     
-    async def create_image_with_photo(self, image_data: ImageCreateRequest) -> ImageResponse:
+    def create_image_with_photo(self, image_data: ImageCreateRequest) -> ImageResponse:
         """
         Create new image with automatic Photo creation/association
         
@@ -153,7 +153,7 @@ class ImageService:
             raise ValidationError("hotpreview is required when creating Image")
         
         # 2. Generate hothash from hotpreview
-        hothash = await self._generate_hothash_from_hotpreview(image_data.hotpreview)
+        hothash = self._generate_hothash_from_hotpreview(image_data.hotpreview)
         
         # 3. Check if Photo exists
         existing_photo = self.photo_repo.get_by_hash(hothash)
@@ -161,7 +161,7 @@ class ImageService:
         # 4. If Photo doesn't exist, create it
         if not existing_photo:
             # Extract metadata from Image for Photo creation
-            photo_data = await self._extract_photo_metadata_from_image(image_data, hothash)
+            photo_data = self._extract_photo_metadata_from_image(image_data, hothash)
             
             # Create Photo
             photo = self.photo_repo.create(photo_data)
@@ -172,9 +172,9 @@ class ImageService:
         
         image = self.image_repo.create(image_data_dict)
         
-        return await self._convert_to_response(image)
+        return self._convert_to_response(image)
     
-    async def update_image(
+    def update_image(
         self, 
         image_id: int, 
         update_data: ImageUpdateRequest
@@ -194,9 +194,9 @@ class ImageService:
         if not updated_image:
             raise NotFoundError("Image", image_id)
         
-        return await self._convert_to_response(updated_image)
+        return self._convert_to_response(updated_image)
     
-    async def delete_image(self, image_id: int) -> bool:
+    def delete_image(self, image_id: int) -> bool:
         """Delete image with cleanup"""
         
         # Check image exists
@@ -205,14 +205,14 @@ class ImageService:
             raise NotFoundError("Image", image_id)
         
         # Business Logic: Cleanup associated files
-        await self._cleanup_image_files(image)
+        self._cleanup_image_files(image)
         
         # Delete from database
         return self.image_repo.delete(image_id)
     
     # NOTE: rotate_image removed - rotation is a Photo-level concern, not Image-level
     
-    async def get_image_thumbnail(self, image_id: int) -> Optional[bytes]:
+    def get_image_thumbnail(self, image_id: int) -> Optional[bytes]:
         """Get image thumbnail binary data"""
         image = self.image_repo.get_by_id(image_id)
         if not image:
@@ -222,8 +222,11 @@ class ImageService:
         if getattr(image, 'thumbnail', None):
             return getattr(image, 'thumbnail')
         
-        # Business Logic: Generate thumbnail on demand
-        return await self.image_processor.generate_thumbnail(getattr(image, 'file_path', ''))
+        # Business Logic: Return hotpreview if available
+        if getattr(image, 'hotpreview', None):
+            return getattr(image, 'hotpreview')
+        
+        return None
     
     # NOTE: search_images removed - use get_images (list_images) with search_params instead
     # The standard list method already supports filtering and searching
@@ -233,7 +236,7 @@ class ImageService:
     
     # Private helper methods
     
-    async def _convert_to_response(self, image) -> ImageResponse:
+    def _convert_to_response(self, image) -> ImageResponse:
         """Convert database model to response model with business logic"""
         
         # Business Logic: Detect RAW companion
@@ -281,13 +284,12 @@ class ImageService:
             has_raw_companion=computed_format in ['cr2', 'nef', 'arw', 'dng', 'orf', 'rw2', 'raw'] if computed_format else False
         )
     
-    async def _cleanup_image_files(self, image) -> None:
+    def _cleanup_image_files(self, image) -> None:
         """Clean up files associated with image"""
         # Note: We no longer have full file path, so disable file cleanup for now
-        # await self.image_processor.cleanup_image_files(image.filename, image.id)
         pass
     
-    async def _generate_hothash_from_hotpreview(self, hotpreview: bytes) -> str:
+    def _generate_hothash_from_hotpreview(self, hotpreview: bytes) -> str:
         """
         Generate hothash from hotpreview (thumbnail)
         Uses SHA256 hash of hotpreview bytes
@@ -295,7 +297,7 @@ class ImageService:
         hothash = hashlib.sha256(hotpreview).hexdigest()
         return hothash
     
-    async def _generate_hothash_from_image(self, image_data: ImageCreateRequest) -> str:
+    def _generate_hothash_from_image(self, image_data: ImageCreateRequest) -> str:
         """
         Generate hothash from image data
         Uses filename and file_size to create a unique hash
@@ -305,7 +307,7 @@ class ImageService:
         hothash = hashlib.sha256(hash_input.encode()).hexdigest()
         return hothash
     
-    async def _extract_photo_metadata_from_image(
+    def _extract_photo_metadata_from_image(
         self, 
         image_data: ImageCreateRequest, 
         hothash: str

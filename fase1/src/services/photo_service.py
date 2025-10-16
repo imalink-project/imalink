@@ -26,7 +26,7 @@ class PhotoService:
         self.db = db
         self.photo_repo = PhotoRepository(db)
     
-    async def get_photos(
+    def get_photos(
         self,
         offset: int = 0,
         limit: int = 100,
@@ -59,7 +59,7 @@ class PhotoService:
             limit=limit
         )
     
-    async def get_photo_by_hash(self, hothash: str) -> PhotoResponse:
+    def get_photo_by_hash(self, hothash: str) -> PhotoResponse:
         """Get single photo by hash"""
         photo = self.photo_repo.get_by_hash(hothash)
         if not photo:
@@ -71,7 +71,7 @@ class PhotoService:
     # When an Image is created without hothash, a new Photo is auto-generated
     # This architecture change makes Image the entry point for photo management
     
-    async def update_photo(self, hothash: str, photo_data: PhotoUpdateRequest) -> PhotoResponse:
+    def update_photo(self, hothash: str, photo_data: PhotoUpdateRequest) -> PhotoResponse:
         """Update existing photo"""
         
         # Validate tags if provided
@@ -86,7 +86,7 @@ class PhotoService:
         self.db.commit()
         return self._convert_to_response(photo)
     
-    async def delete_photo(self, hothash: str) -> bool:
+    def delete_photo(self, hothash: str) -> bool:
         """Delete photo"""
         success = self.photo_repo.delete(hothash)
         if not success:
@@ -95,7 +95,7 @@ class PhotoService:
         self.db.commit()
         return True
     
-    async def get_hotpreview(self, hothash: str) -> Optional[bytes]:
+    def get_hotpreview(self, hothash: str) -> Optional[bytes]:
         """Get hotpreview data for photo"""
         hotpreview_data = self.photo_repo.get_hotpreview(hothash)
         if not hotpreview_data:
@@ -103,9 +103,9 @@ class PhotoService:
         
         return hotpreview_data
     
-    async def search_photos(self, search_params: PhotoSearchRequest) -> PaginatedResponse[PhotoResponse]:
+    def search_photos(self, search_params: PhotoSearchRequest) -> PaginatedResponse[PhotoResponse]:
         """Search photos with advanced filtering"""
-        return await self.get_photos(
+        return self.get_photos(
             offset=search_params.offset,
             limit=search_params.limit,
             search_params=search_params

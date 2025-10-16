@@ -36,14 +36,14 @@ router = APIRouter()
 
 
 @router.get("/", response_model=PaginatedResponse[ImageResponse])
-async def list_images(
+def list_images(
     offset: int = Query(0, ge=0, description="Number of images to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of images to return"),
     image_service: ImageService = Depends(get_image_service)
 ):
     """Get paginated list of images with metadata"""
     try:
-        return await image_service.get_images(
+        return image_service.get_images(
             offset=offset,
             limit=limit
         )
@@ -52,13 +52,13 @@ async def list_images(
 
 
 @router.get("/{image_id}", response_model=ImageResponse)
-async def get_image_details(
+def get_image_details(
     image_id: int,
     image_service: ImageService = Depends(get_image_service)
 ):
     """Get detailed information about a specific image"""
     try:
-        return await image_service.get_image_by_id(image_id)
+        return image_service.get_image_by_id(image_id)
     except APIException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
@@ -66,13 +66,13 @@ async def get_image_details(
 
 
 @router.get("/{image_id}/hotpreview")
-async def get_hotpreview(
+def get_hotpreview(
     image_id: int,
     image_service: ImageService = Depends(get_image_service)
 ):
     """Get hot preview image data"""
     try:
-        hotpreview_data = await image_service.get_image_thumbnail(image_id)
+        hotpreview_data = image_service.get_image_thumbnail(image_id)
         
         if not hotpreview_data:
             raise HTTPException(status_code=404, detail="Hot preview not found")
@@ -92,7 +92,7 @@ async def get_hotpreview(
 
 
 @router.post("/", response_model=ImageResponse, status_code=201)
-async def create_image(
+def create_image(
     image_data: ImageCreateRequest,
     image_service: ImageService = Depends(get_image_service)
 ):
@@ -109,7 +109,7 @@ async def create_image(
     Subsequent Images with same hotpreview = Added to existing Photo
     """
     try:
-        return await image_service.create_image_with_photo(image_data)
+        return image_service.create_image_with_photo(image_data)
     except APIException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:

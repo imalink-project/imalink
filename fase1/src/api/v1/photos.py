@@ -31,7 +31,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=PaginatedResponse[PhotoResponse])
-async def list_photos(
+def list_photos(
     offset: int = Query(0, ge=0, description="Number of photos to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of photos to return"),
     author_id: Optional[int] = Query(None, description="Filter by author ID"),
@@ -39,7 +39,7 @@ async def list_photos(
 ):
     """Get paginated list of photos with metadata"""
     try:
-        return await photo_service.get_photos(
+        return photo_service.get_photos(
             offset=offset,
             limit=limit,
             author_id=author_id
@@ -51,13 +51,13 @@ async def list_photos(
 
 
 @router.post("/search", response_model=PaginatedResponse[PhotoResponse])
-async def search_photos(
+def search_photos(
     search_request: PhotoSearchRequest,
     photo_service: PhotoService = Depends(get_photo_service)
 ):
     """Search photos with advanced filtering"""
     try:
-        return await photo_service.search_photos(search_request)
+        return photo_service.search_photos(search_request)
     except APIException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
@@ -65,13 +65,13 @@ async def search_photos(
 
 
 @router.get("/{hothash}", response_model=PhotoResponse)
-async def get_photo(
+def get_photo(
     hothash: str,
     photo_service: PhotoService = Depends(get_photo_service)
 ):
     """Get single photo by hash"""
     try:
-        return await photo_service.get_photo_by_hash(hothash)
+        return photo_service.get_photo_by_hash(hothash)
     except APIException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
@@ -79,14 +79,14 @@ async def get_photo(
 
 
 @router.put("/{hothash}", response_model=PhotoResponse)
-async def update_photo(
+def update_photo(
     hothash: str,
     photo_data: PhotoUpdateRequest,
     photo_service: PhotoService = Depends(get_photo_service)
 ):
     """Update existing photo"""
     try:
-        return await photo_service.update_photo(hothash, photo_data)
+        return photo_service.update_photo(hothash, photo_data)
     except APIException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
@@ -94,13 +94,13 @@ async def update_photo(
 
 
 @router.delete("/{hothash}")
-async def delete_photo(
+def delete_photo(
     hothash: str,
     photo_service: PhotoService = Depends(get_photo_service)
 ):
     """Delete photo"""
     try:
-        success = await photo_service.delete_photo(hothash)
+        success = photo_service.delete_photo(hothash)
         return create_success_response(message="Photo deleted successfully")
     except APIException as e:
         raise HTTPException(status_code=e.status_code, detail=e.message)
@@ -109,13 +109,13 @@ async def delete_photo(
 
 
 @router.get("/{hothash}/hotpreview")
-async def get_hotpreview(
+def get_hotpreview(
     hothash: str,
     photo_service: PhotoService = Depends(get_photo_service)
 ):
     """Get hotpreview image for photo"""
     try:
-        hotpreview_data = await photo_service.get_hotpreview(hothash)
+        hotpreview_data = photo_service.get_hotpreview(hothash)
         
         # Return as streaming response
         if hotpreview_data:

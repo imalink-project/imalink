@@ -16,7 +16,7 @@ router = APIRouter()
 
 
 @router.get("/", response_model=PaginatedResponse[AuthorResponse])
-async def list_authors(
+def list_authors(
     offset: int = Query(0, ge=0, description="Number of items to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of items to return"),
     author_service: AuthorService = Depends(get_author_service)
@@ -28,7 +28,7 @@ async def list_authors(
 
 
 @router.post("/", response_model=SingleResponse[AuthorResponse])
-async def create_author(
+def create_author(
     author_data: AuthorCreateRequest,
     author_service: AuthorService = Depends(get_author_service)
 ):
@@ -44,7 +44,7 @@ async def create_author(
 
 
 @router.get("/{author_id}", response_model=SingleResponse[AuthorResponse])
-async def get_author(
+def get_author(
     author_id: int, 
     author_service: AuthorService = Depends(get_author_service)
 ):
@@ -59,7 +59,7 @@ async def get_author(
 
 
 @router.put("/{author_id}", response_model=SingleResponse[AuthorResponse])
-async def update_author(
+def update_author(
     author_id: int,
     update_data: AuthorUpdateRequest,
     author_service: AuthorService = Depends(get_author_service)
@@ -75,7 +75,7 @@ async def update_author(
 
 
 @router.delete("/{author_id}")
-async def delete_author(
+def delete_author(
     author_id: int, 
     author_service: AuthorService = Depends(get_author_service)
 ):

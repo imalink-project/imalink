@@ -30,7 +30,7 @@ router = APIRouter()
 
 
 @router.post("/", response_model=ImportSessionResponse, status_code=201)
-async def create_import_session(
+def create_import_session(
     request: ImportSessionCreateRequest,
     service: ImportSessionService = Depends(get_import_session_service)
 ):
@@ -58,7 +58,7 @@ async def create_import_session(
 
 
 @router.get("/{import_id}", response_model=ImportSessionResponse)
-async def get_import_session(
+def get_import_session(
     import_id: int,
     service: ImportSessionService = Depends(get_import_session_service)
 ):
@@ -73,7 +73,7 @@ async def get_import_session(
 
 
 @router.get("/", response_model=ImportSessionListResponse)
-async def list_import_sessions(
+def list_import_sessions(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     service: ImportSessionService = Depends(get_import_session_service)
@@ -87,7 +87,7 @@ async def list_import_sessions(
 
 
 @router.patch("/{import_id}", response_model=ImportSessionResponse)
-async def update_import_session(
+def update_import_session(
     import_id: int,
     request: ImportSessionUpdateRequest,
     service: ImportSessionService = Depends(get_import_session_service)
@@ -115,7 +115,7 @@ async def update_import_session(
 
 
 @router.delete("/{import_id}", status_code=204)
-async def delete_import_session(
+def delete_import_session(
     import_id: int,
     service: ImportSessionService = Depends(get_import_session_service)
 ):
