@@ -76,7 +76,7 @@ class TestPhotoService:
     
     def test_delete_photo_not_found_raises_exception(self, photo_service, mock_photo_repo):
         """delete_photo should raise NotFoundError when photo doesn't exist"""
-        mock_photo_repo.get_by_hash.return_value = None
+        mock_photo_repo.delete.return_value = False  # Photo not found
         
         with pytest.raises(NotFoundError):
             photo_service.delete_photo("nonexistenthash")

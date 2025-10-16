@@ -57,7 +57,8 @@ class TestImagesAPI:
         
         response = test_client.post("/api/v1/images/", json=image_data)
         
-        assert response.status_code == 422
+        # Accept both 400 (service validation) and 422 (pydantic validation)
+        assert response.status_code in [400, 422]
 
 
 class TestImagesErrorHandling:

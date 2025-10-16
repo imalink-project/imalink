@@ -122,7 +122,7 @@ class ImportSessionRepository:
         """Get all imports with pagination"""
         return (
             self.db.query(ImportSession)
-            .order_by(desc(ImportSession.started_at))
+            .order_by(desc(ImportSession.imported_at))
             .offset(offset)
             .limit(limit)
             .all()
