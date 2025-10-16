@@ -40,7 +40,7 @@ async def test_service_integration():
         service_methods = [
             'get_images', 'get_image_by_id', 'create_image', 
             'update_image', 'delete_image',
-            'get_image_thumbnail'
+            'get_image_hotpreview'
         ]
         
         for method in service_methods:
@@ -144,13 +144,13 @@ async def test_endpoint_signatures():
     
     try:
         from api.images import (
-            list_images, get_image_details, get_thumbnail,
+            list_images, get_image_details, get_hotpreview,
             update_image, delete_image
         )
         
         # Check that functions exist and are callable
         endpoints = [
-            list_images, get_image_details, get_thumbnail,
+            list_images, get_image_details, get_hotpreview,
             update_image, delete_image
         ]
         

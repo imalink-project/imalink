@@ -72,7 +72,7 @@ def get_hotpreview(
 ):
     """Get hot preview image data"""
     try:
-        hotpreview_data = image_service.get_image_thumbnail(image_id)
+        hotpreview_data = image_service.get_image_hotpreview(image_id)
         
         if not hotpreview_data:
             raise HTTPException(status_code=404, detail="Hot preview not found")
@@ -100,7 +100,7 @@ def create_image(
     Create new Image with automatic Photo creation/association
     
     NEW ARCHITECTURE: Images drive Photo creation
-    - hotpreview is REQUIRED in the request (thumbnail binary data)
+    - hotpreview is REQUIRED in the request (hotpreview binary data)
     - photo_hothash is automatically generated from hotpreview via SHA256
     - If Photo with this hothash exists: Image is added to existing Photo
     - If Photo doesn't exist: New Photo is created automatically

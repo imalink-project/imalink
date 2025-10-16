@@ -80,9 +80,9 @@ class ImageCreateRequest(BaseModel):
     filename: str = Field(..., min_length=1, max_length=255, description="Filename with extension")
     
     # NEW ARCHITECTURE: hotpreview stored in Image, photo_hothash auto-generated
-    # - hotpreview: Thumbnail/preview binary data (required to generate photo_hothash)
+    # - hotpreview: Hotpreview binary data (required to generate photo_hothash)
     # - photo_hothash: Auto-calculated from hotpreview via SHA256 hash
-    hotpreview: Optional[bytes] = Field(None, description="Thumbnail/preview image binary data (required)")
+    hotpreview: Optional[bytes] = Field(None, description="Hotpreview image binary data (required)")
     
     # Optional file metadata
     file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")

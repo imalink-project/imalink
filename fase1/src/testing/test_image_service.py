@@ -43,7 +43,7 @@ async def test_image_schemas():
             user_rotation=0,
             tags=["test"],
             has_raw_companion=False,
-            has_thumbnail=True
+            has_hotpreview=True
         )
         assert image_resp.id == 1
         assert image_resp.has_gps == False

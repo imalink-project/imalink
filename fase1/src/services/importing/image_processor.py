@@ -298,34 +298,34 @@ class ImageProcessor:
         except:
             return 0.0
     
-    def generate_thumbnail(self, image_path: Path, size: tuple = (300, 300)) -> Optional[bytes]:
+    def generate_hotpreview(self, image_path: Path, size: tuple = (300, 300)) -> Optional[bytes]:
         """
-        Generate thumbnail with proper EXIF rotation
+        Generate hotpreview with proper EXIF rotation
         
         Args:
             image_path: Path to source image
-            size: Thumbnail dimensions (width, height)
+            size: Hotpreview dimensions (width, height)
             
         Returns:
-            Thumbnail as bytes or None if generation failed
+            Hotpreview as bytes or None if generation failed
         """
         try:
             from io import BytesIO
             
             with PILImage.open(image_path) as img:
-                # Apply EXIF rotation before thumbnailing
+                # Apply EXIF rotation before creating hotpreview
                 img_rotated = ImageOps.exif_transpose(img)
                 
-                # Generate thumbnail
+                # Generate hotpreview using PIL's thumbnail method
                 img_rotated.thumbnail(size, PILImage.Resampling.LANCZOS)
                 
                 # Convert to bytes
-                thumbnail_io = BytesIO()
-                img_rotated.save(thumbnail_io, format='JPEG', quality=85)
-                return thumbnail_io.getvalue()
+                hotpreview_io = BytesIO()
+                img_rotated.save(hotpreview_io, format='JPEG', quality=85)
+                return hotpreview_io.getvalue()
                 
         except Exception as e:
-            print(f"Error generating thumbnail for {image_path.name}: {e}")
+            print(f"Error generating hotpreview for {image_path.name}: {e}")
             return None
     
     def validate_image(self, image_path: Path) -> tuple[bool, Optional[str]]:

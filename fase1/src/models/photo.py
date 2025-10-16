@@ -369,7 +369,7 @@ class Photo(Base, TimestampMixin):
     @staticmethod
     def _generate_hotpreview(file_path) -> Optional[bytes]:
         """
-        Generer ren optimalisert thumbnail for gallery-visning.
+        Generer ren optimalisert gallery preview for gallery-visning.
         Fast cached version for UI performance.
         
         VIKTIG: Dette er et RENT bilde uten manipulering siden hothash 
@@ -384,11 +384,11 @@ class Photo(Base, TimestampMixin):
             from io import BytesIO
             
             with Image.open(file_path) as img:
-                # Apply EXIF rotation before creating thumbnail
+                # Apply EXIF rotation before creating gallery preview
                 # This ensures hotpreview shows correct orientation
                 img = ImageOps.exif_transpose(img)
                 
-                # Create thumbnail (max 300x300, maintain aspect ratio)
+                # Create gallery preview using PIL's thumbnail method (max 300x300, maintain aspect ratio)
                 img.thumbnail((300, 300), Image.Resampling.LANCZOS)
                 
                 # Convert to RGB for consistent output

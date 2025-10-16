@@ -30,12 +30,12 @@ class ImageProcessor:
         # TODO: Implement RAW companion detection
         return False
     
-    def can_generate_thumbnail(self, file_path: str) -> bool:
-        """Check if thumbnail can be generated"""
+    def can_generate_hotpreview(self, file_path: str) -> bool:
+        """Check if hotpreview can be generated"""
         return Path(file_path).exists()
     
-    def generate_thumbnail(self, file_path: str) -> Optional[bytes]:
-        """Generate thumbnail for image with EXIF rotation and stripped metadata"""
+    def generate_hotpreview(self, file_path: str) -> Optional[bytes]:
+        """Generate hotpreview for image with EXIF rotation and stripped metadata"""
         try:
             from PIL import Image, ImageOps
             import io
@@ -43,12 +43,12 @@ class ImageProcessor:
             if not Path(file_path).exists():
                 return None
                 
-            # Open and resize image to thumbnail size
+            # Open and resize image to hotpreview size
             with Image.open(file_path) as img:
                 # CRITICAL: Apply EXIF rotation before any processing
                 img_fixed = ImageOps.exif_transpose(img.copy())
                 
-                # Strip EXIF data (not needed in thumbnails)
+                # Strip EXIF data (not needed in hotpreviews)
                 if img_fixed and hasattr(img_fixed, 'info') and img_fixed.info:
                     img_fixed.info.pop('exif', None)
                 
@@ -56,19 +56,19 @@ class ImageProcessor:
                 if img_fixed and img_fixed.mode in ('RGBA', 'LA', 'P'):
                     img_fixed = img_fixed.convert('RGB')
                 
-                # Create thumbnail (maintaining aspect ratio)
+                # Create hotpreview using PIL's thumbnail method (maintaining aspect ratio)
                 if img_fixed:
                     img_fixed.thumbnail((200, 200), Image.Resampling.LANCZOS)
                     
                     # Save as JPEG bytes
-                    thumbnail_io = io.BytesIO()
-                    img_fixed.save(thumbnail_io, format='JPEG', quality=85, optimize=True)
-                    return thumbnail_io.getvalue()
+                    hotpreview_io = io.BytesIO()
+                    img_fixed.save(hotpreview_io, format='JPEG', quality=85, optimize=True)
+                    return hotpreview_io.getvalue()
                 
                 return None
                 
         except Exception as e:
-            print(f"Error generating thumbnail for {file_path}: {e}")
+            print(f"Error generating hotpreview for {file_path}: {e}")
             return None
     
     def cleanup_image_files(self, file_path: str, image_id: int) -> None:
@@ -135,7 +135,7 @@ class ImageService:
         Create new image with automatic Photo creation/association
         
         New architecture: Images drive Photo creation
-        - Image has hotpreview (thumbnail) - REQUIRED
+        - Image has hotpreview - REQUIRED
         - Photo.hothash automatically generated from Image.hotpreview via SHA256
         - First Image with new hotpreview → creates new Photo
         - Subsequent Images with same hotpreview → added to existing Photo
@@ -212,15 +212,15 @@ class ImageService:
     
     # NOTE: rotate_image removed - rotation is a Photo-level concern, not Image-level
     
-    def get_image_thumbnail(self, image_id: int) -> Optional[bytes]:
-        """Get image thumbnail binary data"""
+    def get_image_hotpreview(self, image_id: int) -> Optional[bytes]:
+        """Get image hotpreview binary data"""
         image = self.image_repo.get_by_id(image_id)
         if not image:
             raise NotFoundError("Image", image_id)
         
-        # Return stored thumbnail or generate on demand
-        if getattr(image, 'thumbnail', None):
-            return getattr(image, 'thumbnail')
+        # Return stored hotpreview
+        if getattr(image, 'hotpreview', None):
+            return getattr(image, 'hotpreview')
         
         # Business Logic: Return hotpreview if available
         if getattr(image, 'hotpreview', None):
@@ -246,9 +246,9 @@ class ImageService:
             # For now, disable RAW companion detection
             has_raw_companion = False
         
-        # Business Logic: Check thumbnail availability
-        # Note: We no longer have full file path, so disable thumbnail generation for now
-        has_thumbnail = bool(getattr(image, 'thumbnail', None))
+        # Business Logic: Check hotpreview availability
+        # Note: We no longer have full file path, so hotpreview is always stored
+        has_hotpreview = bool(getattr(image, 'hotpreview', None))
         
         # NOTE: author removed - author is a Photo-level concern, not Image-level
         
@@ -291,7 +291,7 @@ class ImageService:
     
     def _generate_hothash_from_hotpreview(self, hotpreview: bytes) -> str:
         """
-        Generate hothash from hotpreview (thumbnail)
+        Generate hothash from hotpreview
         Uses SHA256 hash of hotpreview bytes
         """
         hothash = hashlib.sha256(hotpreview).hexdigest()

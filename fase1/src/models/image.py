@@ -20,7 +20,7 @@ class Image(Base, TimestampMixin):
     
     ARCHITECTURE: Image is the PRIMARY entry point
     Images are created via POST /images, and automatically create/link to Photos:
-    - Image.hotpreview is REQUIRED (thumbnail binary data)
+    - Image.hotpreview is REQUIRED (hotpreview binary data)
     - Photo.hothash is generated from hotpreview via SHA256
     - First Image with new hotpreview → Creates new Photo (becomes master)
     - Subsequent Images with same hotpreview → Link to existing Photo
@@ -29,7 +29,7 @@ class Image(Base, TimestampMixin):
     Key design principles:
     - One record per physical file
     - File-specific data only (filename, size, EXIF, hotpreview)
-    - hotpreview stored here (thumbnail for UI display)
+    - hotpreview stored here (hotpreview for UI display)
     - Immutable after creation (no UPDATE operations)
     - Delete only via Photo cascade (no individual DELETE)
     """
@@ -43,7 +43,7 @@ class Image(Base, TimestampMixin):
     
     # File-specific processing data
     exif_data = Column(LargeBinary)  # Raw EXIF data stored as binary blob
-    hotpreview = Column(LargeBinary)  # Thumbnail/preview image for this file
+    hotpreview = Column(LargeBinary)  # Hotpreview image for this file
     
     # Link to Photo (via hothash - not a FK since it's generated from hotpreview)
     photo_hothash = Column(String(64), ForeignKey('photos.hothash'), nullable=True, index=True)
