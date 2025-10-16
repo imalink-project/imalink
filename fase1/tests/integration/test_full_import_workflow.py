@@ -26,7 +26,7 @@ from models.base import Base
 from models.photo import Photo
 from models.image import Image
 from models.import_session import ImportSession
-from services.import_sessions_background_service import ImportSessionsBackgroundService
+# from services.import_sessions_background_service import ImportSessionsBackgroundService  # DELETED - old architecture
 from repositories.import_session_repository import ImportSessionRepository
 
 
