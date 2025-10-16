@@ -4,6 +4,7 @@
 
 ```bash
 cd mini-frontend
+uv venv
 uv pip install -r requirements.txt
 ```
 
@@ -22,7 +23,14 @@ Backend starter på: http://localhost:8000
 I et annet terminalvindu:
 ```bash
 cd mini-frontend
-uv run python main.py
+source .venv/bin/activate
+python main.py
+```
+
+Eller direkte uten å aktivere:
+```bash
+cd mini-frontend
+.venv/bin/python main.py
 ```
 
 ## Funksjoner

@@ -13,7 +13,8 @@ Enkel desktop-applikasjon bygget med Flet for testing av ImaLink API.
 
 ```bash
 cd mini-frontend
-uv pip install -r requirements.txt
+uv venv                            # Opprett virtual environment
+uv pip install -r requirements.txt # Installer dependencies
 ```
 
 ## Kjøring
@@ -27,7 +28,14 @@ uv run uvicorn src.main:app --reload
 2. Start mini-frontend i nytt terminalvindu:
 ```bash
 cd mini-frontend
-uv run python main.py
+source .venv/bin/activate  # Aktiver virtual environment
+python main.py
+```
+
+Alternativt uten å aktivere venv:
+```bash
+cd mini-frontend
+.venv/bin/python main.py
 ```
 
 ## API Endpoint
