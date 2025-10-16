@@ -40,11 +40,3 @@ class AuthorListResponse(BaseModel):
     
     class Config:
         from_attributes = True
-
-
-class AuthorStatistics(BaseModel):
-    """Author statistics model"""
-    total_authors: int
-    authors_with_images: int
-    avg_images_per_author: float
-    top_authors: List[AuthorResponse]
