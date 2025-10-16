@@ -23,6 +23,7 @@ from schemas.responses.import_session_responses import (
     ImportSessionResponse,
     ImportSessionListResponse
 )
+from schemas.common import create_success_response
 from core.exceptions import NotFoundError, ValidationError
 
 logger = logging.getLogger(__name__)
@@ -114,7 +115,7 @@ def update_import_session(
         raise HTTPException(status_code=500, detail=f"Failed to update import session: {str(e)}")
 
 
-@router.delete("/{import_id}", status_code=204)
+@router.delete("/{import_id}")
 def delete_import_session(
     import_id: int,
     service: ImportSessionService = Depends(get_import_session_service)
@@ -128,6 +129,7 @@ def delete_import_session(
     try:
         service.delete_session(import_id)
         logger.info(f"Deleted import session {import_id}")
+        return create_success_response(message="Import session deleted successfully")
         
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

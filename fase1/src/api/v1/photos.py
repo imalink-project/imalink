@@ -25,7 +25,7 @@ from schemas.photo_schemas import (
     PhotoSearchRequest
 )
 from schemas.common import PaginatedResponse, create_success_response
-from core.exceptions import APIException
+from core.exceptions import NotFoundError, ValidationError
 
 router = APIRouter()
 
@@ -44,10 +44,8 @@ def list_photos(
             limit=limit,
             author_id=author_id
         )
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve photos: {str(e)}")
 
 
 @router.post("/search", response_model=PaginatedResponse[PhotoResponse])
@@ -58,10 +56,10 @@ def search_photos(
     """Search photos with advanced filtering"""
     try:
         return photo_service.search_photos(search_request)
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to search photos: {str(e)}")
 
 
 @router.get("/{hothash}", response_model=PhotoResponse)
@@ -72,10 +70,10 @@ def get_photo(
     """Get single photo by hash"""
     try:
         return photo_service.get_photo_by_hash(hothash)
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve photo: {str(e)}")
 
 
 @router.put("/{hothash}", response_model=PhotoResponse)
@@ -87,10 +85,12 @@ def update_photo(
     """Update existing photo"""
     try:
         return photo_service.update_photo(hothash, photo_data)
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update photo: {str(e)}")
 
 
 @router.delete("/{hothash}")
@@ -98,14 +98,14 @@ def delete_photo(
     hothash: str,
     photo_service: PhotoService = Depends(get_photo_service)
 ):
-    """Delete photo"""
+    """Delete photo and all associated image files"""
     try:
-        success = photo_service.delete_photo(hothash)
+        photo_service.delete_photo(hothash)
         return create_success_response(message="Photo deleted successfully")
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete photo: {str(e)}")
 
 
 @router.get("/{hothash}/hotpreview")
@@ -129,10 +129,10 @@ def get_hotpreview(
             )
         else:
             raise HTTPException(status_code=404, detail="Hotpreview not found")
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve hotpreview: {str(e)}")
 
 
 # Additional utility endpoints

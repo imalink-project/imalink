@@ -30,7 +30,7 @@ from schemas.image_schemas import (
     ImageResponse, ImageCreateRequest, ImageUpdateRequest
 )
 from schemas.common import PaginatedResponse, create_success_response
-from core.exceptions import APIException
+from core.exceptions import NotFoundError, ValidationError, DuplicateImageError
 
 router = APIRouter()
 
@@ -59,8 +59,8 @@ def get_image_details(
     """Get detailed information about a specific image"""
     try:
         return image_service.get_image_by_id(image_id)
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve image: {str(e)}")
 
@@ -85,8 +85,8 @@ def get_hotpreview(
                 "Content-Type": "image/jpeg"
             }
         )
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve hot preview: {str(e)}")
 
@@ -110,8 +110,10 @@ def create_image(
     """
     try:
         return image_service.create_image_with_photo(image_data)
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except DuplicateImageError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create image: {str(e)}")
 
