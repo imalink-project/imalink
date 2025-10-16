@@ -33,10 +33,12 @@ class Photo(Base, TimestampMixin):
     __tablename__ = "photos"
     
     # Primary key = content-based hash (same for JPEG/RAW pairs)
+    # Hash is generated from Image.hotpreview (first Image = master)
     hothash = Column(String(64), primary_key=True, index=True)
     
     # Visual presentation data (critical for galleries)
-    hotpreview = Column(LargeBinary)  # Fast cached preview for UI
+    # NOTE: hotpreview removed - stored in Image model instead
+    # Access via photo.files[0].hotpreview (first Image = master)
     width = Column(Integer)           # Original image dimensions
     height = Column(Integer)
     user_rotation = Column(Integer, default=0, nullable=False)  # User rotation (0=0°, 1=90°, 2=180°, 3=270°)
@@ -57,7 +59,8 @@ class Photo(Base, TimestampMixin):
     import_session_id = Column(Integer, ForeignKey('import_sessions.id'), nullable=True, index=True)
     
     # Relationships
-    files = relationship("Image", back_populates="photo", cascade="all, delete-orphan")
+    files = relationship("Image", back_populates="photo", cascade="all, delete-orphan", 
+                        foreign_keys="[Image.photo_hothash]")
     author = relationship("Author", back_populates="photos")
     # Note: No back_populates to ImportSession - access photos via ImportSession.images[].photo
     
@@ -68,6 +71,13 @@ class Photo(Base, TimestampMixin):
     def has_gps(self) -> bool:
         """Check if photo has GPS coordinates"""
         return self.gps_latitude is not None and self.gps_longitude is not None
+    
+    @property
+    def hotpreview(self) -> Optional[bytes]:
+        """Get hotpreview from first (master) Image"""
+        if self.files and len(self.files) > 0:
+            return self.files[0].hotpreview
+        return None
     
     @property  
     def jpeg_file(self) -> Optional["Image"]:
@@ -147,13 +157,12 @@ class Photo(Base, TimestampMixin):
         # 4. Ekstraher metadata fra primær fil
         metadata = cls._extract_photo_metadata(primary_file)
         
-        # 5. Generer hotpreview for galleries
+        # 5. Generer hotpreview for galleries (will be stored in Image, not Photo)
         hotpreview = cls._generate_hotpreview(primary_file)
         
-        # 6. Opprett Photo record
+        # 6. Opprett Photo record (without hotpreview - stored in Image instead)
         photo = cls(
             hothash=hothash,
-            hotpreview=hotpreview,
             width=metadata.get('width'),
             height=metadata.get('height'),
             taken_at=metadata.get('taken_at'),
@@ -170,11 +179,14 @@ class Photo(Base, TimestampMixin):
             file_path_obj = Path(file_path)
             file_size = file_path_obj.stat().st_size if file_path_obj.exists() else None
             
+            # NOTE: Old architecture - this needs updating to new Image model
+            # TODO: Remove this legacy method once all code uses new Image service
             image = Image(
                 filename=file_path_obj.name,
                 file_size=file_size,
                 exif_data=None,  # Old method doesn't extract EXIF
-                hothash=hothash,
+                hotpreview=hotpreview if file_path == primary_file else None,  # Only primary gets hotpreview
+                photo_hothash=hothash,  # Link to Photo via hothash
                 import_session_id=import_session_id
             )
             photo.files.append(image)

@@ -147,36 +147,44 @@ class ImageService:
         Create new image with automatic Photo creation/association
         
         New architecture: Images drive Photo creation
-        - If hothash is None/empty: Generate hothash and create new Photo from Image metadata
-        - If hothash is provided: Add Image to existing Photo with that hothash
+        - Image has hotpreview (thumbnail)
+        - Photo.hothash generated from Image.hotpreview
+        - If photo_hothash is None: Generate hotpreview → hothash → create new Photo
+        - If photo_hothash provided: Add Image to existing Photo
         
-        First Image = Master (defines Photo metadata)
-        Subsequent Images = Just added to Photo relationship
+        First Image = Master (defines Photo metadata and has hotpreview)
+        Subsequent Images = Added to Photo, may or may not have hotpreview
         """
         
-        # SCENARIO 1: No hothash provided - create new Photo
-        if not image_data.hothash:
-            # Generate hothash from image data
-            hothash = await self._generate_hothash_from_image(image_data)
+        # SCENARIO 1: No photo_hothash provided - create new Photo
+        if not image_data.photo_hothash:
+            # 1. Generate hotpreview from image file (if not provided)
+            if not image_data.hotpreview:
+                # TODO: Generate hotpreview from file
+                # For now, require hotpreview to be provided
+                raise ValidationError("hotpreview is required when creating first Image for new Photo")
             
-            # Extract metadata from Image for Photo creation
+            # 2. Generate hothash from hotpreview
+            hothash = await self._generate_hothash_from_hotpreview(image_data.hotpreview)
+            
+            # 3. Extract metadata from Image for Photo creation
             photo_data = await self._extract_photo_metadata_from_image(image_data, hothash)
             
-            # Create Photo first
+            # 4. Create Photo first
             photo = self.photo_repo.create(photo_data)
             
-            # Now create Image with the generated hothash
-            image_data.hothash = hothash
+            # 5. Now create Image with the generated photo_hothash
+            image_data.photo_hothash = hothash
             image = self.image_repo.create(image_data)
             
             return await self._convert_to_response(image)
         
-        # SCENARIO 2: hothash provided - add to existing Photo
+        # SCENARIO 2: photo_hothash provided - add to existing Photo
         else:
             # Validate that Photo exists
-            existing_photo = self.photo_repo.get_by_hash(image_data.hothash)
+            existing_photo = self.photo_repo.get_by_hash(image_data.photo_hothash)
             if not existing_photo:
-                raise ValidationError(f"Photo with hothash {image_data.hothash} does not exist")
+                raise ValidationError(f"Photo with hothash {image_data.photo_hothash} does not exist")
             
             # Create Image and link to existing Photo
             image = self.image_repo.create(image_data)
@@ -377,6 +385,14 @@ class ImageService:
         """Invalidate cached pool images for image"""
         await self.image_processor.invalidate_pool_cache(image_id)
     
+    async def _generate_hothash_from_hotpreview(self, hotpreview: bytes) -> str:
+        """
+        Generate hothash from hotpreview (thumbnail)
+        Uses SHA256 hash of hotpreview bytes
+        """
+        hothash = hashlib.sha256(hotpreview).hexdigest()
+        return hothash
+    
     async def _generate_hothash_from_image(self, image_data: ImageCreateRequest) -> str:
         """
         Generate hothash from image data
@@ -395,6 +411,7 @@ class ImageService:
         """
         Extract Photo metadata from Image data
         This creates the Photo record for the first (master) Image
+        NOTE: hotpreview is stored in Image, not Photo
         """
         # Extract EXIF metadata if available
         width = None
@@ -402,7 +419,6 @@ class ImageService:
         taken_at = None
         gps_latitude = None
         gps_longitude = None
-        hotpreview_b64 = None
         
         if image_data.exif_data:
             # Parse EXIF data to extract metadata
@@ -418,10 +434,9 @@ class ImageService:
             except Exception as e:
                 print(f"Warning: Failed to parse EXIF data: {e}")
         
-        # Create PhotoCreateRequest with extracted data
+        # Create PhotoCreateRequest with extracted data (NO hotpreview)
         return PhotoCreateRequest(
             hothash=hothash,
-            hotpreview=hotpreview_b64,
             width=width,
             height=height,
             taken_at=taken_at,

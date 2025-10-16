@@ -20,9 +20,12 @@ class AuthorSummary(BaseModel):
 class ImageResponse(BaseModel):
     """Complete image response model"""
     id: int
-    hash: str = Field(..., alias="hothash", description="Hot hash identifier based on hotpreview")
+    photo_hothash: Optional[str] = Field(None, description="Photo hothash - links to Photo")
     filename: str = Field(..., description="Filename with extension (e.g. IMG_1234.jpg)")
     file_size: Optional[int] = Field(None, description="File size in bytes")
+    
+    # NEW: hotpreview is now stored in Image
+    has_hotpreview: bool = Field(False, description="Whether hotpreview is available")
     
     # Computed fields (provided by service layer)
     file_format: Optional[str] = Field(None, description="File format computed from filename")
@@ -89,9 +92,12 @@ class ImageCreateRequest(BaseModel):
     """Request model for creating new images - file-specific data only"""
     filename: str = Field(..., min_length=1, max_length=255, description="Filename with extension")
     
-    # NEW: hothash is now optional - if not provided, a new Photo will be created
-    # If provided, the Image will be added to the existing Photo with that hothash
-    hothash: Optional[str] = Field(None, min_length=1, max_length=64, description="Hot hash identifier - if not provided, new Photo is created")
+    # NEW ARCHITECTURE: hotpreview stored in Image, photo_hothash links to Photo
+    # - hotpreview: Thumbnail/preview binary data (required for first Image to create Photo)
+    # - photo_hothash: Links Image to Photo (optional - if None, new Photo created)
+    hotpreview: Optional[bytes] = Field(None, description="Thumbnail/preview image binary data")
+    photo_hothash: Optional[str] = Field(None, min_length=1, max_length=64, 
+                                         description="Photo hothash - if not provided, new Photo created from hotpreview")
     
     # Optional file metadata
     file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")
