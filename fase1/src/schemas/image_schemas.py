@@ -49,8 +49,7 @@ class ImageResponse(BaseModel):
     # title, description, tags, rating will be handled by ImageMetadataService
     # These fields removed from Image model to support multiple files per motif (JPEG/RAW)
     
-    # User modifications
-    user_rotation: int = Field(0, ge=0, le=3, description="User rotation (0=0°, 1=90°, 2=180°, 3=270°)")
+    # NOTE: user_rotation removed - rotation is a Photo-level concern, not Image-level
     
     # Relationships
     author: Optional[AuthorSummary] = Field(None, description="Image author/photographer")
@@ -112,7 +111,7 @@ class ImageCreateRequest(BaseModel):
 class ImageUpdateRequest(BaseModel):
     """Request model for updating existing images"""
     # NOTE: title, description, tags, rating moved to ImageMetadata table
-    user_rotation: Optional[int] = Field(None, ge=0, le=3, description="User rotation")
+    # NOTE: user_rotation removed - rotation is a Photo-level concern
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
 
 
@@ -135,9 +134,7 @@ class ImageSearchRequest(BaseModel):
     sort_order: str = Field("desc", pattern="^(asc|desc)$", description="Sort order")
 
 
-class ImageRotateRequest(BaseModel):
-    """Request model for rotating images"""
-    clockwise: bool = Field(True, description="Rotate clockwise (90°) or counter-clockwise (-90°)")
+# NOTE: ImageRotateRequest removed - rotation is a Photo-level concern, not Image-level
 
 
 class ImageHotpreviewResponse(BaseModel):

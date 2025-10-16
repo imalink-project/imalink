@@ -13,7 +13,7 @@ from repositories.image_repository import ImageRepository
 from repositories.photo_repository import PhotoRepository
 from schemas.image_schemas import (
     ImageResponse, ImageCreateRequest, ImageUpdateRequest, 
-    ImageSearchRequest, ImageRotateRequest, AuthorSummary
+    ImageSearchRequest, AuthorSummary
 )
 from schemas.photo_schemas import PhotoCreateRequest
 from schemas.common import PaginatedResponse, create_paginated_response
@@ -221,27 +221,7 @@ class ImageService:
         # Delete from database
         return self.image_repo.delete(image_id)
     
-    async def rotate_image(
-        self, 
-        image_id: int, 
-        rotate_request: ImageRotateRequest
-    ) -> ImageResponse:
-        """Rotate image (update user rotation)"""
-        
-        # Check image exists
-        existing_image = self.image_repo.get_by_id(image_id)
-        if not existing_image:
-            raise NotFoundError("Image", image_id)
-        
-        # Rotate image
-        rotated_image = self.image_repo.rotate_image(image_id, rotate_request.clockwise)
-        if not rotated_image:
-            raise NotFoundError("Image", image_id)
-        
-        # Business Logic: Invalidate cached pool images
-        await self._invalidate_pool_cache(image_id)
-        
-        return await self._convert_to_response(rotated_image)
+    # NOTE: rotate_image removed - rotation is a Photo-level concern, not Image-level
     
     async def get_image_thumbnail(self, image_id: int) -> Optional[bytes]:
         """Get image thumbnail binary data"""
@@ -281,11 +261,13 @@ class ImageService:
         if not image:
             raise NotFoundError("Image", image_id)
         
+        # NOTE: user_rotation now in Photo model, not Image
+        # For pool image generation, we don't apply rotation (it's applied in Photo display)
         # Business Logic: Generate pool image if needed
         return await self.image_processor.get_pool_image(
             getattr(image, 'file_path', ''), 
             pool_size, 
-            getattr(image, 'user_rotation', 0) or 0
+            0  # No rotation at Image level
         )
     
     async def get_recent_images(self, limit: int = 50) -> List[ImageResponse]:
@@ -361,8 +343,7 @@ class ImageService:
             gps_latitude=None,  # GPS is in Photo model, not Image
             gps_longitude=None,
             has_gps=False,  # GPS is in Photo model
-            # NOTE: title, description, tags, rating in Photo model
-            user_rotation=0,  # user_rotation is in Photo model
+            # NOTE: title, description, tags, rating, user_rotation in Photo model
             author=author_summary,
             author_id=None,  # author_id is in Photo model
             # import_source available via import_session relationship if needed

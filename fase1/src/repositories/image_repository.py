@@ -101,23 +101,7 @@ class ImageRepository:
             return True
         return False
     
-    def rotate_image(self, image_id: int, clockwise: bool = True) -> Optional[Image]:
-        """Rotate image by updating user_rotation field"""
-        image = self.get_by_id(image_id)
-        if not image:
-            return None
-        
-        # Calculate new rotation (0-3 range)
-        current_rotation = image.user_rotation or 0
-        if clockwise:
-            new_rotation = (current_rotation + 1) % 4
-        else:
-            new_rotation = (current_rotation - 1) % 4
-        
-        setattr(image, 'user_rotation', new_rotation)
-        self.db.commit()
-        self.db.refresh(image)
-        return image
+    # NOTE: rotate_image removed - rotation is a Photo-level concern, not Image-level
     
     def get_images_by_author(self, author_id: int, limit: int = 100) -> List[Image]:
         """Get images by specific author (via Photo relationship)"""

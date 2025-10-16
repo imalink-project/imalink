@@ -18,7 +18,7 @@ from core.dependencies import get_image_service
 from services.image_service_new import ImageService
 from schemas.image_schemas import (
     ImageResponse, ImageCreateRequest, ImageUpdateRequest, 
-    ImageSearchRequest, ImageRotateRequest
+    ImageSearchRequest
 )
 from schemas.common import PaginatedResponse, create_success_response
 from core.exceptions import APIException
@@ -211,31 +211,11 @@ async def create_image(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create image: {str(e)}")
 
-@router.post("/{image_id}/rotate")
-async def rotate_image(
-    image_id: int,
-    rotate_request: ImageRotateRequest = ImageRotateRequest(clockwise=True),
-    image_service: ImageService = Depends(get_image_service)
-):
-    """Rotate image 90 degrees (updates user_rotation field only)"""
-    try:
-        rotated_image = await image_service.rotate_image(image_id, rotate_request)
-        
-        return create_success_response(
-            message=f"Image rotated to {rotated_image.user_rotation * 90} degrees",
-            image_id=image_id,
-            user_rotation=rotated_image.user_rotation
-        )
-        
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to rotate image: {str(e)}")
-
+# NOTE: rotate endpoint removed - rotation is a Photo-level concern, not Image-level
+# Use Photo API for rotation operations
 
 # Images cannot be updated or deleted individually - they are managed via Photo operations
 # Use PUT /photos/{hothash} and DELETE /photos/{hothash} instead
-
 
 
 # Utility endpoints
