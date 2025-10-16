@@ -67,18 +67,9 @@ async def get_photo(
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
-@router.post("/", response_model=PhotoResponse, status_code=201)
-async def create_photo(
-    photo_data: PhotoCreateRequest,
-    photo_service: PhotoService = Depends(get_photo_service)
-):
-    """Create new photo"""
-    try:
-        return await photo_service.create_photo(photo_data)
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+# NOTE: Photo creation removed - Photos are now created automatically via POST /images
+# When creating an Image without hothash, a new Photo is created automatically
+# This simplifies the architecture: Image is the entry point, Photo is auto-generated
 
 
 @router.put("/{hothash}", response_model=PhotoResponse)

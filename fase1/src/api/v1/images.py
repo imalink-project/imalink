@@ -187,6 +187,29 @@ async def search_images(
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
 
+@router.post("/", response_model=ImageResponse, status_code=201)
+async def create_image(
+    image_data: ImageCreateRequest,
+    image_service: ImageService = Depends(get_image_service)
+):
+    """
+    Create new Image with automatic Photo creation/association
+    
+    NEW ARCHITECTURE: Images drive Photo creation
+    - If hothash is not provided: New Photo is created automatically from Image metadata
+    - If hothash is provided: Image is added to existing Photo with that hothash
+    
+    First Image = Master (defines Photo metadata)
+    Subsequent Images = Added to Photo relationship only
+    """
+    try:
+        return await image_service.create_image_with_photo(image_data)
+    except APIException as e:
+        raise HTTPException(status_code=e.status_code, detail=e.message)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create image: {str(e)}")
+
+
 @router.post("/{image_id}/rotate")
 async def rotate_image(
     image_id: int,
@@ -211,8 +234,6 @@ async def rotate_image(
 
 # Images cannot be updated or deleted individually - they are managed via Photo operations
 # Use PUT /photos/{hothash} and DELETE /photos/{hothash} instead
-
-# Images can only be created via Photo batch endpoint - standalone image creation is not allowed
 
 
 # Statistics and utility endpoints

@@ -6,14 +6,19 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 from pathlib import Path
 import json
+import hashlib
+import base64
 
 from repositories.image_repository import ImageRepository
+from repositories.photo_repository import PhotoRepository
 from schemas.image_schemas import (
     ImageResponse, ImageCreateRequest, ImageUpdateRequest, 
     ImageSearchRequest, ImageRotateRequest, AuthorSummary
 )
+from schemas.photo_schemas import PhotoCreateRequest
 from schemas.common import PaginatedResponse, create_paginated_response
 from core.exceptions import NotFoundError, DuplicateImageError, ValidationError
+from models import Photo, Image
 
 
 # Placeholder ImageProcessor class (would be implemented separately)
@@ -88,6 +93,7 @@ class ImageService:
     def __init__(self, db: Session):
         self.db = db
         self.image_repo = ImageRepository(db)
+        self.photo_repo = PhotoRepository(db)
         self.image_processor = ImageProcessor()
     
     async def get_images(
@@ -128,13 +134,54 @@ class ImageService:
         """Create new image with business logic validation"""
         
         # Business Logic: Check for duplicates
-        if self.image_repo.exists_by_hash(image_data.hothash):
+        if image_data.hothash and self.image_repo.exists_by_hash(image_data.hothash):
             raise DuplicateImageError(f"Image with hash {image_data.hothash} already exists")
         
         # Create image record
         image = self.image_repo.create(image_data)
         
         return await self._convert_to_response(image)
+    
+    async def create_image_with_photo(self, image_data: ImageCreateRequest) -> ImageResponse:
+        """
+        Create new image with automatic Photo creation/association
+        
+        New architecture: Images drive Photo creation
+        - If hothash is None/empty: Generate hothash and create new Photo from Image metadata
+        - If hothash is provided: Add Image to existing Photo with that hothash
+        
+        First Image = Master (defines Photo metadata)
+        Subsequent Images = Just added to Photo relationship
+        """
+        
+        # SCENARIO 1: No hothash provided - create new Photo
+        if not image_data.hothash:
+            # Generate hothash from image data
+            hothash = await self._generate_hothash_from_image(image_data)
+            
+            # Extract metadata from Image for Photo creation
+            photo_data = await self._extract_photo_metadata_from_image(image_data, hothash)
+            
+            # Create Photo first
+            photo = self.photo_repo.create(photo_data)
+            
+            # Now create Image with the generated hothash
+            image_data.hothash = hothash
+            image = self.image_repo.create(image_data)
+            
+            return await self._convert_to_response(image)
+        
+        # SCENARIO 2: hothash provided - add to existing Photo
+        else:
+            # Validate that Photo exists
+            existing_photo = self.photo_repo.get_by_hash(image_data.hothash)
+            if not existing_photo:
+                raise ValidationError(f"Photo with hothash {image_data.hothash} does not exist")
+            
+            # Create Image and link to existing Photo
+            image = self.image_repo.create(image_data)
+            
+            return await self._convert_to_response(image)
     
     async def update_image(
         self, 
@@ -348,3 +395,61 @@ class ImageService:
     async def _invalidate_pool_cache(self, image_id: int) -> None:
         """Invalidate cached pool images for image"""
         await self.image_processor.invalidate_pool_cache(image_id)
+    
+    async def _generate_hothash_from_image(self, image_data: ImageCreateRequest) -> str:
+        """
+        Generate hothash from image data
+        Uses filename and file_size to create a unique hash
+        """
+        # Create hash from available data
+        hash_input = f"{image_data.filename}_{image_data.file_size or 0}"
+        hothash = hashlib.sha256(hash_input.encode()).hexdigest()
+        return hothash
+    
+    async def _extract_photo_metadata_from_image(
+        self, 
+        image_data: ImageCreateRequest, 
+        hothash: str
+    ) -> PhotoCreateRequest:
+        """
+        Extract Photo metadata from Image data
+        This creates the Photo record for the first (master) Image
+        """
+        # Extract EXIF metadata if available
+        width = None
+        height = None
+        taken_at = None
+        gps_latitude = None
+        gps_longitude = None
+        hotpreview_b64 = None
+        
+        if image_data.exif_data:
+            # Parse EXIF data to extract metadata
+            # This is a simplified version - in production, use proper EXIF parsing
+            try:
+                from PIL import Image as PILImage
+                from PIL.ExifTags import TAGS
+                import io
+                
+                # Try to extract dimensions and other metadata from EXIF
+                # Note: This is placeholder logic - real implementation would be more robust
+                pass
+            except Exception as e:
+                print(f"Warning: Failed to parse EXIF data: {e}")
+        
+        # Create PhotoCreateRequest with extracted data
+        return PhotoCreateRequest(
+            hothash=hothash,
+            hotpreview=hotpreview_b64,
+            width=width,
+            height=height,
+            taken_at=taken_at,
+            gps_latitude=gps_latitude,
+            gps_longitude=gps_longitude,
+            title=None,
+            description=None,
+            tags=[],
+            rating=0,
+            author_id=None,
+            import_session_id=image_data.import_session_id
+        )

@@ -88,7 +88,10 @@ class ImageListResponse(BaseModel):
 class ImageCreateRequest(BaseModel):
     """Request model for creating new images - file-specific data only"""
     filename: str = Field(..., min_length=1, max_length=255, description="Filename with extension")
-    hothash: str = Field(..., min_length=1, max_length=64, description="Hot hash identifier")
+    
+    # NEW: hothash is now optional - if not provided, a new Photo will be created
+    # If provided, the Image will be added to the existing Photo with that hothash
+    hothash: Optional[str] = Field(None, min_length=1, max_length=64, description="Hot hash identifier - if not provided, new Photo is created")
     
     # Optional file metadata
     file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")

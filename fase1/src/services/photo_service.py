@@ -67,20 +67,9 @@ class PhotoService:
         
         return self._convert_to_response(photo)
     
-    async def create_photo(self, photo_data: PhotoCreateRequest) -> PhotoResponse:
-        """Create new photo with EXIF extraction from associated Images"""
-        
-        # Check for duplicate hash
-        if self.photo_repo.exists_by_hash(photo_data.hothash):
-            raise DuplicatePhotoError(f"Photo with hash {photo_data.hothash} already exists")
-        
-        # Validate tags if provided
-        if photo_data.tags:
-            self._validate_tags(photo_data.tags)
-        
-        # Create the photo (EXIF metadata should already be provided by caller)
-        photo = self.photo_repo.create(photo_data)
-        return self._convert_to_response(photo)
+    # NOTE: Photo creation removed - Photos are now created automatically via Image service
+    # When an Image is created without hothash, a new Photo is auto-generated
+    # This architecture change makes Image the entry point for photo management
     
     async def update_photo(self, hothash: str, photo_data: PhotoUpdateRequest) -> PhotoResponse:
         """Update existing photo"""
