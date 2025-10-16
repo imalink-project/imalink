@@ -270,16 +270,7 @@ class ImageService:
             0  # No rotation at Image level
         )
     
-    async def get_recent_images(self, limit: int = 50) -> List[ImageResponse]:
-        """Get recently imported images"""
-        images = self.image_repo.get_recent_images(limit)
-        
-        image_responses = []
-        for image in images:
-            image_response = await self._convert_to_response(image)
-            image_responses.append(image_response)
-        
-        return image_responses
+    # NOTE: get_recent_images removed - use list_images with sort_by=created_at instead
     
     async def get_images_by_author(self, author_id: int, limit: int = 100) -> List[ImageResponse]:
         """Get images by specific author"""

@@ -220,17 +220,7 @@ async def create_image(
 
 # Utility endpoints
 
-@router.get("/recent", response_model=list[ImageResponse])
-async def get_recent_images(
-    limit: int = Query(50, ge=1, le=200, description="Number of recent images to return"),
-    image_service: ImageService = Depends(get_image_service)
-):
-    """Get recently imported images"""
-    try:
-        return await image_service.get_recent_images(limit)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve recent images: {str(e)}")
-
+# NOTE: /recent endpoint removed - use GET /images with sort_by=created_at&sort_order=desc instead
 
 @router.get("/author/{author_id}", response_model=list[ImageResponse])
 async def get_images_by_author(

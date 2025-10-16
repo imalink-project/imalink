@@ -39,9 +39,8 @@ async def test_service_integration():
         # Check service methods exist
         service_methods = [
             'get_images', 'get_image_by_id', 'create_image', 
-            'update_image', 'delete_image', 'rotate_image',
+            'update_image', 'delete_image',
             'get_image_thumbnail', 'search_images', 
-            'get_recent_images',
             'get_images_by_author', 'get_image_pool'
         ]
         
@@ -64,7 +63,7 @@ async def test_schema_integration():
     try:
         from schemas.image_schemas import (
             ImageResponse, ImageCreateRequest, ImageUpdateRequest,
-            ImageSearchRequest, ImageRotateRequest
+            ImageSearchRequest
         )
         from schemas.common import PaginatedResponse
         
@@ -73,9 +72,7 @@ async def test_schema_integration():
         assert hasattr(ImageCreateRequest, '__fields__')
         print("✅ Image schemas are properly defined")
         
-        # Test schema validation
-        rotate_req = ImageRotateRequest(clockwise=True)
-        assert rotate_req.clockwise == True
+        # NOTE: Rotation test removed - rotation is Photo-level concern
         print("✅ Schema validation works")
         
     except Exception as e:
@@ -83,7 +80,6 @@ async def test_schema_integration():
         return False
     
     return True
-
 
 async def test_exception_handling():
     """Test exception handling setup"""

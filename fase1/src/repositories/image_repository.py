@@ -124,14 +124,7 @@ class ImageRepository:
             .all()
         )
     
-    def get_recent_images(self, limit: int = 50) -> List[Image]:
-        """Get recently imported images"""
-        return (
-            self.db.query(Image)
-            .order_by(desc(Image.created_at))
-            .limit(limit)
-            .all()
-        )
+    # NOTE: get_recent_images removed - use standard list/search with sorting instead
     
     def get_images_with_gps(self, limit: int = 100) -> List[Image]:
         """
