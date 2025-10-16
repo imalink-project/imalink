@@ -112,10 +112,10 @@ cd python_demos/import_session/
 uv run demo_jpg_dng.py
 ```
 
-**Component testing:**
+**Unit testing:**
 ```bash
-cd src/testing/
-python test_background_service.py
+cd tests/
+python run_unit_tests.py
 ```
 
 ## 📋 Feilsøking
@@ -143,17 +143,18 @@ cd python_demos/import_session/
 uv run demo_jpg_dng.py        # Test JPG/DNG import
 ```
 
-### **Component Tests**
+### **Unit Tests**
 ```bash
-cd src/testing/
-python test_background_service.py    # Service health
-python test_image_processor.py       # Metadata extraction  
+cd tests/
+python run_unit_tests.py             # Run all modern unit tests
+pytest tests/api/                    # API layer tests
+pytest tests/services/               # Service layer tests
 ```
 
 ### **Integration Tests**
 ```bash
-cd src/testing/
-python test_import_full.py          # Complete workflow
+cd tests/integration/
+pytest test_full_import_workflow.py  # Complete workflow
 ```
 
 ## 🎯 Arkitektur-prinsipper
