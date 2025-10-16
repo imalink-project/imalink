@@ -1,5 +1,17 @@
 """
 API endpoints for photo operations using Service Layer
+
+ARCHITECTURAL NOTE:
+Photos are NOT created directly via this API. They are auto-generated when
+creating Images via POST /images. This ensures:
+- No orphaned Photos without Image files
+- Photo.hothash is derived from Image.hotpreview (content-based)
+- JPEG/RAW pairs automatically share the same Photo
+
+This API provides:
+- READ: List, search, and retrieve photo metadata
+- UPDATE: Edit photo metadata (title, description, tags, rating, author)
+- DELETE: Remove photo and all associated image files (cascade)
 """
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, Query
@@ -64,11 +76,6 @@ async def get_photo(
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-
-# NOTE: Photo creation removed - Photos are now created automatically via POST /images
-# When creating an Image without hothash, a new Photo is created automatically
-# This simplifies the architecture: Image is the entry point, Photo is auto-generated
 
 
 @router.put("/{hothash}", response_model=PhotoResponse)

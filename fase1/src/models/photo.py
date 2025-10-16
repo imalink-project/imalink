@@ -20,15 +20,25 @@ class Photo(Base, TimestampMixin):
     """
     Primary photo model - aggregated view for galleries and browsing
     
-    This is the main table for photo display, search, and user interaction.
-    Represents the "concept" of a photo - multiple Image files (JPEG/RAW) 
-    can reference the same Photo record via hothash.
+    CREATION FLOW:
+    Photos are NEVER created manually. They are auto-generated when creating Images:
+    1. Client uploads image file → POST /images with hotpreview
+    2. System generates hothash from hotpreview (SHA256)
+    3. If Photo with hothash exists → Image links to existing Photo
+    4. If Photo doesn't exist → New Photo is auto-created, Image links to it
+    5. First Image becomes "master" for the Photo
+    
+    This ensures:
+    - No orphaned Photos without files
+    - JPEG/RAW pairs naturally share same Photo (same visual content = same hash)
+    - Photo metadata can be edited independently of Image files
     
     Key design principles:
     - hothash as primary key (content-based, shared between JPEG/RAW)
     - Contains all user-facing metadata (title, tags, rating)
-    - Contains visual presentation data (hotpreview, dimensions)
+    - Contains visual presentation data (dimensions, GPS)
     - Optimized for gallery queries and photo browsing
+    - hotpreview accessed via photo.files[0].hotpreview (master Image)
     """
     __tablename__ = "photos"
     

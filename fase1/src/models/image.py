@@ -18,14 +18,20 @@ class Image(Base, TimestampMixin):
     """
     File-level image model - represents a single physical image file
     
-    This model handles individual files (JPEG, RAW, etc.) and links to 
-    the Photo model which contains the shared content metadata.
+    ARCHITECTURE: Image is the PRIMARY entry point
+    Images are created via POST /images, and automatically create/link to Photos:
+    - Image.hotpreview is REQUIRED (thumbnail binary data)
+    - Photo.hothash is generated from hotpreview via SHA256
+    - First Image with new hotpreview → Creates new Photo (becomes master)
+    - Subsequent Images with same hotpreview → Link to existing Photo
+    - JPEG/RAW pairs naturally share same Photo (same visual content)
     
     Key design principles:
     - One record per physical file
     - File-specific data only (filename, size, EXIF, hotpreview)
-    - hotpreview stored here (thumbnail for UI)
-    - Photo.hothash generated from Image.hotpreview (first Image = master)
+    - hotpreview stored here (thumbnail for UI display)
+    - Immutable after creation (no UPDATE operations)
+    - Delete only via Photo cascade (no individual DELETE)
     """
     __tablename__ = "images"
     
@@ -51,11 +57,3 @@ class Image(Base, TimestampMixin):
     
     def __repr__(self):
         return f"<Image(id={self.id}, filename={self.filename})>"
-    
-    # ===== CONVENIENCE PROPERTIES =====
-    
-    # NOTE: hotpreview is now a Column field, not a property
-    # Access directly via image.hotpreview
-    
-    # NOTE: photo relationship removed - Images are standalone files
-    # Photo metadata accessed separately via Photo API using hothash

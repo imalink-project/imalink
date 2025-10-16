@@ -1,13 +1,24 @@
 """
-Image API endpoints - READ-ONLY operations
+Image API endpoints - Image-first architecture
 
-IMPORTANT ARCHITECTURAL NOTE:
-- Images can only be CREATED via Photo batch operations (POST /photos/batch)
-- Images cannot be created, updated, or deleted individually
-- All Image CRUD operations must go through the Photo API
-- Images are always part of a PhotoGroup and cannot exist standalone
+ARCHITECTURAL OVERVIEW:
+Images are the PRIMARY entry point for creating content:
+- POST /images creates an Image and automatically creates/associates a Photo
+- First Image with a new hotpreview → Creates new Photo (becomes master)
+- Subsequent Images with same hotpreview → Added to existing Photo
+- Photo.hothash is generated from Image.hotpreview via SHA256
 
-This API provides read-only access to Image data and related operations.
+This architecture ensures:
+- Image files drive the system (real data → metadata)
+- Photos are created automatically, not manually
+- JPEG/RAW pairs naturally share the same Photo (same visual content)
+- No orphaned Photos without Image files
+
+CRUD Operations:
+- CREATE: POST /images (creates Image + auto-creates/links Photo)
+- READ: GET /images, GET /images/{id}, GET /images/{id}/hotpreview
+- UPDATE: Not supported - Images are immutable file records
+- DELETE: Not supported - Delete via Photo API (DELETE /photos/{hothash})
 """
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, Query
@@ -61,7 +72,7 @@ async def get_hotpreview(
 ):
     """Get hot preview image data"""
     try:
-        hotpreview_data = await image_service.get_image_hotpreview(image_id)
+        hotpreview_data = await image_service.get_image_thumbnail(image_id)
         
         if not hotpreview_data:
             raise HTTPException(status_code=404, detail="Hot preview not found")
@@ -78,10 +89,6 @@ async def get_hotpreview(
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve hot preview: {str(e)}")
-
-
-# NOTE: /search endpoint removed - use GET /images with query parameters instead
-# The standard list endpoint supports filtering and sorting
 
 
 @router.post("/", response_model=ImageResponse, status_code=201)
@@ -108,14 +115,18 @@ async def create_image(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create image: {str(e)}")
 
-# NOTE: rotate endpoint removed - rotation is a Photo-level concern, not Image-level
-# Use Photo API for rotation operations
-
-# Images cannot be updated or deleted individually - they are managed via Photo operations
-# Use PUT /photos/{hothash} and DELETE /photos/{hothash} instead
-
-
-# Utility endpoints
-
-# NOTE: /recent endpoint removed - use GET /images with sort_by=created_at&sort_order=desc instead
-# NOTE: /author/{author_id} endpoint removed - author is a Photo-level concern, not Image-level
+# ===== UPDATE and DELETE are NOT supported for Images =====
+# 
+# WHY NO UPDATE?
+# Images represent immutable file records. The file data (filename, size, EXIF, 
+# hotpreview) should not change after import. User-editable metadata lives in 
+# the Photo model, not Image.
+#
+# WHY NO DELETE?
+# Images should only be deleted when their parent Photo is deleted. This ensures
+# referential integrity and prevents orphaned Photos. Use DELETE /photos/{hothash}
+# which will cascade-delete all associated Image files.
+#
+# For bulk operations or updates to Photo metadata, use the Photo API:
+# - PUT /photos/{hothash} - Update photo metadata (title, tags, rating, etc.)
+# - DELETE /photos/{hothash} - Delete photo and all associated image files
