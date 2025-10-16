@@ -19,25 +19,3 @@ class ImportSessionUpdateRequest(BaseModel):
     description: Optional[str] = Field(None, description="Updated description")
     storage_location: Optional[str] = Field(None, description="Updated storage location")
     default_author_id: Optional[int] = Field(None, description="Updated default author")
-
-
-# Backward compatibility - deprecated
-class ImportStartRequest(ImportSessionCreateRequest):
-    """DEPRECATED: Use ImportSessionCreateRequest instead"""
-    source_path: Optional[str] = Field(None, description="DEPRECATED: Use storage_location")
-    source_description: Optional[str] = Field(None, description="DEPRECATED: Use description")
-    
-    @property
-    def source_directory(self) -> str:
-        """DEPRECATED: Alias for backward compatibility"""
-        return self.source_path or ""
-
-
-class ImportTestRequest(BaseModel):
-    """Test request schema"""
-    test_parameter: str = Field("test", description="Test parameter for endpoint verification")
-
-
-class SetStorageNameRequest(BaseModel):
-    """DEPRECATED: Use ImportSessionUpdateRequest instead"""
-    storage_name: str = Field(..., description="Storage name (directory name without path)")
