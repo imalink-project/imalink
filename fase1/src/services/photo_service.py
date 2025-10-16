@@ -11,7 +11,7 @@ import time
 from repositories.photo_repository import PhotoRepository
 from repositories.image_repository import ImageRepository
 from schemas.photo_schemas import (
-    PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, PhotoSearchRequest, PhotoRotateRequest,
+    PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, PhotoSearchRequest,
     AuthorSummary, ImageFileSummary
 )
 from schemas.common import PaginatedResponse, create_paginated_response
@@ -95,15 +95,6 @@ class PhotoService:
         self.db.commit()
         return True
     
-    async def rotate_photo(self, hothash: str, rotate_request: PhotoRotateRequest) -> PhotoResponse:
-        """Rotate photo by 90 degrees"""
-        photo = self.photo_repo.rotate_photo(hothash, rotate_request.clockwise)
-        if not photo:
-            raise NotFoundError("Photo", hothash)
-        
-        self.db.commit()
-        return self._convert_to_response(photo)
-    
     async def get_hotpreview(self, hothash: str) -> Optional[bytes]:
         """Get hotpreview data for photo"""
         hotpreview_data = self.photo_repo.get_hotpreview(hothash)
@@ -160,7 +151,6 @@ class PhotoService:
             hotpreview=hotpreview_b64,
             width=getattr(photo, 'width', None),
             height=getattr(photo, 'height', None),
-            user_rotation=getattr(photo, 'user_rotation', 0),
             taken_at=getattr(photo, 'taken_at', None),
             gps_latitude=getattr(photo, 'gps_latitude', None),
             gps_longitude=getattr(photo, 'gps_longitude', None),

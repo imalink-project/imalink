@@ -11,7 +11,7 @@ from core.dependencies import get_photo_service
 from services.photo_service import PhotoService
 from schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, 
-    PhotoSearchRequest, PhotoRotateRequest
+    PhotoSearchRequest
 )
 from schemas.common import PaginatedResponse, create_success_response
 from core.exceptions import APIException
@@ -102,21 +102,6 @@ async def delete_photo(
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 
-@router.post("/{hothash}/rotate", response_model=PhotoResponse)
-async def rotate_photo(
-    hothash: str,
-    rotate_request: PhotoRotateRequest,
-    photo_service: PhotoService = Depends(get_photo_service)
-):
-    """Rotate photo by 90 degrees"""
-    try:
-        return await photo_service.rotate_photo(hothash, rotate_request)
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-
 @router.get("/{hothash}/hotpreview")
 async def get_hotpreview(
     hothash: str,
@@ -158,8 +143,7 @@ async def get_photo_metadata(
             "title": photo.title,
             "description": photo.description,
             "tags": photo.tags,
-            "rating": photo.rating,
-            "user_rotation": photo.user_rotation
+            "rating": photo.rating
         }
         return create_success_response(
             message="Photo metadata retrieved successfully",
@@ -185,7 +169,6 @@ async def update_photo_metadata(
             description=metadata.get("description"),
             tags=metadata.get("tags"),
             rating=metadata.get("rating"),
-            user_rotation=metadata.get("user_rotation"),
             author_id=metadata.get("author_id")
         )
         
@@ -196,8 +179,7 @@ async def update_photo_metadata(
                 "title": updated_photo.title,
                 "description": updated_photo.description,
                 "tags": updated_photo.tags,
-                "rating": updated_photo.rating,
-                "user_rotation": updated_photo.user_rotation
+                "rating": updated_photo.rating
             }
         )
     except APIException as e:

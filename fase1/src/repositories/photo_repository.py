@@ -120,8 +120,6 @@ class PhotoRepository:
             setattr(photo, 'tags', photo_data.tags)
         if photo_data.rating is not None:
             setattr(photo, 'rating', photo_data.rating)
-        if photo_data.user_rotation is not None:
-            setattr(photo, 'user_rotation', photo_data.user_rotation)
         if photo_data.author_id is not None:
             setattr(photo, 'author_id', photo_data.author_id)
         
@@ -137,23 +135,6 @@ class PhotoRepository:
         self.db.delete(photo)
         self.db.flush()
         return True
-    
-    def rotate_photo(self, hothash: str, clockwise: bool = True) -> Optional[Photo]:
-        """Rotate photo by 90 degrees"""
-        photo = self.get_by_hash(hothash)
-        if not photo:
-            return None
-        
-        # Update rotation (0-3 representing 0°, 90°, 180°, 270°)
-        current_rotation = getattr(photo, 'user_rotation', 0)
-        if clockwise:
-            new_rotation = (current_rotation + 1) % 4
-        else:
-            new_rotation = (current_rotation - 1) % 4
-        setattr(photo, 'user_rotation', new_rotation)
-        
-        self.db.flush()
-        return photo
     
     def get_hotpreview(self, hothash: str) -> Optional[bytes]:
         """

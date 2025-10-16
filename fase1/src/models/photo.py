@@ -41,7 +41,6 @@ class Photo(Base, TimestampMixin):
     # Access via photo.files[0].hotpreview (first Image = master)
     width = Column(Integer)           # Original image dimensions
     height = Column(Integer)
-    user_rotation = Column(Integer, default=0, nullable=False)  # User rotation (0=0°, 1=90°, 2=180°, 3=270°)
     
     # Content metadata (extracted from EXIF)
     taken_at = Column(DateTime)       # When photo was actually taken

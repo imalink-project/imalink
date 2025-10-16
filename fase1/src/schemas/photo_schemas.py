@@ -35,7 +35,6 @@ class PhotoResponse(BaseModel):
     hotpreview: Optional[str] = Field(None, description="Base64 encoded preview image")
     width: Optional[int] = Field(None, description="Original image width in pixels")
     height: Optional[int] = Field(None, description="Original image height in pixels")
-    user_rotation: int = Field(0, ge=0, le=3, description="User rotation (0=0°, 1=90°, 2=180°, 3=270°)")
     
     # Content metadata
     taken_at: Optional[datetime] = Field(None, description="When photo was taken (from EXIF)")
@@ -118,7 +117,6 @@ class PhotoUpdateRequest(BaseModel):
     description: Optional[str] = Field(None, description="Photo description")
     tags: Optional[List[str]] = Field(None, description="List of tags")
     rating: Optional[int] = Field(None, ge=0, le=5, description="User rating")
-    user_rotation: Optional[int] = Field(None, ge=0, le=3, description="User rotation")
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
 
 
@@ -141,11 +139,6 @@ class PhotoSearchRequest(BaseModel):
     # Sorting
     sort_by: str = Field("taken_at", description="Sort field (taken_at, created_at, rating, title)")
     sort_order: str = Field("desc", pattern="^(asc|desc)$", description="Sort order")
-
-
-class PhotoRotateRequest(BaseModel):
-    """Request model for rotating photos"""
-    clockwise: bool = Field(True, description="Rotate clockwise (90°) or counter-clockwise (-90°)")
 
 
 class PhotoHotpreviewResponse(BaseModel):
