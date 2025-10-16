@@ -1,53 +1,115 @@
 # ImaLink Testing
 
-## 🧪 Comprehensive Unit Tests
+## 🧪 Modern Unit Tests
 
-This directory contains organized unit tests for the ImaLink photo-centric architecture.
+**Updated:** October 16, 2025  
+**Architecture:** Synchronous Service Layer with Consistent Error Handling
+
+This directory contains comprehensive unit tests for the ImaLink modernized architecture.
 
 ## Test Structure
 
 ```
 tests/
-├── models/           # Model layer tests
-│   ├── test_photo.py    # Photo model comprehensive tests
-│   └── test_image.py    # Image model tests
-├── services/         # Service layer tests  
-│   └── test_import_session.py  # Complete import workflow tests
-├── repositories/     # Repository layer tests (future)
-├── api/             # API endpoint tests (future)
-└── run_unit_tests.py    # Organized test runner
+├── api/                      # API endpoint tests
+│   ├── test_authors_api.py       # Authors API (synchronous, error handling)
+│   ├── test_photos_api.py        # Photos API (synchronous, error handling)
+│   ├── test_images_api.py        # Images API (synchronous, error handling)
+│   └── test_import_sessions_api.py  # ImportSessions API (synchronous)
+├── services/                 # Service layer tests
+│   ├── test_author_service.py    # AuthorService business logic
+│   └── test_photo_service.py     # PhotoService business logic
+├── repositories/             # Repository layer tests (future)
+├── models/                   # Model tests
+│   └── test_photo.py            # Photo model tests
+├── integration/              # Integration tests
+└── run_unit_tests.py         # Organized test runner
 ```
 
-### 📁 Legacy Test Files
+## 🎯 Test Coverage
 
-Old test files have been moved to `legacy/` directory:
-- **`legacy/test_routes.py`** - Old API endpoint tests
-- **`legacy/test_image_processor.py`** - Old image processing tests  
-- **`legacy/test_exif.py`** - Old EXIF handling tests
-- **`legacy/run_tests.py`** - Old test runner script
+### ✅ API Layer Tests
+All API tests verify the modernized synchronous architecture:
 
-### 🎯 Hva testene dekker
+**Authors API (`test_authors_api.py`)**
+- ✅ List authors with pagination (PaginatedResponse)
+- ✅ Create author with validation (201 status)
+- ✅ Get author by ID (404 for not found)
+- ✅ Update author (404 for not found)
+- ✅ Delete author (success response format)
+- ✅ Error handling consistency (NotFoundError→404, ValidationError→400)
 
-#### API Route Tests
-- ✅ `/health` - Health check endpoint
-- ✅ `/api/images/` - Images API eksisterer og returnerer riktig format
-- ✅ `/api/authors/` - Authors API eksisterer og returnerer riktig format  
-- ✅ `/api/imports/imports` - Import API eksisterer og returnerer riktig format
+**Photos API (`test_photos_api.py`)**
+- ✅ List photos with pagination
+- ✅ Filter photos by author_id
+- ✅ Search photos with parameters
+- ✅ Get photo by hash (404 for not found)
+- ✅ Update photo (404 for not found)
+- ✅ Delete photo (404 for not found)
+- ✅ Get hotpreview (404 for not found)
 
-#### Route Cleanup Tests  
-- ✅ `/demo` routes returnerer 404 (gamle HTML demoer fjernet)
-- ✅ `/demo/import` routes returnerer 404 (gamle HTML demoer fjernet)
+**Images API (`test_images_api.py`)**
+- ✅ List images with pagination
+- ✅ Get image by ID (404 for not found)
+- ✅ Get hotpreview (404 for not found)
+- ✅ Create image validation (422 for missing data)
+- ✅ Image-first architecture principles
 
-#### Error Handling Tests
-- ✅ `404` for ikke-eksisterende ruter
-- ✅ `404` for ikke-eksisterende API ruter
+**ImportSessions API (`test_import_sessions_api.py`)**
+- ✅ List import sessions
+- ✅ Create session (201 status)
+- ✅ Get session by ID (404 for not found)
+- ✅ Update session (404 for not found)
+- ✅ Delete session (success response format)
+
+### ✅ Service Layer Tests
+
+**AuthorService (`test_author_service.py`)**
+- ✅ Get authors returns PaginatedResponse
+- ✅ Get author by ID raises NotFoundError
+- ✅ Create author validates name (empty, length)
+- ✅ Create author validates email format
+- ✅ Create author checks for duplicates
+- ✅ Update/delete raise NotFoundError
+- ✅ All methods are synchronous (no async)
+
+**PhotoService (`test_photo_service.py`)**
+- ✅ Get photos returns PaginatedResponse
+- ✅ Get photo by hash raises NotFoundError
+- ✅ Update photo validates tags
+- ✅ Delete photo raises NotFoundError
+- ✅ Search photos returns PaginatedResponse
+- ✅ All methods are synchronous (no async)
+
+## 🏗️ Test Architecture Principles
+
+### **Synchronous Testing**
+All tests verify that services and APIs are synchronous:
+```python
+def test_service_methods_are_not_async(self):
+    """All service methods should be synchronous"""
+    assert not inspect.iscoroutinefunction(method)
+```
+
+### **Consistent Error Handling**
+All tests verify consistent exception mapping:
+- `NotFoundError` → 404
+- `ValidationError` → 400
+- `DuplicateImageError` → 409
+- Generic `Exception` → 500
+
+### **Response Format Consistency**
+All tests verify consistent response structures:
+- Lists: `PaginatedResponse[T]` with data/meta
+- Single items: Direct model response
+- Deletes: `create_success_response()` format
 
 ## 🚀 Hvordan kjøre testene
 
-### Fra tests/ katalog:
+### Kjør alle tester:
 ```bash
 cd tests/
-python run_tests.py
+python run_unit_tests.py
 ```
 
 ### Fra rot-nivå med pytest:

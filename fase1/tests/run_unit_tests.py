@@ -38,16 +38,26 @@ def run_test_category(category_name, test_path):
 def main():
     """Run all test categories"""
     print("🚀 ImaLink Fase 1 Unit Test Runner")
-    print("Testing Photo-centric architecture with real test files")
+    print("Testing modernized synchronous architecture")
+    print("Updated: October 16, 2025")
     
     # Get test directory
     test_dir = Path(__file__).parent
     
     # Define test categories
     test_categories = [
+        # API Layer Tests
+        ("Authors API", test_dir / "api" / "test_authors_api.py"),
+        ("Photos API", test_dir / "api" / "test_photos_api.py"),
+        ("Images API", test_dir / "api" / "test_images_api.py"),
+        ("ImportSessions API", test_dir / "api" / "test_import_sessions_api.py"),
+        
+        # Service Layer Tests
+        ("Author Service", test_dir / "services" / "test_author_service.py"),
+        ("Photo Service", test_dir / "services" / "test_photo_service.py"),
+        
+        # Model Tests
         ("Photo Model", test_dir / "models" / "test_photo.py"),
-        ("Image Model", test_dir / "models" / "test_image.py"), 
-        ("ImportSession Service", test_dir / "services" / "test_import_session.py"),
     ]
     
     # Track results

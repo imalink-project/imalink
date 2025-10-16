@@ -32,7 +32,7 @@
 - **Størrelse**: 300x300 piksler (eller mindre med aspect ratio)
 - **Orientering**: EXIF-rotasjon anvendt
 - **Format**: RGB JPEG, kvalitet 85
-- **Innhold**: Rent thumbnail uten manipulering
+- **Innhold**: Ren forhåndsvisning uten manipulering
 - **Stabilitet**: Dette bildet endres aldri for samme kildefoto
 
 #### 2. **Rammelaget** (Fleksibel branding)
@@ -64,7 +64,7 @@ photo.hotpreview = branded_preview
 ### Metoder
 
 #### `_generate_clean_hotpreview(file_path)`
-- Lager rent thumbnail fra originalfil
+- Lager ren forhåndsvisning fra originalfil
 - Anvender EXIF-rotasjon
 - Ingen visuell manipulering
 - Returnerer bytes av rent JPEG
