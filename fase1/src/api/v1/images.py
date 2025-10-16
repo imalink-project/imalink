@@ -17,8 +17,7 @@ from fastapi.responses import FileResponse
 from core.dependencies import get_image_service
 from services.image_service_new import ImageService
 from schemas.image_schemas import (
-    ImageResponse, ImageCreateRequest, ImageUpdateRequest, 
-    ImageSearchRequest
+    ImageResponse, ImageCreateRequest, ImageUpdateRequest
 )
 from schemas.common import PaginatedResponse, create_success_response
 from core.exceptions import APIException
@@ -126,65 +125,8 @@ async def get_pool_image(
         raise HTTPException(status_code=500, detail=f"Failed to retrieve pool image: {str(e)}")
 
 
-@router.get("/search", response_model=PaginatedResponse[ImageResponse])
-async def search_images(
-    q: Optional[str] = Query(None, description="Search query (filename, title, description)"),
-    author_id: Optional[int] = Query(None, description="Filter by author ID"),
-    tags: Optional[str] = Query(None, description="Filter by tags (comma-separated)"),
-    rating_min: Optional[int] = Query(None, ge=1, le=5, description="Minimum rating"),
-    rating_max: Optional[int] = Query(None, ge=1, le=5, description="Maximum rating"),
-    taken_after: Optional[str] = Query(None, description="Taken after date (YYYY-MM-DD)"),
-    taken_before: Optional[str] = Query(None, description="Taken before date (YYYY-MM-DD)"),
-    has_gps: Optional[bool] = Query(None, description="Filter by GPS availability"),
-    file_format: Optional[str] = Query(None, description="Filter by file format"),
-    offset: int = Query(0, ge=0, description="Number of images to skip"),
-    limit: int = Query(100, ge=1, le=1000, description="Number of images to return"),
-    sort_by: str = Query("taken_at", description="Sort field"),
-    sort_order: str = Query("desc", pattern="^(asc|desc)$", description="Sort order"),
-    image_service: ImageService = Depends(get_image_service)
-):
-    """Search images with advanced criteria"""
-    try:
-        # Parse tags from comma-separated string
-        tags_list = None
-        if tags:
-            tags_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
-        
-        # Parse dates
-        taken_after_dt = None
-        taken_before_dt = None
-        if taken_after:
-            from datetime import datetime
-            taken_after_dt = datetime.fromisoformat(taken_after)
-        if taken_before:
-            from datetime import datetime  
-            taken_before_dt = datetime.fromisoformat(taken_before)
-        
-        # Create search request
-        search_request = ImageSearchRequest(
-            q=q,
-            author_id=author_id,
-            tags=tags_list,
-            rating_min=rating_min,
-            rating_max=rating_max,
-            taken_after=taken_after_dt,
-            taken_before=taken_before_dt,
-            has_gps=has_gps,
-            file_format=file_format,
-            offset=offset,
-            limit=limit,
-            sort_by=sort_by,
-            sort_order=sort_order
-        )
-        
-        return await image_service.search_images(search_request)
-        
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid parameter: {str(e)}")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
+# NOTE: /search endpoint removed - use GET /images with query parameters instead
+# The standard list endpoint supports filtering and sorting
 
 
 @router.post("/", response_model=ImageResponse, status_code=201)

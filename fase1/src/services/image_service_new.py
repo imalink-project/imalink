@@ -236,24 +236,8 @@ class ImageService:
         # Business Logic: Generate thumbnail on demand
         return await self.image_processor.generate_thumbnail(getattr(image, 'file_path', ''))
     
-    async def search_images(self, search_request: ImageSearchRequest) -> PaginatedResponse[ImageResponse]:
-        """Search images with advanced criteria"""
-        
-        # Business Logic: Validate search parameters
-        if search_request.rating_min and search_request.rating_max:
-            if search_request.rating_min > search_request.rating_max:
-                raise ValidationError("rating_min cannot be greater than rating_max")
-        
-        if search_request.taken_after and search_request.taken_before:
-            if search_request.taken_after > search_request.taken_before:
-                raise ValidationError("taken_after cannot be after taken_before")
-        
-        # Use repository for search
-        return await self.get_images(
-            offset=search_request.offset,
-            limit=search_request.limit,
-            search_params=search_request
-        )
+    # NOTE: search_images removed - use get_images (list_images) with search_params instead
+    # The standard list method already supports filtering and searching
     
     async def get_image_pool(self, image_id: int, pool_size: str) -> Optional[str]:
         """Get pooled image path for specific size"""
