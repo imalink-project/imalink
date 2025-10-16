@@ -11,13 +11,6 @@ Enkel desktop-applikasjon bygget med Flet for testing av ImaLink API.
 
 ## Installasjon
 
-Med uv (anbefalt):
-```bash
-cd mini-frontend
-uv sync
-```
-
-Eller med requirements.txt:
 ```bash
 cd mini-frontend
 uv pip install -r requirements.txt

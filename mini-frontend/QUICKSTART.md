@@ -4,7 +4,7 @@
 
 ```bash
 cd mini-frontend
-uv sync
+uv pip install -r requirements.txt
 ```
 
 ## 2. Start FastAPI backend
