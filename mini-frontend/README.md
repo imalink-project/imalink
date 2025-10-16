@@ -11,13 +11,14 @@ Enkel desktop-applikasjon bygget med Flet for testing av ImaLink API.
 
 ## Systemavhengigheter
 
-Flet krever GTK 3 for Linux desktop:
+Flet krever GTK 3 og GStreamer for Linux desktop:
 
 **Ubuntu/Debian:**
 ```bash
 sudo apt-get update
 sudo apt-get install libgtk-3-0 libgdk-pixbuf2.0-0
 sudo apt-get install --only-upgrade libstdc++6
+sudo apt-get install libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 ```
 
 **Merk:** For Ubuntu 20.04, bruker vi Flet 0.23.2 (nyere versjoner krever Ubuntu 22.04+)

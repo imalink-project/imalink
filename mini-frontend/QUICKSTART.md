@@ -2,11 +2,12 @@
 
 ## 0. Systemavhengigheter (første gang)
 
-For Linux, installer GTK 3:
+For Linux, installer GTK 3 og GStreamer:
 ```bash
 sudo apt-get update
 sudo apt-get install libgtk-3-0 libgdk-pixbuf2.0-0
 sudo apt-get install --only-upgrade libstdc++6
+sudo apt-get install libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good
 ```
 
 **Merk:** Bruker Flet 0.23.2 for kompatibilitet med Ubuntu 20.04
