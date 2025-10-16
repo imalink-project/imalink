@@ -142,65 +142,116 @@ Database Models
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from repositories.image_repository import ImageRepository
-from models.schemas import ImageCreateRequest, ImageResponse
+from schemas.image_schemas import ImageCreateRequest, ImageResponse
+from core.exceptions import NotFoundError, ValidationError, DuplicateImageError
 
 class ImageService:
     def __init__(self, db: Session):
+        self.db = db
         self.image_repo = ImageRepository(db)
     
-    async def get_images(
+    def get_images(
         self, 
-        skip: int = 0, 
+        offset: int = 0, 
         limit: int = 100,
         author_id: Optional[int] = None
-    ) -> List[ImageResponse]:
-        images = await self.image_repo.get_images(
-            skip=skip, 
+    ) -> PaginatedResponse[ImageResponse]:
+        """Get paginated list of images"""
+        images = self.image_repo.get_images(
+            offset=offset, 
             limit=limit, 
             author_id=author_id
         )
-        return [ImageResponse.from_orm(img) for img in images]
-    
-    async def create_image(self, image_data: ImageCreateRequest) -> ImageResponse:
-        # Business logic her
-        if await self.image_repo.exists_by_hash(image_data.hash):
-            raise DuplicateImageError("Image already exists")
+        total = self.image_repo.count_images(author_id=author_id)
         
-        image = await self.image_repo.create(image_data)
-        return ImageResponse.from_orm(image)
+        # Convert to response models
+        image_responses = [ImageResponse.model_validate(img) for img in images]
+        
+        return create_paginated_response(
+            data=image_responses,
+            total=total,
+            offset=offset,
+            limit=limit
+        )
+    
+    def create_image(self, image_data: ImageCreateRequest) -> ImageResponse:
+        """Create new image with validation"""
+        # Business logic: Check for duplicates
+        if self.image_repo.exists_by_hash(image_data.image_hash):
+            raise DuplicateImageError(f"Image with hash {image_data.image_hash} already exists")
+        
+        # Business logic: Validate required fields
+        if not image_data.filename:
+            raise ValidationError("Filename is required")
+        
+        image = self.image_repo.create(image_data)
+        return ImageResponse.model_validate(image)
 ```
 
 #### **Controller:**
 ```python
-# api/images.py
+# api/v1/images.py
 from fastapi import APIRouter, Depends, HTTPException, Query
 from services.image_service import ImageService
+from core.dependencies import get_image_service
+from core.exceptions import NotFoundError, ValidationError, DuplicateImageError
+from schemas.common import PaginatedResponse, create_success_response
 
 router = APIRouter()
 
 @router.get("/", response_model=PaginatedResponse[ImageResponse])
-async def get_images(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000),
-    author_id: Optional[int] = Query(None),
-    service: ImageService = Depends(get_image_service)
+def list_images(
+    offset: int = Query(0, ge=0, description="Number of images to skip"),
+    limit: int = Query(100, ge=1, le=1000, description="Number of images to return"),
+    author_id: Optional[int] = Query(None, description="Filter by author ID"),
+    image_service: ImageService = Depends(get_image_service)
 ):
+    """Get paginated list of images"""
     try:
-        images = await service.get_images(skip, limit, author_id)
-        total = await service.count_images(author_id=author_id)
-        
-        return PaginatedResponse(
-            data=images,
-            meta=PaginationMeta(
-                total=total,
-                page=skip // limit + 1,
-                per_page=limit,
-                pages=(total + limit - 1) // limit
-            )
+        return image_service.get_images(
+            offset=offset,
+            limit=limit,
+            author_id=author_id
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve images: {str(e)}")
+
+
+@router.post("/", response_model=ImageResponse, status_code=201)
+def create_image(
+    image_data: ImageCreateRequest,
+    image_service: ImageService = Depends(get_image_service)
+):
+    """Create new image"""
+    try:
+        return image_service.create_image(image_data)
+    except DuplicateImageError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create image: {str(e)}")
+
+
+@router.get("/{image_id}", response_model=ImageResponse)
+def get_image(
+    image_id: int,
+    image_service: ImageService = Depends(get_image_service)
+):
+    """Get single image by ID"""
+    try:
+        return image_service.get_image_by_id(image_id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve image: {str(e)}")
 ```
+
+**VIKTIG ARKITEKTURBESLUTNING:**
+- ❌ **IKKE bruk async/await** - Vi har ingen ekte I/O operasjoner (ingen external APIs, no network calls)
+- ✅ **Bruk synkrone metoder** - SQLAlchemy ORM operasjoner er synkrone
+- ✅ **Enklere debugging** - Synkron kode er lettere å følge og debugge
+- ✅ **Ingen performance trade-off** - Database queries blokkerer uansett
 
 ---
 
@@ -267,18 +318,32 @@ class NotFoundError(APIException):
             status_code=404
         )
 
-# Global exception handler
+# Global exception handler (in main.py)
 @app.exception_handler(APIException)
-async def api_exception_handler(request: Request, exc: APIException):
+def api_exception_handler(request: Request, exc: APIException):
+    """Handle custom API exceptions with structured response"""
     return JSONResponse(
         status_code=exc.status_code,
         content={
             "error": {
                 "code": exc.code,
-                "message": exc.message
+                "message": exc.message,
+                "details": exc.details
             }
         }
     )
+
+# Individual endpoint error handling
+@router.get("/{id}")
+def get_resource(id: int, service: Service = Depends(get_service)):
+    try:
+        return service.get_by_id(id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 ```
 
 ---
@@ -291,19 +356,20 @@ from jose import JWTError, jwt
 
 security = HTTPBearer()
 
-async def get_current_user(token: str = Depends(security)):
+def get_current_user(token: str = Depends(security)):
+    """Extract and validate JWT token"""
     try:
         payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=["HS256"])
         user_id: str = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token")
-        return await get_user_by_id(user_id)
+        return get_user_by_id(user_id)
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
 # Bruk i endpoints:
 @router.get("/private")
-async def private_endpoint(current_user: User = Depends(get_current_user)):
+def private_endpoint(current_user: User = Depends(get_current_user)):
     return {"user": current_user.name}
 ```
 

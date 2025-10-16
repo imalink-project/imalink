@@ -25,16 +25,16 @@ from models import Photo, Image
 class ImageProcessor:
     """Image processing utilities"""
     
-    async def has_raw_companion(self, file_path: str) -> bool:
+    def has_raw_companion(self, file_path: str) -> bool:
         """Check if image has RAW companion file"""
         # TODO: Implement RAW companion detection
         return False
     
-    async def can_generate_thumbnail(self, file_path: str) -> bool:
+    def can_generate_thumbnail(self, file_path: str) -> bool:
         """Check if thumbnail can be generated"""
         return Path(file_path).exists()
     
-    async def generate_thumbnail(self, file_path: str) -> Optional[bytes]:
+    def generate_thumbnail(self, file_path: str) -> Optional[bytes]:
         """Generate thumbnail for image with EXIF rotation and stripped metadata"""
         try:
             from PIL import Image, ImageOps
@@ -71,7 +71,7 @@ class ImageProcessor:
             print(f"Error generating thumbnail for {file_path}: {e}")
             return None
     
-    async def cleanup_image_files(self, file_path: str, image_id: int) -> None:
+    def cleanup_image_files(self, file_path: str, image_id: int) -> None:
         """Clean up image files"""
         # TODO: Implement file cleanup
         pass

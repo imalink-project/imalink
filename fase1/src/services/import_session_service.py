@@ -24,7 +24,7 @@ class ImportSessionService:
         self.db = db
         self.import_repo = ImportSessionRepository(db)
     
-    async def start_import(self, request: ImportStartRequest) -> ImportStartResponse:
+    def start_import(self, request: ImportStartRequest) -> ImportStartResponse:
         """Start a new import session"""
         # Logging handled by proper logger if needed
         
@@ -55,7 +55,7 @@ class ImportSessionService:
             status=session.status
         )
     
-    async def get_import_status(self, import_id: int) -> ImportResponse:
+    def get_import_status(self, import_id: int) -> ImportResponse:
         """Get status of an import session"""
         
         session = self.import_repo.get_import_by_id(import_id)
@@ -82,7 +82,7 @@ class ImportSessionService:
         response.progress_percentage = round(progress, 2)
         return response
     
-    async def list_imports(
+    def list_imports(
         self,
         limit: int = 50
     ) -> ImportListResponse:
@@ -102,7 +102,7 @@ class ImportSessionService:
             total=total
         )
     
-    async def get_import_by_id(self, import_id: int) -> ImportResponse:
+    def get_import_by_id(self, import_id: int) -> ImportResponse:
         """Get specific import session by ID"""
         
         session = self.import_repo.get_import_by_id(import_id)
@@ -111,7 +111,7 @@ class ImportSessionService:
         
         return self._convert_to_response(session)
     
-    async def test_single_file(self, request: ImportTestRequest) -> ImportTestResponse:
+    def test_single_file(self, request: ImportTestRequest) -> ImportTestResponse:
         """Test if a single file can be imported"""
         
         file_path = Path(request.file_path)
@@ -189,11 +189,11 @@ class ImportSessionService:
                 success=False
             )
     
-    async def get_import_statistics(self) -> Dict[str, Any]:
+    def get_import_statistics(self) -> Dict[str, Any]:
         """Get comprehensive import statistics"""
         return self.import_repo.get_import_statistics()
     
-    async def get_active_imports(self) -> List[ImportResponse]:
+    def get_active_imports(self) -> List[ImportResponse]:
         """Get all currently active import imports"""
         
         active_imports = self.import_repo.get_active_imports()
@@ -285,7 +285,7 @@ class ImportSessionService:
             storage_errors=[]  # This might need proper handling if it's stored as JSON
         )
     
-    async def get_import_progress(self, import_id: int) -> ImportProgressResponse:
+    def get_import_progress(self, import_id: int) -> ImportProgressResponse:
         """Get real-time progress of import session"""
         session = self.import_repo.get_import_by_id(import_id)
         if not session:
@@ -306,7 +306,7 @@ class ImportSessionService:
             errors_count=getattr(session, 'errors_count', 0) or 0
         )
     
-    async def cancel_import(self, import_id: int) -> ImportCancelResponse:
+    def cancel_import(self, import_id: int) -> ImportCancelResponse:
         """Cancel running import session"""
         session = self.import_repo.get_import_by_id(import_id)
         if not session:
@@ -327,7 +327,7 @@ class ImportSessionService:
             status=final_status
         )
     
-    async def copy_to_storage(self, import_id: int, storage_path: str) -> Dict[str, Any]:
+    def copy_to_storage(self, import_id: int, storage_path: str) -> Dict[str, Any]:
         """
         Copy files from temp directory to user-specified storage location
         """
