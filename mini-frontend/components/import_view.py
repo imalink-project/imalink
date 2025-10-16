@@ -19,7 +19,7 @@ class ImportView(ft.Column):
         self.spacing = 20
         self.scroll = ft.ScrollMode.AUTO
         
-        # File picker
+        # File picker (works on Windows, not WSL)
         self.file_picker = ft.FilePicker(on_result=self._handle_file_selection)
         
         # Header
@@ -28,7 +28,7 @@ class ImportView(ft.Column):
         # Select button
         self.select_btn = ft.ElevatedButton(
             "Select Images",
-            icon=ft.Icons.FOLDER_OPEN,
+            icon="folder_open",
             on_click=lambda _: self.file_picker.pick_files(
                 allow_multiple=True,
                 allowed_extensions=["jpg", "jpeg", "png", "heic", "dng", "cr2", "nef"]
@@ -41,7 +41,7 @@ class ImportView(ft.Column):
         # Import button
         self.import_btn = ft.ElevatedButton(
             "Import Selected Files",
-            icon=ft.Icons.CLOUD_UPLOAD,
+            icon="cloud_upload",
             on_click=lambda _: self._import_files(),
             disabled=True
         )
@@ -67,6 +67,10 @@ class ImportView(ft.Column):
             return
         
         self.selected_files = e.files
+        self._update_file_list()
+    
+    def _update_file_list(self):
+        """Update the file list display"""
         self.file_list.controls.clear()
         
         for file in self.selected_files:
@@ -76,7 +80,7 @@ class ImportView(ft.Column):
             card = ft.Card(
                 content=ft.Container(
                     content=ft.Row([
-                        ft.Icon(ft.Icons.IMAGE, size=40),
+                        ft.Icon("image", size=40),
                         ft.Column([
                             ft.Text(file_info["filename"], weight=ft.FontWeight.BOLD),
                             ft.Text(
@@ -86,7 +90,7 @@ class ImportView(ft.Column):
                             )
                         ], spacing=2, expand=True),
                         ft.IconButton(
-                            icon=ft.Icons.CLOSE,
+                            icon="close",
                             on_click=lambda _, f=file: self._remove_file(f)
                         )
                     ], spacing=10),
@@ -102,16 +106,26 @@ class ImportView(ft.Column):
     def _remove_file(self, file):
         """Remove file from selection"""
         self.selected_files = [f for f in self.selected_files if f != file]
-        self._handle_file_selection(ft.FilePickerResultEvent(files=self.selected_files))
+        self._update_file_list()
+        self.import_btn.disabled = len(self.selected_files) == 0
+        self.status_text.value = f"{len(self.selected_files)} file(s) selected"
+        self.update()
     
     def _import_files(self):
         """Import selected files to API"""
         if not self.selected_files:
+            self.status_text.value = "No files selected"
+            self.status_text.color = "red"
+            self.update()
             return
+        
+        print(f"Starting import of {len(self.selected_files)} files...")
         
         self.import_btn.disabled = True
         self.progress_bar.visible = True
         self.progress_bar.value = 0
+        self.status_text.color = "blue"
+        self.status_text.value = "Starting import..."
         self.update()
         
         success_count = 0
@@ -121,17 +135,22 @@ class ImportView(ft.Column):
         for idx, file in enumerate(self.selected_files):
             try:
                 file_path = file.path
+                print(f"Processing {idx + 1}/{total}: {file_path}")
+                
                 self.status_text.value = f"Processing {idx + 1}/{total}: {Path(file_path).name}"
                 self.progress_bar.value = (idx + 1) / total
                 self.update()
                 
                 # Generate hotpreview
+                print(f"  Generating hotpreview...")
                 hotpreview_base64 = generate_hotpreview(file_path)
                 if not hotpreview_base64:
                     raise Exception("Failed to generate hotpreview")
                 
                 # Prepare image data
                 file_info = get_image_info(file_path)
+                print(f"  File info: {file_info}")
+                
                 image_data = {
                     "filename": file_info["filename"],
                     "file_size": file_info["file_size"],
@@ -141,22 +160,34 @@ class ImportView(ft.Column):
                 }
                 
                 # Upload to API
+                print(f"  Uploading to API...")
                 result = self.api_client.create_image_file(image_data)
+                print(f"  Success! Result: {result}")
                 success_count += 1
                 
             except Exception as e:
                 error_count += 1
-                print(f"Error importing {file.path}: {e}")
+                print(f"ERROR importing {file.path}: {e}")
+                import traceback
+                traceback.print_exc()
         
         # Done
         self.progress_bar.visible = False
-        self.status_text.value = f"Import complete: {success_count} succeeded, {error_count} failed"
         self.import_btn.disabled = False
+        
+        if error_count == 0:
+            self.status_text.value = f"✓ Import complete: {success_count} files imported successfully"
+            self.status_text.color = "green"
+        else:
+            self.status_text.value = f"Import complete: {success_count} succeeded, {error_count} failed"
+            self.status_text.color = "orange"
         
         # Clear selection
         self.selected_files = []
         self.file_list.controls.clear()
         self.update()
+        
+        print(f"Import finished: {success_count} success, {error_count} errors")
         
         # Notify parent
         if self.on_import_complete and success_count > 0:

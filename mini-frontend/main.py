@@ -24,13 +24,13 @@ def main(page: ft.Page):
     # Status bar at top
     status_bar = ft.Container(
         content=ft.Row([
-            ft.Icon(ft.Icons.PHOTO_LIBRARY, size=30),
+            ft.Icon("photo_library", size=30),
             ft.Text("ImaLink", size=20, weight=ft.FontWeight.BOLD),
             ft.Container(expand=True),  # Spacer
             ft.Text("API: http://localhost:8000/api/v1", size=12, italic=True)
         ]),
         padding=10,
-        bgcolor=ft.Colors.BLUE_50,
+        bgcolor="blue50",
         border_radius=8
     )
     
@@ -42,13 +42,13 @@ def main(page: ft.Page):
         min_extended_width=200,
         destinations=[
             ft.NavigationRailDestination(
-                icon=ft.Icons.PHOTO_LIBRARY_OUTLINED,
-                selected_icon=ft.Icons.PHOTO_LIBRARY,
+                icon="photo_library_outlined",
+                selected_icon="photo_library",
                 label="Gallery"
             ),
             ft.NavigationRailDestination(
-                icon=ft.Icons.UPLOAD_FILE_OUTLINED,
-                selected_icon=ft.Icons.UPLOAD_FILE,
+                icon="upload_file_outlined",
+                selected_icon="upload_file",
                 label="Import"
             ),
         ],
@@ -93,7 +93,7 @@ def main(page: ft.Page):
     gallery_view = PhotoGallery(api_client, on_photo_click=on_photo_click)
     import_view = ImportView(api_client, on_import_complete=on_import_complete)
     
-    # Add file picker overlay
+    # Add file picker overlay (needed for Windows)
     page.overlay.append(import_view.file_picker)
     
     # Content container

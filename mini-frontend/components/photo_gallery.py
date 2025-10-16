@@ -23,7 +23,7 @@ class PhotoGallery(ft.Column):
         self.header = ft.Row([
             ft.Text("Photo Gallery", size=24, weight=ft.FontWeight.BOLD),
             ft.IconButton(
-                icon=ft.icons.REFRESH,
+                icon="refresh",
                 tooltip="Refresh",
                 on_click=lambda _: self.load_photos()
             )
@@ -97,10 +97,10 @@ class PhotoGallery(ft.Column):
         except:
             # Fallback if no hotpreview
             image = ft.Container(
-                content=ft.Icon(ft.icons.IMAGE, size=60),
+                content=ft.Icon("image", size=60),
                 width=150,
                 height=150,
-                bgcolor=ft.colors.GREY_300,
+                bgcolor="grey300",
                 border_radius=8,
                 alignment=ft.alignment.center
             )
@@ -110,14 +110,14 @@ class PhotoGallery(ft.Column):
             title[:20] + "..." if len(title) > 20 else title,
             size=12,
             weight=ft.FontWeight.BOLD,
-            color=ft.colors.WHITE,
+            color="white",
             text_align=ft.TextAlign.CENTER
         )
         
         file_count = len(photo.get("image_files", []))
         file_count_badge = ft.Container(
-            content=ft.Text(f"{file_count}", size=10, color=ft.colors.WHITE),
-            bgcolor=ft.colors.BLUE_700,
+            content=ft.Text(f"{file_count}", size=10, color="white"),
+            bgcolor="blue700",
             padding=4,
             border_radius=10,
             width=24,
@@ -134,7 +134,7 @@ class PhotoGallery(ft.Column):
                         info_text,
                         file_count_badge
                     ], spacing=2, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-                    bgcolor=ft.colors.with_opacity(0.7, ft.colors.BLACK),
+                    bgcolor="black,0.7",
                     padding=8,
                     border_radius=ft.border_radius.only(bottom_left=8, bottom_right=8),
                     alignment=ft.alignment.bottom_center,
