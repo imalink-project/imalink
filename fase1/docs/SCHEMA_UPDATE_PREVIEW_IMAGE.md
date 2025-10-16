@@ -23,8 +23,6 @@ preview_image = Column(LargeBinary)  # Preview image stored as binary data (smal
 - ✅ `src/api/v1/images.py` - API endpoint `/thumbnail` → `/preview` og `get_preview_image()` funksjon
 - ✅ `scripts/testing/test_thumbnail_direct.py` - Test oppdatert til `test_preview_image_rotation_direct()`
 - ✅ `scripts/testing/test_thumbnail_rotation.py` - URL oppdatert til `/preview`
-- ✅ `frontend/src/lib/api.js` - Frontend URL oppdatert
-- ✅ `frontend/API_CHECKLIST.md` - API dokumentasjon oppdatert
 - ✅ `docs/service_layer_guide.md` - Dokumentasjon oppdatert
 - ✅ `SETUP.md` - API oversikt oppdatert
 - ✅ `CHANGELOG.md` - Historikk oppdatert

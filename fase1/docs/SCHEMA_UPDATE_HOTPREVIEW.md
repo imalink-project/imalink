@@ -26,8 +26,6 @@ hotpreview = Column(LargeBinary)  # Hot preview stored as binary data (fast cach
 - ✅ `src/api/v1/images.py` - API endpoint `/hotpreview` og `get_hotpreview()` funksjon
 - ✅ `scripts/testing/test_thumbnail_direct.py` - Test oppdatert til `test_preview_image_rotation_direct()`
 - ✅ `scripts/testing/test_thumbnail_rotation.py` - URL oppdatert til `/hotpreview`
-- ✅ `frontend/src/lib/api.js` - Frontend URL oppdatert til `/hotpreview`
-- ✅ `frontend/API_CHECKLIST.md` - API dokumentasjon oppdatert
 - ✅ `docs/service_layer_guide.md` - Dokumentasjon oppdatert til hotpreview
 - ✅ `SETUP.md` - API oversikt oppdatert til hotpreview
 - ✅ `CHANGELOG.md` - Historikk oppdatert til hotpreview terminologi

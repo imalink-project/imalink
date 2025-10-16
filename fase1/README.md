@@ -94,17 +94,23 @@ fase1/
 2. ✅ Database-modeller (Image, Author, ImportSession)
 3. ✅ Import-tjeneste med bakgrunnsprosessering
 4. ✅ Komplette API-endpoints (images, authors, import)
-5. ✅ Moderne web-frontend med responsiv design
+5. ✅ Desktop client proof-of-concept (Flet)
 6. ✅ EXIF-rotasjonshåndtering
-7. ✅ CSS-organisering i eksterne filer
+7. ✅ Direct database access pattern
 8. ✅ Thumbnail-generering med korrekt orientering
 
 ## 🚀 Bruk
 
-### Start applikasjonen:
+### Start backend API:
 ```bash
 cd src
 python main.py
+```
+
+### Start desktop demo:
+```bash
+cd desktop_demo
+uv run python author_crud_demo.py
 ```
 
 ### API og Testing:

@@ -249,7 +249,7 @@ async def main():
         print("\n🎯 Next Steps:")
         print("   • Test API endpoints with real requests")
         print("   • Apply same pattern to other APIs (authors, imports)")
-        print("   • Update frontend to use new response formats")
+        print("   • Update client applications to use new response formats")
     else:
         print("❌ Some tests failed. Please fix issues before continuing.")
 

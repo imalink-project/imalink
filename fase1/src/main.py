@@ -33,7 +33,7 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# Add CORS middleware for frontend access
+# Add CORS middleware for client access (desktop app, web viewers, etc.)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # In production, specify exact origins

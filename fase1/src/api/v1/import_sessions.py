@@ -275,7 +275,7 @@ async def get_storage_info(
         from pathlib import Path
         
         # Generate storage info similar to import_once
-        # NOTE: This endpoint is deprecated - storage root should come from frontend
+        # NOTE: This endpoint is deprecated - storage root should be configured in settings
         base_storage = Path("/tmp/imalink-test-storage")  # Temporary fallback for testing
         
         if subfolder:
@@ -300,8 +300,8 @@ async def get_storage_info(
 
 
 # === DEPRECATED STORAGE SYSTEM ENDPOINTS ===
-# These endpoints are deprecated - frontend now handles all file copying
-# via File System Access API. Backend only stores user's chosen directory name.
+# These endpoints are deprecated - client now handles file operations directly
+# Backend only stores user's chosen directory name.
 
 @router.post("/{import_id}/prepare-storage")
 async def prepare_storage(
@@ -312,8 +312,8 @@ async def prepare_storage(
     """
     DEPRECATED: Prepare permanent storage for an ImportSession
     
-    This endpoint is deprecated. Frontend now handles all file copying
-    via File System Access API. Use PATCH /{import_id}/storage-directory instead.
+    This endpoint is deprecated. Client applications handle file operations directly.
+    Use PATCH /{import_id}/storage-directory instead.
     """
     try:
         from database.connection import get_db_sync
@@ -500,11 +500,11 @@ async def set_storage_name(
     import_service: ImportSessionService = Depends(get_import_session_service)
 ) -> Dict[str, Any]:
     """
-    Set storage name (directory name without path) chosen by user in frontend
+    Set storage name (directory name without path) chosen by user in client application
     
-    Frontend handles all file copying via File System Access API.
-    Backend just stores the storage name (e.g. "20241009_import_vacation_abc12345").
-    storage_root is managed only in UI and never sent to backend.
+    Client applications handle all file operations directly.
+    Backend stores the storage name (e.g. "20241009_import_vacation_abc12345").
+    storage_root is managed by the client application.
     """
     try:
         from database.connection import get_db_sync

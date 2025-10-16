@@ -82,10 +82,12 @@ fase1/
 │   ├── api/                # REST API
 │   │   ├── images.py       # Bilde-endpoints
 │   │   └── import_api.py   # Import-endpoints
-│   └── static/             # Web-frontend
-│       ├── index.html      # Hovedside
-│       ├── style.css       # Stiler
-│       └── app.js          # JavaScript
+│   ├── models/             # Database models
+│   ├── repositories/       # Data access layer
+│   └── schemas/            # API request/response schemas
+├── desktop_demo/           # Flet desktop client demo
+│   ├── author_crud_demo.py # CRUD demo app
+│   └── requirements.txt    # Desktop dependencies
 ├── tests/                  # Tester (ikke implementert ennå)
 ├── requirements.txt        # Python-avhengigheter
 └── README.md              # Denne filen

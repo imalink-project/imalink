@@ -1,5 +1,5 @@
 """
-Test endpoints for frontend-backend synchronization validation
+Test endpoints for client-backend synchronization validation
 """
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from typing import Dict, Any
@@ -29,8 +29,8 @@ PILOT_IMAGE_DATA = {
 @router.get("/pilot-hash")
 async def get_pilot_hash() -> Dict[str, Any]:
     """
-    Get the pilot image hash and specifications for frontend testing.
-    Frontends should use this to validate their hash generation logic.
+    Get the pilot image hash and specifications for client testing.
+    Clients should use this to validate their hash generation logic.
     """
     return {
         "pilot_image": PILOT_IMAGE_DATA,
@@ -39,26 +39,26 @@ async def get_pilot_hash() -> Dict[str, Any]:
         "version": "v1"
     }
 
-@router.post("/validate-frontend")
-async def validate_frontend_hash(
+@router.post("/validate-hash")
+async def validate_client_hash(
     filename: str,
     file_size: int,
     width: int,
     height: int,
-    frontend_hash: str
+    client_hash: str
 ) -> Dict[str, Any]:
     """
-    Validate that frontend generates the same hash as backend for given parameters.
-    This ensures hash consistency across different frontend implementations.
+    Validate that client generates the same hash as backend for given parameters.
+    This ensures hash consistency across different client implementations.
     """
     # Generate backend hash using the same logic
     backend_hash = generate_deterministic_hash(filename, file_size, width, height)
     
-    is_valid = frontend_hash == backend_hash
+    is_valid = client_hash == backend_hash
     
     return {
         "valid": is_valid,
-        "frontend_hash": frontend_hash,
+        "client_hash": client_hash,
         "backend_hash": backend_hash,
         "message": "Hash validation successful" if is_valid else "Hash mismatch detected",
         "algorithm_version": "v1"
@@ -73,7 +73,7 @@ async def generate_hash_from_metadata(
 ) -> Dict[str, str]:
     """
     Generate a consistent hothash from image metadata.
-    This is the authoritative hash generation method that frontends should match.
+    This is the authoritative hash generation method that clients should match.
     """
     hothash = generate_deterministic_hash(filename, file_size, width, height)
     

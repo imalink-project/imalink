@@ -85,13 +85,3 @@ class Image(Base, TimestampMixin):
             'has_gps': self.photo.has_gps,
             'rating': self.photo.rating,
         }
-    
-    # ===== FRONTEND-DRIVEN ARCHITECTURE =====
-    # No factory methods needed - frontend sends all required data:
-    # - filename: From File API
-    # - file_size: From File.size property  
-    # - exif_data: Raw EXIF bytes for JPEG files, null for RAW files
-    # - hothash: Links to PhotoGroup
-    # - import_session_id: Import tracking
-    #
-    # Image records created directly from ImageCreateRequest data via ORM
