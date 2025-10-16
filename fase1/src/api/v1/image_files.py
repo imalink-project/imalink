@@ -109,7 +109,7 @@ def create_image(
     Subsequent Images with same hotpreview = Added to existing Photo
     """
     try:
-        return image_file_service.create_image_with_photo(image_data)
+        return image_file_service.create_image_file_with_photo(image_data)
     except DuplicateImageError as e:
         raise HTTPException(status_code=409, detail=str(e))
     except ValidationError as e:
