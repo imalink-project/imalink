@@ -31,12 +31,8 @@ class ImportResponse(BaseModel):
     import_result_type: Optional[str] = Field(None, description="Classification: all_new, all_duplicates, mixed")
     user_feedback_message: Optional[str] = Field(None, description="User-friendly message about import result")
     
-    # Storage information (storage name without path)
-    storage_name: Optional[str] = Field(None, description="Storage name (directory name without path) with UUID suffix")
-    archive_base_path: Optional[str] = Field(None, description="Base path where storage folder is located")
-    files_copied: int = 0
-    files_copy_skipped: int = 0
-    storage_errors: List[str] = Field(default_factory=list, description="Storage-related errors")
+    # Optional: Client-managed storage directory name
+    storage_name: Optional[str] = Field(None, description="Storage directory name chosen by client (e.g., '20241004_vacation_photos')")
     
     class Config:
         from_attributes = True
