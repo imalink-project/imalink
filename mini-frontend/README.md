@@ -9,6 +9,25 @@ Enkel desktop-applikasjon bygget med Flet for testing av ImaLink API.
 - 🔍 **Detaljer** - Klikk på photo for å se metadata og alle image files
 - 👤 **Authors** - Administrer forfattere
 
+## Systemavhengigheter
+
+Flet krever GTK 3 for Linux desktop:
+
+**Ubuntu/Debian:**
+```bash
+sudo apt-get install libgtk-3-0 libgdk-pixbuf2.0-0
+```
+
+**Arch Linux:**
+```bash
+sudo pacman -S gtk3
+```
+
+**Fedora:**
+```bash
+sudo dnf install gtk3
+```
+
 ## Installasjon
 
 ```bash

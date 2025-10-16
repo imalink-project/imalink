@@ -1,5 +1,12 @@
 # Quick Start Guide
 
+## 0. Systemavhengigheter (første gang)
+
+For Linux, installer GTK 3:
+```bash
+sudo apt-get install libgtk-3-0 libgdk-pixbuf2.0-0  # Ubuntu/Debian
+```
+
 ## 1. Installer avhengigheter
 
 ```bash
