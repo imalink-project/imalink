@@ -16,7 +16,7 @@ Importstrategien i ImaLink er **funksjonell** men **arkitektonisk spredt**. Den 
 ### ✅ **Positive Aspekter**
 - **Clean Architecture foundation**: Klar separasjon mellom API, Service, og Repository lag
 - **Modern FastAPI**: Asynkrone endepunkter med Pydantic schemas og type safety
-- **Comprehensive Models**: Import og Image modeller med rik metadata-støtte
+- **Comprehensive Models**: Import og ImageFile modeller med rik metadata-støtte
 - **Background Processing**: Faktiske background tasks for tung prosessering
 - **EXIF Support**: Full EXIF-ekstraksjonen implementert med GPS-koordinater
 - **Duplicate Detection**: Hash-basert duplikatdeteksjon fungerer

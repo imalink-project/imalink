@@ -17,10 +17,10 @@ preview_image = Column(LargeBinary)  # Preview image stored as binary data (smal
 ```
 
 ### 2. **Påvirkede Filer**
-- ✅ `src/models/image.py` - Hovedmodell oppdatert
-- ✅ `src/schemas/image_schemas.py` - Schema oppdatert til `has_preview_image` og `ImagePreviewResponse`
+- ✅ `src/models/image_file.py` - Hovedmodell oppdatert
+- ✅ `src/schemas/image_file_schemas.py` - Schema oppdatert til `has_preview_image` og `ImagePreviewResponse`
 - ✅ `src/services/image_service_new.py` - Service-logikk og `get_image_preview()` metode oppdatert
-- ✅ `src/api/v1/images.py` - API endpoint `/thumbnail` → `/preview` og `get_preview_image()` funksjon
+- ✅ `src/api/v1/image-files.py` - API endpoint `/thumbnail` → `/preview` og `get_preview_image()` funksjon
 - ✅ `scripts/testing/test_thumbnail_direct.py` - Test oppdatert til `test_preview_image_rotation_direct()`
 - ✅ `scripts/testing/test_thumbnail_rotation.py` - URL oppdatert til `/preview`
 - ✅ `docs/service_layer_guide.md` - Dokumentasjon oppdatert
@@ -45,11 +45,11 @@ class ImagePreviewResponse(BaseModel):
 #### **API Endpoints:**
 ```python
 # FØR:
-GET /api/v1/images/{id}/thumbnail
+GET /api/v1/image-files/{id}/thumbnail
 async def get_thumbnail(image_id: int) -> Response
 
 # ETTER:
-GET /api/v1/images/{id}/preview  
+GET /api/v1/image-files/{id}/preview  
 async def get_preview_image(image_id: int) -> Response
 ```
 

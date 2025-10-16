@@ -16,13 +16,13 @@ Ferdigstilt fungerende versjon av ImaLink med:
 
 Fase 1 implementerer ImaLinks unike designfilosofi:
 
-1. **🔥 Hot Thumbnail + Rotasjonsuavhengig Hash**
+1. **🔥 Hot preview + Rotasjonsuavhengig Hash**
    - Miniaturbilder lagres binært i database for umiddelbar tilgang
    - Perceptuell hash beregnes fra bildeinnhold, ikke EXIF-orientering
    - Samme bilde = samme hash, uavhengig av rotasjon
 
 2. **🔌 Server/Kildefil Separasjon** 
-   - Alle metadata og thumbnails lagres i database
+   - Alle metadata og hotpreviews lagres i database
    - Original-filer kan være offline (USB, NAS, cloud)
    - Galleri fungerer selv uten tilgang til kildebilder
 
@@ -91,13 +91,13 @@ fase1/
 
 ## ✅ Ferdigstilt
 1. ✅ Requirements.txt med alle avhengigheter
-2. ✅ Database-modeller (Image, Author, ImportSession)
+2. ✅ Database-modeller (ImageFile, Photo, Author, ImportSession)
 3. ✅ Import-tjeneste med bakgrunnsprosessering
-4. ✅ Komplette API-endpoints (images, authors, import)
+4. ✅ Komplette API-endpoints (image-files, photos, authors, import)
 5. ✅ Desktop client proof-of-concept (Flet)
 6. ✅ EXIF-rotasjonshåndtering
 7. ✅ Direct database access pattern
-8. ✅ Thumbnail-generering med korrekt orientering
+8. ✅ Hotpreview-generering med korrekt orientering
 
 ## 🚀 Bruk
 
@@ -117,7 +117,8 @@ uv run python author_crud_demo.py
 - **Health**: `http://localhost:8000/health` - Server status
 - **API Docs**: `http://localhost:8000/docs` - Interaktiv API dokumentasjon
 - **Authors API**: `http://localhost:8000/api/v1/authors/` - CRUD for fotografer
-- **Images API**: `http://localhost:8000/api/v1/images/` - Bildedata og metadata
+- **ImageFiles API**: `http://localhost:8000/api/v1/image-files/` - Fildata og metadata
+- **Photos API**: `http://localhost:8000/api/v1/photos/` - Fotovisning og metadata
 
 ### Demo Suite:
 ```bash

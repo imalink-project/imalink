@@ -9,17 +9,17 @@ ImaLink Fase 1 er et robuste image management system bygget med moderne arkitekt
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    API Layer (FastAPI)                     │
-│  /api/v1/images, /api/v1/import_sessions, /api/v1/authors  │
+│  /api/v1/image-files, /api/v1/import_sessions, /api/v1/authors  │
 └─────────────────────────┬───────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────┐
 │                   Service Layer                            │
-│     ImageService, ImportSessionService, AuthorService      │
+│     ImageFileService, ImportSessionService, AuthorService      │
 └─────────────────────────┬───────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────┐
 │                  Repository Layer                          │
-│   ImageRepository, ImportSessionRepository, AuthorRepository│
+│   ImageFileRepository, ImportSessionRepository, AuthorRepository│
 └─────────────────────────┬───────────────────────────────────┘
                           │
 ┌─────────────────────────▼───────────────────────────────────┐
@@ -37,12 +37,12 @@ fase1/
 │   │
 │   ├── api/                      # API endepunkter (Controller lag)
 │   │   └── v1/                   # Version 1 av API
-│   │       ├── images.py         # Image CRUD operasjoner
+│   │       ├── image_files.py         # Image CRUD operasjoner
 │   │       ├── import_sessions.py # Import session operasjoner
 │   │       └── authors.py        # Author management
 │   │
 │   ├── services/                 # Business Logic lag
-│   │   ├── image_service_new.py         # Image forretningslogikk
+│   │   ├── image_service_new.py         # ImageFile forretningslogikk
 │   │   ├── import_session_service.py    # Import session forretningslogikk
 │   │   ├── import_sessions_background_service.py # Background import prosessering
 │   │   ├── author_service.py            # Author forretningslogikk  
@@ -51,20 +51,20 @@ fase1/
 │   │       └── image_processor.py       # EXIF og metadata prosessering
 │   │
 │   ├── repositories/             # Data Access lag
-│   │   ├── image_repository.py          # Image database operasjoner
+│   │   ├── image_file_repository.py          # ImageFile database operasjoner
 │   │   ├── import_session_repository.py # Import session database operasjoner
 │   │   └── author_repository.py         # Author database operasjoner
 │   │
 │   ├── models/                   # Database modeller (SQLAlchemy)
 │   │   ├── base.py              # Base model og mixins
 │   │   ├── mixins.py            # Gjenbrukbare model mixins
-│   │   ├── image.py             # Image model
+│   │   ├── image_file.py             # ImageFile model
 │   │   ├── import_session.py    # Import session model
 │   │   └── author.py            # Author model
 │   │
 │   ├── schemas/                  # API schemas (Pydantic)
 │   │   ├── common.py            # Delte response strukturer
-│   │   ├── image_schemas.py     # Image API schemas
+│   │   ├── image_file_schemas.py     # ImageFile API schemas
 │   │   ├── requests/            # Request modeller
 │   │   │   ├── author_requests.py
 │   │   │   ├── import_session_requests.py
@@ -129,7 +129,7 @@ async def list_images(
     offset: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     author_id: Optional[int] = Query(None),
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageFileService = Depends(get_image_service)
 ):
     return await image_service.get_images(offset=offset, limit=limit, author_id=author_id)
 ```
@@ -144,9 +144,9 @@ async def list_images(
 
 **Eksempel**:
 ```python
-class ImageService:
+class ImageFileService:
     def __init__(self, db: Session):
-        self.image_repo = ImageRepository(db)
+        self.image_repo = ImageFileRepository(db)
         self.author_repo = AuthorRepository(db)
     
     async def get_images(self, offset: int = 0, limit: int = 100, author_id: Optional[int] = None):
@@ -167,7 +167,7 @@ class ImageService:
 
 **Eksempel**:
 ```python  
-class ImageRepository:
+class ImageFileRepository:
     def __init__(self, db: Session):
         self.db = db
     
@@ -190,7 +190,7 @@ class ImageRepository:
 
 ### Image Model
 ```python
-class Image(Base, TimestampMixin):
+class ImageFile(Base, TimestampMixin):
     # Primary key
     id = Column(Integer, primary_key=True, index=True)
     
@@ -265,7 +265,7 @@ class Author(Base, TimestampMixin):
 
 ## 🚀 API Endepunkter
 
-### Images API (`/api/v1/images`)
+### Images API (`/api/v1/image-files`)
 
 | Method | Endpoint | Beskrivelse |
 |--------|----------|-------------|
@@ -385,8 +385,8 @@ Systemet bruker FastAPI's dependency injection for clean separation:
 
 ```python
 # core/dependencies.py
-def get_image_service(db: Session = Depends(get_db)) -> ImageService:
-    return ImageService(db)
+def get_image_service(db: Session = Depends(get_db)) -> ImageFileService:
+    return ImageFileService(db)
 
 def get_import_session_service(db: Session = Depends(get_db)) -> ImportSessionService:
     return ImportSessionService(db)

@@ -10,7 +10,7 @@
 All references to the old Svelte frontend have been removed from backend code:
 
 #### Code Files Updated:
-1. **`src/models/image.py`**
+1. **`src/models/image_file.py`**
    - Removed "FRONTEND-DRIVEN ARCHITECTURE" comment section
    - Cleaned up references to File API
 
@@ -93,5 +93,5 @@ imalink/
 
 1. Continue developing desktop client (Flet)
 2. Implement photo import functionality
-3. Add thumbnail viewing and management
+3. Add hotpreview viewing and management
 4. Consider future web viewer (read-only) if needed

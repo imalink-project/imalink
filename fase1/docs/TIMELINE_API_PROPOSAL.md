@@ -18,7 +18,7 @@ GET /api/v1/timeline/years
       "photo_count": 245,
       "pilot_image": {
         "id": 123,
-        "thumbnail_url": "/api/v1/images/123/thumbnail",
+        "thumbnail_url": "/api/v1/image-files/123/thumbnail",
         "title": "IMG_20241015.jpg"
       },
       "month_count": 12,
@@ -46,7 +46,7 @@ GET /api/v1/timeline/years/{year}/months
       "photo_count": 45,
       "pilot_image": {
         "id": 456,
-        "thumbnail_url": "/api/v1/images/456/thumbnail",
+        "thumbnail_url": "/api/v1/image-files/456/thumbnail",
         "title": "IMG_20241215.jpg"
       },
       "day_count": 8,
@@ -74,7 +74,7 @@ GET /api/v1/timeline/years/{year}/months/{month}/days
       "photo_count": 12,
       "pilot_image": {
         "id": 789,
-        "thumbnail_url": "/api/v1/images/789/thumbnail",
+        "thumbnail_url": "/api/v1/image-files/789/thumbnail",
         "title": "IMG_20241215_143022.jpg"
       },
       "time_range": {
@@ -108,8 +108,8 @@ GET /api/v1/timeline/years/{year}/months/{month}/days/{day}/photos
       "id": 789,
       "title": "IMG_20241215_143022.jpg",
       "taken_at": "2024-12-15T14:30:22Z",
-      "thumbnail_url": "/api/v1/images/789/thumbnail",
-      "full_url": "/api/v1/images/789/file",
+      "thumbnail_url": "/api/v1/image-files/789/thumbnail",
+      "full_url": "/api/v1/image-files/789/file",
       "author": {
         "id": 1,
         "name": "John Doe"

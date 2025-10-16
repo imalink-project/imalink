@@ -78,7 +78,7 @@ fase1/
 │   │   ├── models.py       # SQLAlchemy modeller
 │   │   └── connection.py   # DB-tilkobling
 │   ├── services/           # Forretningslogikk
-│   │   └── image_service.py # Bildeprosessering
+│   │   └── image_file_service.py # Bildeprosessering
 │   ├── api/                # REST API
 │   │   ├── images.py       # Bilde-endpoints
 │   │   └── import_api.py   # Import-endpoints
@@ -109,10 +109,10 @@ FastAPI genererer automatisk API-dokumentasjon:
 - `POST /api/import/test-single` - Test enkeltbilde
 
 **Bilder:**
-- `GET /api/images/` - List bilder
-- `GET /api/images/{id}` - Bildedetaljer
-- `GET /api/images/{id}/hotpreview` - Hot preview image
-- `GET /api/images/search` - Søk i bilder
+- `GET /api/image-files/` - List bilder
+- `GET /api/image-files/{id}` - Bildedetaljer
+- `GET /api/image-files/{id}/hotpreview` - Hot preview image
+- `GET /api/image-files/search` - Søk i bilder
 
 ---
 

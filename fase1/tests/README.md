@@ -48,12 +48,12 @@ All API tests verify the modernized synchronous architecture:
 - ✅ Delete photo (404 for not found)
 - ✅ Get hotpreview (404 for not found)
 
-**Images API (`test_images_api.py`)**
-- ✅ List images with pagination
-- ✅ Get image by ID (404 for not found)
+**ImageFiles API (`test_image_files_api.py`)**
+- ✅ List image files with pagination
+- ✅ Get image file by ID (404 for not found)
 - ✅ Get hotpreview (404 for not found)
-- ✅ Create image validation (422 for missing data)
-- ✅ Image-first architecture principles
+- ✅ Create image file validation (422 for missing data)
+- ✅ ImageFile-first architecture principles
 
 **ImportSessions API (`test_import_sessions_api.py`)**
 - ✅ List import sessions

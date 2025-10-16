@@ -11,7 +11,7 @@
 
 ImaLink is a revolutionary image indexing and management system designed for photographers, content creators, and organizations who need efficient management of large image collections without sacrificing storage flexibility. Unlike traditional photo management software that requires images to be stored in proprietary databases or specific folder structures, ImaLink separates the indexing layer from the storage layer, providing unprecedented flexibility in how and where images are stored.
 
-The system extracts and indexes metadata (EXIF data) and generates lightweight preview thumbnails (hotpreviews) while leaving original files in their current locations. This approach enables powerful search, organization, and workflow capabilities without the storage overhead and vendor lock-in associated with traditional solutions.
+The system extracts and indexes metadata (EXIF data) and generates lightweight preview images (hotpreviews) while leaving original files in their current locations. This approach enables powerful search, organization, and workflow capabilities without the storage overhead and vendor lock-in associated with traditional solutions.
 
 ---
 
@@ -73,7 +73,7 @@ ImaLink is built on three fundamental principles:
 
 ImaLink employs a sophisticated dual-model approach:
 
-#### Image Model (File-Centric)
+#### ImageFile Model (File-Centric)
 - Represents individual physical files (JPEG, RAW, TIFF, etc.)
 - Stores file-specific metadata: filename, size, EXIF data
 - Maintains relationship to original file location
@@ -81,7 +81,7 @@ ImaLink employs a sophisticated dual-model approach:
 
 #### Photo Model (Content-Centric)
 - Represents the conceptual "photograph" or image content
-- Aggregates metadata from associated Image files
+- Aggregates metadata from associated ImageFile files
 - Stores user-generated metadata: titles, descriptions, tags, ratings
 - Manages relationships with authors, collections, and import sessions
 
@@ -161,7 +161,7 @@ ImaLink uses a proprietary "HotHash" system for content identification:
 
 ### 3.4 Hotpreview System
 
-**Lightweight Thumbnails**
+**Lightweight hotpreviews**
 - High-quality compressed previews (typically 10-50KB each)
 - Fast loading for responsive user interface
 - Embedded directly in database for performance
@@ -185,7 +185,7 @@ ImaLink uses a proprietary "HotHash" system for content identification:
    - Point ImaLink to event folder containing RAW+JPEG files
    - System automatically pairs RAW/JPEG files
    - Extracts EXIF data and generates hotpreviews
-   - Creates initial Photo records linked to Image files
+   - Creates initial Photo records linked to ImageFile files
 
 2. **Organization Phase**
    - Browse images using fast hotpreview display

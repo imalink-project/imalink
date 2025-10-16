@@ -158,7 +158,7 @@ python cli_tester.py
 
 - `GET /api/v1/import_sessions/status/{id}` - Sjekk progress  
 
-- `GET /api/v1/images/` - List importerte bilder``````
+- `GET /api/v1/image-files/` - List importerte bilder``````
 
 - `GET /api/v1/authors/` - List authors
 
@@ -251,7 +251,7 @@ python cli_tester.py- ✅ Real-time progress tracking og status
 
 - `GET /api/v1/import_sessions/status/{id}` - Sjekk progress  - ✅ Vis metadata (dimensions, file size, GPS, EXIF)
 
-- `GET /api/v1/images/` - List importerte bilder- ✅ Filter og søk funksjoner
+- `GET /api/v1/image-files/` - List importerte bilder- ✅ Filter og søk funksjoner
 
 - `GET /api/v1/authors/` - List authors- ✅ Author-basert filtrering  
 
@@ -329,7 +329,7 @@ Standard Streamlit konfigurasjon med:
 ### API Dependencies
 Demoene forutsetter at følgende API endepunkter er tilgjengelig:
 - `/api/v1/import_sessions/*` - Import management
-- `/api/v1/images/*` - Image operations  
+- `/api/v1/image-files/*` - Image operations  
 - `/api/v1/authors/*` - Author management
 - `/debug/routes` - System introspection
 - `/health` - Health check

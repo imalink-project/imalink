@@ -86,7 +86,7 @@ Service Layer: ImportsBackgroundService
 
 Data Layer: Repositories
 ├── ImportRepository → Import state management
-├── ImageRepository → Image CRUD operations
+├── ImageFileRepository → Image CRUD operations
 └── Database abstraction
 
 Utility Layer: ImageProcessor

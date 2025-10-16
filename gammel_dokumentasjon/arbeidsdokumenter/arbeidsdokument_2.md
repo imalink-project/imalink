@@ -153,7 +153,7 @@ ImaLink skal være en intelligent database som bedrer tilgangen til mine bilder 
 ```
 src/
 ├── api/                    # FastAPI REST endpoints
-│   ├── images.py          # Bilde-API (henting, pool, metadata)
+│   ├── image_files.py          # Bilde-API (henting, pool, metadata)
 │   ├── import_api.py      # Import-funksjonalitet
 │   └── authors.py         # Forfatter/fotograf-håndtering
 ├── database/

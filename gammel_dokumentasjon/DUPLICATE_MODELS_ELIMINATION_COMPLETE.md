@@ -18,7 +18,7 @@ The systematic removal of `database/models.py` and migration to modular models h
 ## 🔧 Files Modified
 
 ### Core Application Code ✅
-- `repositories/image_repository.py`: `from database.models import` → `from models import`
+- `repositories/image_file_repository.py`: `from database.models import` → `from models import`
 - All repository layer now uses modular models exclusively
 
 ### Scripts and Maintenance ✅
@@ -72,7 +72,7 @@ database/
 
 models/  
 ├── author.py (Author) ❌ DUPLICATE
-├── image.py (Image) ❌ DUPLICATE
+├── image_file.py (Image) ❌ DUPLICATE
 ├── import_model.py (ImportSession) ❌ DUPLICATE
 └── __init__.py
 ```
@@ -84,7 +84,7 @@ database/
 
 models/  
 ├── author.py (Author) ✅ SINGLE SOURCE
-├── image.py (Image) ✅ SINGLE SOURCE
+├── image_file.py (Image) ✅ SINGLE SOURCE
 ├── import_model.py (ImportSession) ✅ SINGLE SOURCE
 └── __init__.py ✅ EXPORTS ALL
 ```

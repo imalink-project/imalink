@@ -109,7 +109,7 @@ class ImportSession(Base, TimestampMixin):
 ### Image Model Utvidelser
 
 ```python
-class Image(Base, TimestampMixin):
+class ImageFile(Base, TimestampMixin):
     # Eksisterende felter...
     
     # Nye storage-felt
@@ -138,7 +138,7 @@ class Image(Base, TimestampMixin):
 
 1. **Directory Scanning**: Scan kildekatalog for bildefiler
 2. **EXIF Processing**: Ekstrakter metadata fra bildefiler  
-3. **Photo Creation**: Opprett Photo og Image records i database
+3. **Photo Creation**: Opprett Photo og ImageFile records i database
 4. **Duplicate Detection**: Identifiser og håndter duplikater
 
 ### Fase 2: Storage Copy (Ny funksjonalitet)
@@ -152,7 +152,7 @@ class Image(Base, TimestampMixin):
 
 6. **File Copying**:
    ```python
-   for image in import_session.images:
+   for image_file in import_session.image_files:
        source_path = Path(image.original_import_path)
        relative_path = source_path.relative_to(import_session.original_source_path)
        target_path = storage_dir / "files" / relative_path
@@ -171,7 +171,7 @@ class Image(Base, TimestampMixin):
        "import_session_id": str(import_session.id),
        "created_at": import_session.created_at.isoformat(),
        "source_path": str(import_session.original_source_path),
-       "total_files": len(import_session.images),
+       "total_files": len(import_session.image_files),
        # ... resten av metadata
    }
    
@@ -291,12 +291,12 @@ async def scan_storage_locations():
 @router.get("/images/{image_id}/file")
 async def get_image_file(image_id: int):
     """Hent faktisk bildefil fra storage"""
-    image = get_image_or_404(image_id)
+    image_file = get_image_file_or_404(image_id)
     
-    if not image.is_file_accessible:
+    if not image_file.is_file_accessible:
         raise HTTPException(404, "Image file not accessible. Check storage connection.")
     
-    file_path = image.storage_file_path
+    file_path = image_file.storage_file_path
     return FileResponse(file_path)
 ```
 
@@ -351,7 +351,7 @@ def rollback_failed_import(import_session: ImportSession):
         shutil.rmtree(import_session.storage_directory)
     
     # Fjern database records
-    for image in import_session.images:
+    for image_file in import_session.image_files:
         db.delete(image)
     for photo in import_session.photos:
         db.delete(photo)
@@ -364,7 +364,7 @@ def rollback_failed_import(import_session: ImportSession):
 
 ### Fase 1: Database Schema
 - [ ] Utvid ImportSession model med storage felter
-- [ ] Utvid Image model med storage paths
+- [ ] Utvid ImageFile model med storage paths
 - [ ] Lag database migrering
 - [ ] Test nye felter og relationships
 

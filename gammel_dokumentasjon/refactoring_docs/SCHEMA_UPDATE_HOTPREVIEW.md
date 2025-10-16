@@ -20,10 +20,10 @@ hotpreview = Column(LargeBinary)  # Hot preview stored as binary data (fast cach
 ```
 
 ### 2. **Påvirkede Filer**
-- ✅ `src/models/image.py` - Hovedmodell oppdatert til `hotpreview`
-- ✅ `src/schemas/image_schemas.py` - Schema oppdatert til `has_hotpreview` og `ImageHotpreviewResponse`
+- ✅ `src/models/image_file.py` - Hovedmodell oppdatert til `hotpreview`
+- ✅ `src/schemas/image_file_schemas.py` - Schema oppdatert til `has_hotpreview` og `ImageHotpreviewResponse`
 - ✅ `src/services/image_service_new.py` - Service-logikk og `get_image_hotpreview()` metode
-- ✅ `src/api/v1/images.py` - API endpoint `/hotpreview` og `get_hotpreview()` funksjon
+- ✅ `src/api/v1/image-files.py` - API endpoint `/hotpreview` og `get_hotpreview()` funksjon
 - ✅ `scripts/testing/test_thumbnail_direct.py` - Test oppdatert til `test_preview_image_rotation_direct()`
 - ✅ `scripts/testing/test_thumbnail_rotation.py` - URL oppdatert til `/hotpreview`
 - ✅ `docs/service_layer_guide.md` - Dokumentasjon oppdatert til hotpreview
@@ -43,7 +43,7 @@ class ImageHotpreviewResponse(BaseModel):
 #### **API Endpoints:**
 ```python
 # NÅVÆRENDE:
-GET /api/v1/images/{id}/hotpreview  
+GET /api/v1/image-files/{id}/hotpreview  
 async def get_hotpreview(image_id: int) -> Response
 ```
 
@@ -97,7 +97,7 @@ Alle komponenter testet og bekreftet funksjonelle:
 Hvis du trenger å referere til hot previews:
 - **Database:** `image.hotpreview`
 - **Schema:** `has_hotpreview`, `ImageHotpreviewResponse`
-- **API:** `GET /api/v1/images/{id}/hotpreview`
+- **API:** `GET /api/v1/image-files/{id}/hotpreview`
 - **Service:** `get_image_hotpreview(image_id)`
 - **Frontend:** `/hotpreview` URL
 - **Dokumentasjon:** "hotpreview" eller "hot preview"

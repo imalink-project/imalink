@@ -52,12 +52,12 @@ async def get_images(db: Session = Depends(get_db)):
 ### **1. Repository Layer (Data Access)**
 
 ```python
-# repositories/image_repository.py
+# repositories/image_file_repository.py
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from models import Image
+from models import ImageFile
 
-class ImageRepository:
+class ImageFileRepository:
     def __init__(self, db: Session):
         self.db = db
     
@@ -115,7 +115,7 @@ class ImageRepository:
 ### **2. Response Schemas (Data Transfer Objects)**
 
 ```python
-# schemas/image_schemas.py
+# schemas/image_file_schemas.py
 from pydantic import BaseModel, Field
 from typing import Optional, List
 from datetime import datetime
@@ -179,17 +179,17 @@ class ErrorResponse(BaseModel):
 ### **3. Service Layer (Business Logic)**
 
 ```python
-# services/image_service.py
+# services/image_file_service.py
 from typing import Optional, List
 from sqlalchemy.orm import Session
-from schemas.image_schemas import ImageResponse, ImageListResponse, ImageCreateRequest
-from repositories.image_repository import ImageRepository
-from services.image_processor import ImageProcessor
+from schemas.image_schemas import ImageFileResponse, ImageListResponse, ImageCreateRequest
+from repositories.image_repository import ImageFileFileRepository
+from services.image_processor import ImageFileProcessor
 from exceptions import NotFoundError, DuplicateImageError
 
-class ImageService:
+class ImageFileService:
     def __init__(self, db: Session):
-        self.image_repo = ImageRepository(db)
+        self.image_repo = ImageFileRepository(db)
         self.image_processor = ImageProcessor()
     
     async def get_images(
@@ -326,13 +326,13 @@ class DuplicateImageError(APIException):
 # dependencies.py
 from sqlalchemy.orm import Session
 from database.connection import get_db
-from services.image_service import ImageService
+from services.image_service import ImageFileFileService
 from services.author_service import AuthorService
 from services.import_service import ImportService
 from fastapi import Depends
 
-def get_image_service(db: Session = Depends(get_db)) -> ImageService:
-    return ImageService(db)
+def get_image_service(db: Session = Depends(get_db)) -> ImageFileService:
+    return ImageFileService(db)
 
 def get_author_service(db: Session = Depends(get_db)) -> AuthorService:
     return AuthorService(db)
@@ -346,8 +346,8 @@ def get_import_service(db: Session = Depends(get_db)) -> ImportService:
 ```python
 # api/images.py - FORBEDRET
 from fastapi import APIRouter, Depends, HTTPException, Query
-from services.image_service import ImageService
-from schemas.image_schemas import ImageListResponse, ImageResponse, ImageCreateRequest
+from services.image_service import ImageFileFileService
+from schemas.image_schemas import ImageFileListResponse, ImageResponse, ImageCreateRequest
 from dependencies import get_image_service
 from exceptions import APIException
 import logging
@@ -360,7 +360,7 @@ async def get_images(
     offset: int = Query(0, ge=0, description="Number of images to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of images to return"),
     author_id: Optional[int] = Query(None, description="Filter by author ID"),
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageFileService = Depends(get_image_service)
 ):
     """Get list of images with pagination and optional filtering"""
     try:
@@ -372,7 +372,7 @@ async def get_images(
 @router.get("/{image_id}", response_model=ImageResponse)
 async def get_image(
     image_id: int,
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageFileService = Depends(get_image_service)
 ):
     """Get specific image by ID"""
     try:
@@ -386,7 +386,7 @@ async def get_image(
 @router.post("/", response_model=ImageResponse, status_code=201)
 async def create_image(
     image_data: ImageCreateRequest,
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageFileService = Depends(get_image_service)
 ):
     """Create new image"""
     try:
@@ -412,10 +412,10 @@ async def create_image(
 ```python
 # Lett å teste business logic isolert
 def test_image_service():
-    mock_repo = Mock(ImageRepository)
+    mock_repo = Mock(ImageFileRepository)
     mock_repo.get_images.return_value = [mock_image]
     
-    service = ImageService(mock_repo)
+    service = ImageFileService(mock_repo)
     
     # Test business logic uten database
     result = service.get_images(0, 10)
@@ -427,11 +427,11 @@ def test_image_service():
 ```python
 # Service kan brukes av flere controllers
 @router.get("/images/")
-async def api_get_images(service: ImageService = Depends()):
+async def api_get_images(service: ImageFileService = Depends()):
     return await service.get_images()
 
 @router.get("/admin/images/")  # Admin endpoint
-async def admin_get_images(service: ImageService = Depends()):
+async def admin_get_images(service: ImageFileService = Depends()):
     # Same service, different controller
     return await service.get_images_with_admin_data()
 ```
@@ -453,8 +453,8 @@ async def admin_get_images(service: ImageService = Depends()):
 4. Lag `dependencies.py` for dependency injection
 
 ### **Fase 2: Images API (15 min)**
-1. `ImageRepository` - data access
-2. `ImageService` - business logic
+1. `ImageFileRepository` - data access
+2. `ImageFileService` - business logic
 3. `ImageResponse` schemas  
 4. Oppdater `images.py` controller
 

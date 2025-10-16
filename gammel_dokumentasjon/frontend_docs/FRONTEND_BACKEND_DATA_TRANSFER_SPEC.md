@@ -235,9 +235,9 @@ class BatchImportRequest(BaseModel):
 # File: fase1/src/services/photo_service.py
 from typing import Optional
 from schemas.requests.photo_group_requests import PhotoGroupRequest
-from services.importing.image_processor import ImageProcessor
+from services.importing.image_processor import ImageFileProcessor
 from models.photo import Photo
-from models.image import Image
+from models.image import ImageFile
 
 async def create_photo_group_with_metadata_extraction(
     self, 
@@ -465,7 +465,7 @@ async function testRawExifExtraction(file) {
 ```python
 # Backend: Test metadata extraction from raw EXIF
 # File: fase1/test_raw_exif_processing.py
-from services.importing.image_processor import ImageProcessor
+from services.importing.image_processor import ImageFileProcessor
 
 async def test_backend_exif_processing():
     processor = ImageProcessor()

@@ -115,6 +115,6 @@ The photo-centric import implementation is **COMPLETE** and ready for integratio
 ## File References
 - **Main Implementation**: `src/services/import_sessions_background_service.py`
 - **Photo Model**: `src/models/photo.py` (factory methods)
-- **Image Model**: `src/models/image.py` (factory methods)  
+- **Image Model**: `src/models/image_file.py` (factory methods)  
 - **Design Document**: `PHOTO_CENTRIC_IMPORT_REFACTORING.md`
 - **Test Files**: `test_user_files/images/` (various scenarios)

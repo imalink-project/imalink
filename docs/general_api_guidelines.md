@@ -6,12 +6,12 @@
 
 #### **Ressurs-orientert Design:**
 ```
-GET    /api/images           # Hent liste av bilder
-GET    /api/images/{id}      # Hent spesifikt bilde
-POST   /api/images           # Opprett nytt bilde
-PUT    /api/images/{id}      # Oppdater hele bildet
-PATCH  /api/images/{id}      # Oppdater deler av bildet
-DELETE /api/images/{id}      # Slett bilde
+GET    /api/image-files           # Hent liste av bilder
+GET    /api/image-files/{id}      # Hent spesifikt bilde
+POST   /api/image-files           # Opprett nytt bilde
+PUT    /api/image-files/{id}      # Oppdater hele bildet
+PATCH  /api/image-files/{id}      # Oppdater deler av bildet
+DELETE /api/image-files/{id}      # Slett bilde
 ```
 
 #### **HTTP Status Codes:**
@@ -39,11 +39,11 @@ DELETE /api/images/{id}      # Slett bilde
     "pages": 8
   },
   "links": {               // HATEOAS links
-    "self": "/api/images?page=1",
-    "next": "/api/images?page=2",
+    "self": "/api/image-files?page=1",
+    "next": "/api/image-files?page=2",
     "prev": null,
-    "first": "/api/images?page=1",
-    "last": "/api/images?page=8"
+    "first": "/api/image-files?page=1",
+    "last": "/api/image-files?page=8"
   }
 }
 ```
@@ -69,7 +69,7 @@ DELETE /api/images/{id}      # Slett bilde
 ### **3. Versioning Strategy**
 
 ```
-/api/v1/images     # Version i URL
+/api/v1/image-files     # Version i URL
 /api/v2/images     # Ny versjon med breaking changes
 
 # Eller via headers:
@@ -138,17 +138,17 @@ Database Models
 
 #### **Eksempel - Service Layer:**
 ```python
-# services/image_service.py
+# services/image_file_service.py
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from repositories.image_repository import ImageRepository
-from schemas.image_schemas import ImageCreateRequest, ImageResponse
+from repositories.image_repository import ImageFileFileRepository
+from schemas.image_schemas import ImageFileCreateRequest, ImageResponse
 from core.exceptions import NotFoundError, ValidationError, DuplicateImageError
 
-class ImageService:
+class ImageFileService:
     def __init__(self, db: Session):
         self.db = db
-        self.image_repo = ImageRepository(db)
+        self.image_file_repo = ImageFileRepository(db)
     
     def get_images(
         self, 
@@ -157,12 +157,12 @@ class ImageService:
         author_id: Optional[int] = None
     ) -> PaginatedResponse[ImageResponse]:
         """Get paginated list of images"""
-        images = self.image_repo.get_images(
+        images = self.image_file_repo.get_images(
             offset=offset, 
             limit=limit, 
             author_id=author_id
         )
-        total = self.image_repo.count_images(author_id=author_id)
+        total = self.image_file_repo.count_images(author_id=author_id)
         
         # Convert to response models
         image_responses = [ImageResponse.model_validate(img) for img in images]
@@ -174,17 +174,17 @@ class ImageService:
             limit=limit
         )
     
-    def create_image(self, image_data: ImageCreateRequest) -> ImageResponse:
+    def create_image(self, image_file_data: ImageCreateRequest) -> ImageResponse:
         """Create new image with validation"""
         # Business logic: Check for duplicates
-        if self.image_repo.exists_by_hash(image_data.image_hash):
-            raise DuplicateImageError(f"Image with hash {image_data.image_hash} already exists")
+        if self.image_file_repo.exists_by_hash(image_file_data.image_hash):
+            raise DuplicateImageError(f"Image with hash {image_file_data.image_hash} already exists")
         
         # Business logic: Validate required fields
-        if not image_data.filename:
+        if not image_file_data.filename:
             raise ValidationError("Filename is required")
         
-        image = self.image_repo.create(image_data)
+        image = self.image_file_repo.create(image_file_data)
         return ImageResponse.model_validate(image)
 ```
 
@@ -192,7 +192,7 @@ class ImageService:
 ```python
 # api/v1/images.py
 from fastapi import APIRouter, Depends, HTTPException, Query
-from services.image_service import ImageService
+from services.image_service import ImageFileFileService
 from core.dependencies import get_image_service
 from core.exceptions import NotFoundError, ValidationError, DuplicateImageError
 from schemas.common import PaginatedResponse, create_success_response
@@ -204,7 +204,7 @@ def list_images(
     offset: int = Query(0, ge=0, description="Number of images to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of images to return"),
     author_id: Optional[int] = Query(None, description="Filter by author ID"),
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageFileService = Depends(get_image_service)
 ):
     """Get paginated list of images"""
     try:
@@ -219,12 +219,12 @@ def list_images(
 
 @router.post("/", response_model=ImageResponse, status_code=201)
 def create_image(
-    image_data: ImageCreateRequest,
-    image_service: ImageService = Depends(get_image_service)
+    image_file_data: ImageCreateRequest,
+    image_service: ImageFileService = Depends(get_image_service)
 ):
     """Create new image"""
     try:
-        return image_service.create_image(image_data)
+        return image_service.create_image(image_file_data)
     except DuplicateImageError as e:
         raise HTTPException(status_code=409, detail=str(e))
     except ValidationError as e:
@@ -236,7 +236,7 @@ def create_image(
 @router.get("/{image_id}", response_model=ImageResponse)
 def get_image(
     image_id: int,
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageFileService = Depends(get_image_service)
 ):
     """Get single image by ID"""
     try:
@@ -289,10 +289,10 @@ class ErrorDetail(BaseModel):
 # dependencies.py
 from sqlalchemy.orm import Session
 from database.connection import get_db
-from services.image_service import ImageService
+from services.image_service import ImageFileFileService
 
-def get_image_service(db: Session = Depends(get_db)) -> ImageService:
-    return ImageService(db)
+def get_image_service(db: Session = Depends(get_db)) -> ImageFileService:
+    return ImageFileService(db)
 
 def get_author_service(db: Session = Depends(get_db)) -> AuthorService:
     return AuthorService(db)

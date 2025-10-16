@@ -32,7 +32,7 @@
 ```
 📁 src/repositories/
    ├── import_session_repository.py - Import session CRUD
-   └── image_repository.py - Image CRUD og duplikatsjekk
+   └── image_file_repository.py - Image CRUD og duplikatsjekk
 ```
 
 ---

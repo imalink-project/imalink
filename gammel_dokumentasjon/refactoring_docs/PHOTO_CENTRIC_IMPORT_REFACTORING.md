@@ -2,7 +2,7 @@
 
 **Dato:** 6. oktober 2025  
 **Status:** Design dokument - Klar for implementasjon  
-**Mål:** Klarere ansvarsfordeling mellom ImportSession, Photo og Image modeller
+**Mål:** Klarere ansvarsfordeling mellom ImportSession, Photo og ImageFile modeller
 
 ## Oversikt
 
@@ -188,7 +188,7 @@ class Photo(Base, TimestampMixin):
 **Ansvar:** Fil-spesifikk metadata og lagring
 
 ```python
-class Image(Base, TimestampMixin):
+class ImageFile(Base, TimestampMixin):
     """Simple file-level representation"""
     
     @classmethod

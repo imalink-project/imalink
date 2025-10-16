@@ -454,10 +454,10 @@ export class PhotosApi {
 
 #### **Images API:**
 ```javascript
-// frontend/src/lib/api/images.ts
+// frontend/src/lib/api/image-files.ts
 export class ImagesApi {
   static async create(imageData: ImageCreateRequest): Promise<Image> {
-    const response = await fetch('/api/v1/images/', {
+    const response = await fetch('/api/v1/image-files/', {
       method: 'POST', 
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(imageData)
