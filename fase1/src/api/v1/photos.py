@@ -146,24 +146,6 @@ async def get_hotpreview(
 
 # Additional utility endpoints
 
-@router.get("/{hothash}/files", response_model=list[dict])
-async def get_photo_files(
-    hothash: str,
-    photo_service: PhotoService = Depends(get_photo_service)
-):
-    """Get list of files associated with photo"""
-    try:
-        photo = await photo_service.get_photo_by_hash(hothash)
-        return create_success_response(
-            message="Photo files retrieved successfully",
-            data=photo.files
-        )
-    except APIException as e:
-        raise HTTPException(status_code=e.status_code, detail=e.message)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-
 @router.get("/{hothash}/metadata")
 async def get_photo_metadata(
     hothash: str,
