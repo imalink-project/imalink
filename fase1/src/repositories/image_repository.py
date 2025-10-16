@@ -33,14 +33,13 @@ class ImageRepository:
         self, 
         offset: int = 0, 
         limit: int = 100,
-        author_id: Optional[int] = None,
         search_params: Optional[ImageSearchRequest] = None
     ) -> List[Image]:
         """Get images with optional filtering and pagination"""
         query = self.db.query(Image)
         
         # Apply filters
-        query = self._apply_filters(query, author_id, search_params)
+        query = self._apply_filters(query, search_params)
         
         # Apply sorting
         if search_params:
@@ -53,14 +52,13 @@ class ImageRepository:
     
     def count_images(
         self, 
-        author_id: Optional[int] = None,
         search_params: Optional[ImageSearchRequest] = None
     ) -> int:
         """Count images matching criteria"""
         query = self.db.query(Image)
         
         # Apply same filters as get_images
-        query = self._apply_filters(query, author_id, search_params)
+        query = self._apply_filters(query, search_params)
         
         return query.count()
     
@@ -102,18 +100,7 @@ class ImageRepository:
         return False
     
     # NOTE: rotate_image removed - rotation is a Photo-level concern, not Image-level
-    
-    def get_images_by_author(self, author_id: int, limit: int = 100) -> List[Image]:
-        """Get images by specific author (via Photo relationship)"""
-        from models import Photo  # Import here to avoid circular imports
-        return (
-            self.db.query(Image)
-            .join(Photo, Image.hothash == Photo.hothash)
-            .filter(Photo.author_id == author_id)
-            .order_by(desc(Image.id))
-            .limit(limit)
-            .all()
-        )
+    # NOTE: get_images_by_author removed - author is a Photo-level concern, not Image-level
     
     def get_images_by_import_session(self, import_session_id: int) -> List[Image]:
         """Get all images from a specific import session"""
@@ -146,15 +133,11 @@ class ImageRepository:
     def _apply_filters(
         self, 
         query, 
-        author_id: Optional[int] = None,
         search_params: Optional[ImageSearchRequest] = None
     ):
         """Apply filters to query"""
         
-        # Author filter (via Photo relationship)
-        if author_id:
-            from models import Photo  # Import here to avoid circular imports
-            query = query.join(Photo, Image.photo_hothash == Photo.hothash).filter(Photo.author_id == author_id)
+        # NOTE: Author filter removed - author is a Photo-level concern, not Image-level
         
         if search_params:
             # Text search - only search filename since Image no longer has title/description
@@ -164,10 +147,7 @@ class ImageRepository:
                     Image.filename.ilike(search_term)
                 )
             
-            # Author filter from search params (via Photo relationship)
-            if search_params.author_id and not author_id:
-                from models import Photo  # Import here to avoid circular imports
-                query = query.join(Photo, Image.photo_hothash == Photo.hothash).filter(Photo.author_id == search_params.author_id)
+            # NOTE: Author filter removed - author is a Photo-level concern
             
             # NOTE: Tags and rating filters removed since user metadata was moved out of Image model
             # These will be implemented with ImageMetadata table in future

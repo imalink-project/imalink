@@ -50,10 +50,7 @@ class ImageResponse(BaseModel):
     # These fields removed from Image model to support multiple files per motif (JPEG/RAW)
     
     # NOTE: user_rotation removed - rotation is a Photo-level concern, not Image-level
-    
-    # Relationships
-    author: Optional[AuthorSummary] = Field(None, description="Image author/photographer")
-    author_id: Optional[int] = Field(None, description="Author ID")
+    # NOTE: author removed - author is a Photo-level concern, not Image-level
     
     # Import info available via import_session_id relationship in service layer
     
@@ -118,7 +115,7 @@ class ImageUpdateRequest(BaseModel):
 class ImageSearchRequest(BaseModel):
     """Request model for image search"""
     q: Optional[str] = Field(None, description="Search query (filename)")
-    author_id: Optional[int] = Field(None, description="Filter by author ID")
+    # NOTE: author_id removed - author is a Photo-level concern, not Image-level
     # NOTE: tags, rating search moved to ImageMetadata table
     taken_after: Optional[datetime] = Field(None, description="Taken after date")
     taken_before: Optional[datetime] = Field(None, description="Taken before date")

@@ -13,7 +13,7 @@ from repositories.image_repository import ImageRepository
 from repositories.photo_repository import PhotoRepository
 from schemas.image_schemas import (
     ImageResponse, ImageCreateRequest, ImageUpdateRequest, 
-    ImageSearchRequest, AuthorSummary
+    ImageSearchRequest
 )
 from schemas.photo_schemas import PhotoCreateRequest
 from schemas.common import PaginatedResponse, create_paginated_response
@@ -100,14 +100,13 @@ class ImageService:
         self, 
         offset: int = 0, 
         limit: int = 100,
-        author_id: Optional[int] = None,
         search_params: Optional[ImageSearchRequest] = None
     ) -> PaginatedResponse[ImageResponse]:
         """Get paginated list of images with optional filtering"""
         
         # Get images and total count
-        images = self.image_repo.get_images(offset, limit, author_id, search_params)
-        total = self.image_repo.count_images(author_id, search_params)
+        images = self.image_repo.get_images(offset, limit, search_params)
+        total = self.image_repo.count_images(search_params)
         
         # Convert to response models with business logic
         image_responses = []
@@ -255,17 +254,7 @@ class ImageService:
         )
     
     # NOTE: get_recent_images removed - use list_images with sort_by=created_at instead
-    
-    async def get_images_by_author(self, author_id: int, limit: int = 100) -> List[ImageResponse]:
-        """Get images by specific author"""
-        images = self.image_repo.get_images_by_author(author_id, limit)
-        
-        image_responses = []
-        for image in images:
-            image_response = await self._convert_to_response(image)
-            image_responses.append(image_response)
-        
-        return image_responses
+    # NOTE: get_images_by_author removed - author is a Photo-level concern, not Image-level
     
     # Private helper methods
     
@@ -283,13 +272,7 @@ class ImageService:
         # Note: We no longer have full file path, so disable thumbnail generation for now
         has_thumbnail = bool(getattr(image, 'thumbnail', None))
         
-        # Convert author if present (from Photo relationship)
-        author_summary = None
-        if hasattr(image, 'photo') and image.photo and hasattr(image.photo, 'author') and image.photo.author:
-            author_summary = AuthorSummary(
-                id=image.photo.author.id,
-                name=image.photo.author.name
-            )
+        # NOTE: author removed - author is a Photo-level concern, not Image-level
         
         # Image model doesn't have tags - they're in Photo model
         tags = []
@@ -318,9 +301,7 @@ class ImageService:
             gps_latitude=None,  # GPS is in Photo model, not Image
             gps_longitude=None,
             has_gps=False,  # GPS is in Photo model
-            # NOTE: title, description, tags, rating, user_rotation in Photo model
-            author=author_summary,
-            author_id=None,  # author_id is in Photo model
+            # NOTE: title, description, tags, rating, user_rotation, author in Photo model
             # import_source available via import_session relationship if needed
             has_raw_companion=computed_format in ['cr2', 'nef', 'arw', 'dng', 'orf', 'rw2', 'raw'] if computed_format else False
         )

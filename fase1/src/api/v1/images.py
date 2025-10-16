@@ -29,15 +29,13 @@ router = APIRouter()
 async def list_images(
     offset: int = Query(0, ge=0, description="Number of images to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of images to return"),
-    author_id: Optional[int] = Query(None, description="Filter by author ID"),
     image_service: ImageService = Depends(get_image_service)
 ):
     """Get paginated list of images with metadata"""
     try:
         return await image_service.get_images(
             offset=offset,
-            limit=limit,
-            author_id=author_id
+            limit=limit
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve images: {str(e)}")
@@ -163,15 +161,4 @@ async def create_image(
 # Utility endpoints
 
 # NOTE: /recent endpoint removed - use GET /images with sort_by=created_at&sort_order=desc instead
-
-@router.get("/author/{author_id}", response_model=list[ImageResponse])
-async def get_images_by_author(
-    author_id: int,
-    limit: int = Query(100, ge=1, le=500, description="Number of images to return"),
-    image_service: ImageService = Depends(get_image_service)
-):
-    """Get images by specific author"""
-    try:
-        return await image_service.get_images_by_author(author_id, limit)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve images by author: {str(e)}")
+# NOTE: /author/{author_id} endpoint removed - author is a Photo-level concern, not Image-level
