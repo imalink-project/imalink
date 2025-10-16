@@ -4,7 +4,7 @@
 
 ```bash
 cd mini-frontend
-pip install -r requirements.txt
+uv sync
 ```
 
 ## 2. Start FastAPI backend
@@ -12,7 +12,7 @@ pip install -r requirements.txt
 I ett terminalvindu:
 ```bash
 cd ../fase1
-uvicorn src.main:app --reload
+uv run uvicorn src.main:app --reload
 ```
 
 Backend starter på: http://localhost:8000
@@ -22,7 +22,7 @@ Backend starter på: http://localhost:8000
 I et annet terminalvindu:
 ```bash
 cd mini-frontend
-python main.py
+uv run python main.py
 ```
 
 ## Funksjoner

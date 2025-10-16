@@ -11,9 +11,16 @@ Enkel desktop-applikasjon bygget med Flet for testing av ImaLink API.
 
 ## Installasjon
 
+Med uv (anbefalt):
 ```bash
 cd mini-frontend
-pip install -r requirements.txt
+uv sync
+```
+
+Eller med requirements.txt:
+```bash
+cd mini-frontend
+uv pip install -r requirements.txt
 ```
 
 ## Kjøring
@@ -21,13 +28,13 @@ pip install -r requirements.txt
 1. Start FastAPI backend først:
 ```bash
 cd ../fase1
-uvicorn src.main:app --reload
+uv run uvicorn src.main:app --reload
 ```
 
 2. Start mini-frontend i nytt terminalvindu:
 ```bash
 cd mini-frontend
-python main.py
+uv run python main.py
 ```
 
 ## API Endpoint
