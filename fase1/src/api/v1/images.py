@@ -236,19 +236,8 @@ async def rotate_image(
 # Use PUT /photos/{hothash} and DELETE /photos/{hothash} instead
 
 
-# Statistics and utility endpoints
 
-@router.get("/statistics/overview")
-async def get_image_statistics(
-    image_service: ImageService = Depends(get_image_service)
-):
-    """Get comprehensive image statistics"""
-    try:
-        stats = await image_service.get_image_statistics()
-        return {"data": stats}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve statistics: {str(e)}")
-
+# Utility endpoints
 
 @router.get("/recent", response_model=list[ImageResponse])
 async def get_recent_images(

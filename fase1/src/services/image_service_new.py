@@ -307,25 +307,6 @@ class ImageService:
             image_responses.append(image_response)
         
         return image_responses
-
-    async def get_image_statistics(self) -> Dict[str, Any]:
-        """Get comprehensive image statistics"""
-        base_stats = self.image_repo.get_statistics()
-        
-        # Business Logic: Add computed statistics
-        base_stats.update({
-            "total_size_mb": round(base_stats["total_size_bytes"] / (1024 * 1024), 2),
-            "avg_image_size_mb": (
-                round(base_stats["total_size_bytes"] / base_stats["total_images"] / (1024 * 1024), 2) 
-                if base_stats["total_images"] > 0 else 0
-            ),
-            "gps_percentage": (
-                round(base_stats["images_with_gps"] / base_stats["total_images"] * 100, 1)
-                if base_stats["total_images"] > 0 else 0
-            )
-        })
-        
-        return base_stats
     
     # Private helper methods
     

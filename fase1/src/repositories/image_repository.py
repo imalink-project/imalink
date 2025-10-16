@@ -168,28 +168,6 @@ class ImageRepository:
             .all()
         )
     
-    def get_statistics(self) -> Dict[str, Any]:
-        """Get image statistics"""
-        total_images = self.db.query(Image).count()
-        total_size = self.db.query(func.sum(Image.file_size)).scalar() or 0
-        images_with_gps = self.db.query(Image).filter(
-            and_(Image.gps_latitude.isnot(None), Image.gps_longitude.isnot(None))
-        ).count()
-        
-        # Get format distribution
-        format_stats = (
-            self.db.query(Image.file_format, func.count(Image.id))
-            .group_by(Image.file_format)
-            .all()
-        )
-        
-        return {
-            "total_images": total_images,
-            "total_size_bytes": total_size,
-            "images_with_gps": images_with_gps,
-            "format_distribution": {fmt: count for fmt, count in format_stats}
-        }
-    
     # Private helper methods
     
     def _apply_filters(
