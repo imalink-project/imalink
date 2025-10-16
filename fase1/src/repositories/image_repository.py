@@ -25,21 +25,9 @@ class ImageRepository:
             .first()
         )
     
-    def get_by_hash(self, image_hash: str) -> Optional[Image]:
-        """Get image by hash (for duplicate detection)"""
-        return (
-            self.db.query(Image)
-            .filter(Image.hothash == image_hash)
-            .first()
-        )
-    
-    def exists_by_hash(self, image_hash: str) -> bool:
-        """Check if image with hash already exists"""
-        return (
-            self.db.query(Image.id)
-            .filter(Image.hothash == image_hash)
-            .first()
-        ) is not None
+    # NOTE: get_by_hash and exists_by_hash removed - Image no longer has hothash field
+    # Images are linked to Photos via photo_hothash instead
+    # Use get_by_id or filter by photo_hothash if needed
     
     def get_images(
         self, 
@@ -159,11 +147,16 @@ class ImageRepository:
         )
     
     def get_images_with_gps(self, limit: int = 100) -> List[Image]:
-        """Get images that have GPS coordinates"""
+        """
+        Get images that have GPS coordinates (via Photo relationship)
+        NOTE: GPS data is stored in Photo model, not Image
+        """
+        from models import Photo
         return (
             self.db.query(Image)
-            .filter(and_(Image.gps_latitude.isnot(None), Image.gps_longitude.isnot(None)))
-            .order_by(desc(Image.taken_at))
+            .join(Photo, Image.photo_hothash == Photo.hothash)
+            .filter(and_(Photo.gps_latitude.isnot(None), Photo.gps_longitude.isnot(None)))
+            .order_by(desc(Photo.taken_at))
             .limit(limit)
             .all()
         )
@@ -181,7 +174,7 @@ class ImageRepository:
         # Author filter (via Photo relationship)
         if author_id:
             from models import Photo  # Import here to avoid circular imports
-            query = query.join(Photo, Image.hothash == Photo.hothash).filter(Photo.author_id == author_id)
+            query = query.join(Photo, Image.photo_hothash == Photo.hothash).filter(Photo.author_id == author_id)
         
         if search_params:
             # Text search - only search filename since Image no longer has title/description
@@ -194,26 +187,36 @@ class ImageRepository:
             # Author filter from search params (via Photo relationship)
             if search_params.author_id and not author_id:
                 from models import Photo  # Import here to avoid circular imports
-                query = query.join(Photo, Image.hothash == Photo.hothash).filter(Photo.author_id == search_params.author_id)
+                query = query.join(Photo, Image.photo_hothash == Photo.hothash).filter(Photo.author_id == search_params.author_id)
             
             # NOTE: Tags and rating filters removed since user metadata was moved out of Image model
             # These will be implemented with ImageMetadata table in future
             
-            # Date filters
-            if search_params.taken_after:
-                query = query.filter(Image.taken_at >= search_params.taken_after)
-            if search_params.taken_before:
-                query = query.filter(Image.taken_at <= search_params.taken_before)
+            # Date filters - NOTE: taken_at is in Photo model, not Image
+            # These filters require joining Photo table
+            if search_params.taken_after or search_params.taken_before:
+                from models import Photo
+                if not any(isinstance(mapper, Photo) for mapper in query.column_descriptions):
+                    query = query.join(Photo, Image.photo_hothash == Photo.hothash)
+                
+                if search_params.taken_after:
+                    query = query.filter(Photo.taken_at >= search_params.taken_after)
+                if search_params.taken_before:
+                    query = query.filter(Photo.taken_at <= search_params.taken_before)
             
-            # GPS filter
+            # GPS filter - NOTE: GPS is in Photo model, not Image
             if search_params.has_gps is not None:
+                from models import Photo
+                if not any(isinstance(mapper, Photo) for mapper in query.column_descriptions):
+                    query = query.join(Photo, Image.photo_hothash == Photo.hothash)
+                
                 if search_params.has_gps:
                     query = query.filter(
-                        and_(Image.gps_latitude.isnot(None), Image.gps_longitude.isnot(None))
+                        and_(Photo.gps_latitude.isnot(None), Photo.gps_longitude.isnot(None))
                     )
                 else:
                     query = query.filter(
-                        or_(Image.gps_latitude.is_(None), Image.gps_longitude.is_(None))
+                        or_(Photo.gps_latitude.is_(None), Photo.gps_longitude.is_(None))
                     )
             
             # Format filter

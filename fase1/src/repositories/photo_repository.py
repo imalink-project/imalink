@@ -82,23 +82,11 @@ class PhotoRepository:
         # Convert tags list to JSON if provided
         tags_json = photo_data.tags if photo_data.tags else []
         
-        # Convert base64 hotpreview to binary if provided
-        hotpreview_binary = None
-        if photo_data.hotpreview:
-            import base64
-            try:
-                # Remove data URL prefix if present (data:image/jpeg;base64,)
-                hotpreview_b64 = photo_data.hotpreview
-                if ',' in hotpreview_b64:
-                    hotpreview_b64 = hotpreview_b64.split(',')[1]
-                hotpreview_binary = base64.b64decode(hotpreview_b64)
-            except Exception as e:
-                # Log error but continue without hotpreview
-                print(f"Warning: Failed to decode hotpreview: {e}")
+        # NOTE: hotpreview removed - stored in Image model instead
+        # Access via photo.files[0].hotpreview (first Image = master)
         
         photo = Photo(
             hothash=photo_data.hothash,
-            hotpreview=hotpreview_binary,
             width=photo_data.width,
             height=photo_data.height,
             taken_at=photo_data.taken_at,
@@ -168,9 +156,14 @@ class PhotoRepository:
         return photo
     
     def get_hotpreview(self, hothash: str) -> Optional[bytes]:
-        """Get hotpreview data for photo"""
-        photo = self.db.query(Photo.hotpreview).filter(Photo.hothash == hothash).first()
-        return photo.hotpreview if photo else None
+        """
+        Get hotpreview data for photo
+        NOTE: hotpreview is now stored in Image model (first Image = master)
+        """
+        photo = self.db.query(Photo).filter(Photo.hothash == hothash).first()
+        if photo and photo.files and len(photo.files) > 0:
+            return photo.files[0].hotpreview
+        return None
     
     def _apply_filters(
         self, 

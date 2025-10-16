@@ -133,9 +133,8 @@ class ImageService:
     async def create_image(self, image_data: ImageCreateRequest) -> ImageResponse:
         """Create new image with business logic validation"""
         
-        # Business Logic: Check for duplicates
-        if image_data.hothash and self.image_repo.exists_by_hash(image_data.hothash):
-            raise DuplicateImageError(f"Image with hash {image_data.hothash} already exists")
+        # Business Logic: No duplicate check needed - Images are unique files
+        # Duplicate detection happens at Photo level via hothash
         
         # Create image record
         image = self.image_repo.create(image_data)
@@ -352,27 +351,27 @@ class ImageService:
         
         return ImageResponse(
             id=getattr(image, 'id'),
-            hothash=getattr(image, 'hothash', ''),
+            photo_hothash=getattr(image, 'photo_hothash', None),
             filename=filename,
             file_size=getattr(image, 'file_size', None),
+            has_hotpreview=bool(getattr(image, 'hotpreview', None)),
             # Computed fields
             file_format=computed_format,
             file_path=None,  # Could be computed by storage service if needed
             original_filename=filename,  # Could be computed from import session if needed
             created_at=getattr(image, 'created_at'),
-            taken_at=getattr(image, 'taken_at', None),
-            width=getattr(image, 'width', None),
-            height=getattr(image, 'height', None),
-            gps_latitude=getattr(image, 'gps_latitude', None),
-            gps_longitude=getattr(image, 'gps_longitude', None),
-            has_gps=bool(getattr(image, 'gps_latitude', None) and getattr(image, 'gps_longitude', None)),
-            # NOTE: title, description, tags, rating moved to ImageMetadata table
-            user_rotation=getattr(image, 'user_rotation', 0) or 0,
+            taken_at=None,  # taken_at is in Photo model, not Image
+            width=None,  # width/height are in Photo model, not Image
+            height=None,
+            gps_latitude=None,  # GPS is in Photo model, not Image
+            gps_longitude=None,
+            has_gps=False,  # GPS is in Photo model
+            # NOTE: title, description, tags, rating in Photo model
+            user_rotation=0,  # user_rotation is in Photo model
             author=author_summary,
-            author_id=getattr(image, 'author_id', None),
+            author_id=None,  # author_id is in Photo model
             # import_source available via import_session relationship if needed
-            has_raw_companion=computed_format in ['cr2', 'nef', 'arw', 'dng', 'orf', 'rw2', 'raw'] if computed_format else False,
-            has_hotpreview=bool(getattr(image, 'hotpreview', None)) or (computed_format in ['jpg', 'jpeg', 'png', 'tiff'] if computed_format else False)
+            has_raw_companion=computed_format in ['cr2', 'nef', 'arw', 'dng', 'orf', 'rw2', 'raw'] if computed_format else False
         )
     
     async def _cleanup_image_files(self, image) -> None:
