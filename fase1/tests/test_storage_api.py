@@ -5,8 +5,8 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi.testclient import TestClient
 
-from src.main import app
-from src.services.storage_service import StorageResult, StorageProgress
+from main import app
+from services.storage_service import StorageResult, StorageProgress
 
 
 client = TestClient(app)
