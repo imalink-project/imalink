@@ -2,6 +2,22 @@
 
 Alle viktige endringer i dette prosjektet dokumenteres i denne filen.
 
+## [2.0.0] - 2025-10-16
+
+### Arkitektur-endring
+- 🔄 Fjernet Svelte frontend - byttet til desktop-first tilnærming
+- ✅ Ny desktop client (Flet) med direkte database-tilgang
+- ✅ Backend renset for frontend-spesifikke referanser
+- ✅ Arkivert frontend-dokumentasjon i gammel_dokumentasjon/
+- ✅ Oppdatert terminologi: "frontend" → "client applications"
+
+### Begrunnelse
+Desktop client gir:
+- Enklere arkitektur uten browser-begrensninger
+- Direkte database-tilgang for bedre ytelse
+- Ingen koordinering mellom frontend og backend
+- Smidigere utvikling og vedlikehold
+
 ## [1.0.0] - 2025-10-01
 
 ### Lagt til
@@ -9,7 +25,7 @@ Alle viktige endringer i dette prosjektet dokumenteres i denne filen.
 - ✅ EXIF-orientering og automatisk hotpreview-rotasjon  
 - ✅ RAW+JPEG smart håndtering og deteksjon
 - ✅ Fotograf-administrasjon med navn, email og bio
-- ✅ Responsivt web-grensesnitt med moderne design
+- ✅ Responsivt web-grensesnitt med moderne design (nå arkivert)
 - ✅ Sanntids import-fremgang med detaljert statistikk
 - ✅ Duplikatdeteksjon basert på perceptuell hash
 - ✅ SQLite database med migrasjonstøtte
@@ -22,7 +38,7 @@ Alle viktige endringer i dette prosjektet dokumenteres i denne filen.
 - FastAPI backend med automatisk API-dokumentasjon
 - SQLAlchemy ORM med robuste modeller  
 - PIL/Pillow for bildeprosessering med EXIF-støtte
-- Modern HTML/CSS/JavaScript frontend
+- Python/Flet desktop client (erstatter web frontend)
 - Automatisk database-initialisering
 - Komprehensiv feilhåndtering
 

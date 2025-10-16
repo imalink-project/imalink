@@ -7,13 +7,13 @@ Et enkelt og intuitivt verktøy for organisering av store bildematerialer.
 **Fase 1 MVP er ferdig!** ✅
 
 ### ✅ Implementerte funksjoner:
+- **Desktop Client**: Python/Flet desktop application med direkte database-tilgang
 - **Import System**: Bakgrunnsprosessering med sanntids fremgang
 - **EXIF-rotasjon**: Automatisk orientering av bilder som i File Explorer
 - **RAW+JPEG håndtering**: Smart deteksjon og håndtering av RAW-filer
 - **Duplikatdeteksjon**: Perceptuell hash for å unngå duplikater
 - **Fotograf-admin**: Fullstendig CRUD med email og bio
-- **Responsivt galleri**: Web-basert visning med thumbnail-rotasjon
-- **Modern arkitektur**: FastAPI + SQLite + ekstern CSS
+- **Modern arkitektur**: FastAPI + SQLite + Flet desktop
 
 ## 🧠 Designfilosofi
 
@@ -43,15 +43,26 @@ Denne filosofien gjør ImaLink spesielt egnet for fotografer med store arkiver s
 
 ## 🚀 Kom i gang
 
+### Backend API:
 ```bash
 # Naviger til Fase 1
 cd fase1/src
 
-# Start applikasjonen
+# Start backend
 python main.py
 
-# Åpne i nettleser
-open http://localhost:8000
+# API dokumentasjon
+open http://localhost:8000/docs
+```
+
+### Desktop Client:
+```bash
+# Start desktop demo
+cd fase1/desktop_demo
+uv run python author_crud_demo.py
+
+# Åpner i nettleser (WSL mode)
+open http://localhost:8550
 ```
 
 Se [Fase 1 README](./fase1/README.md) for detaljert dokumentasjon.
@@ -59,9 +70,10 @@ Se [Fase 1 README](./fase1/README.md) for detaljert dokumentasjon.
 ## 🏗️ Utviklingsplan
 
 1. **✅ Programspesifikasjon** - Ferdig
-2. **✅ Teknologivalg** - Python/FastAPI/SQLite
-3. **✅ Prototype (Fase 1)** - Ferdig MVP
-4. **⏳ Utrulling** - Neste fase
+2. **✅ Teknologivalg** - Python/FastAPI/SQLite/Flet
+3. **✅ Prototype (Fase 1)** - Ferdig MVP med desktop client
+4. **⏳ Full Import** - Photo import i desktop client
+5. **⏳ Bildehåndtering** - Visning, organisering, tagging
 
 ## 🎯 Målsetting
 
@@ -69,6 +81,7 @@ Utvikle et skalerbart system for:
 - ✅ Organisering av store bildesamlinger
 - ✅ Duplikatdeteksjon
 - ✅ EXIF-metadata håndtering
-- ✅ Web-basert grensesnitt
-- ⏳ Desktop-grensesnitt (senere fase)
+- ✅ Desktop-grensesnitt (Python/Flet)
+- ⏳ Fullverdig photo management
+- ⏳ Web viewer (read-only, senere fase)
 
