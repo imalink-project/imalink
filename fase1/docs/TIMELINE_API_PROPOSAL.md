@@ -18,7 +18,7 @@ GET /api/v1/timeline/years
       "photo_count": 245,
       "pilot_image": {
         "id": 123,
-        "thumbnail_url": "/api/v1/image-files/123/hotpreview",
+        "hotpreview_url": "/api/v1/image-files/123/hotpreview",
         "title": "IMG_20241015.jpg"
       },
       "month_count": 12,
@@ -46,7 +46,7 @@ GET /api/v1/timeline/years/{year}/months
       "photo_count": 45,
       "pilot_image": {
         "id": 456,
-        "thumbnail_url": "/api/v1/image-files/456/hotpreview",
+        "hotpreview_url": "/api/v1/image-files/456/hotpreview",
         "title": "IMG_20241215.jpg"
       },
       "day_count": 8,
@@ -74,7 +74,7 @@ GET /api/v1/timeline/years/{year}/months/{month}/days
       "photo_count": 12,
       "pilot_image": {
         "id": 789,
-        "thumbnail_url": "/api/v1/image-files/789/hotpreview",
+        "hotpreview_url": "/api/v1/image-files/789/hotpreview",
         "title": "IMG_20241215_143022.jpg"
       },
       "time_range": {
@@ -108,7 +108,7 @@ GET /api/v1/timeline/years/{year}/months/{month}/days/{day}/photos
       "id": 789,
       "title": "IMG_20241215_143022.jpg",
       "taken_at": "2024-12-15T14:30:22Z",
-      "thumbnail_url": "/api/v1/image-files/789/hotpreview",
+      "hotpreview_url": "/api/v1/image-files/789/hotpreview",
       "full_url": "/api/v1/image-files/789/file",
       "author": {
         "id": 1,

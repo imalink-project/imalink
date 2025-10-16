@@ -52,9 +52,9 @@ I stedet for albumfunksjon vil jeg ha mulighet til å operere med markdown-dokum
 
 ## Noen viktige spesialegenskaper
 
-Et bilde, eller mer presist, et motiv, representeres ved en hotpreview generert på en eksakt spesifisert måte fra en kildefil. Hotpreviewen blir lagret umiddelbart i databasen og skal aldri kunne endres. Fra thumbnailen genereres en phash som både identifiserer bildet og muliggjør søk etter lignende bilder. Hashen blir da nøkkel til motivet i databasen. Dersom samme motiv finnes med f.eks både raw og jpeg markeres begge bildene med samme hash.
+Et bilde, eller mer presist, et motiv, representeres ved en hotpreview generert på en eksakt spesifisert måte fra en kildefil. Hotpreviewen blir lagret umiddelbart i databasen og skal aldri kunne endres. Fra hotpreviewen genereres en phash som både identifiserer bildet og muliggjør søk etter lignende bilder. Hashen blir da nøkkel til motivet i databasen. Dersom samme motiv finnes med f.eks både raw og jpeg markeres begge bildene med samme hash.
 
-Siden hashen er unik kan den brukes som nøkkel i dokumenter for visning av et bilde. Selve thumbnailen kan også brukes som søke-element.
+Siden hashen er unik kan den brukes som nøkkel i dokumenter for visning av et bilde. Selve hotpreviewen kan også brukes som søke-element.
 
 Når bilder lastes opp skjer det ved hjelp et kildeobjekt. Kildeobjektet skal ha informasjon om hva slags medium filene blir hentet fra, f.eks et minnekort fra et bestemt kamera eller en manuelt redigert katalogstruktur. Så mye informasjon som mulig hentes fra tilgjengelig informasjon, både i metadata i bildefilene og eventuelt i katalogstrukturen. Denne informasjonen legges inn i databasen for hver bildefil. Kildeobjektet lagres også i databasen.
 
