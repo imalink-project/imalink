@@ -47,7 +47,7 @@ curl -X POST "http://localhost:8000/api/import/test-single" \
 
 ### Test 3: Utforsk galleriet
 - **Galleri**: http://localhost:8000/gallery
-  - Responsive thumbnail-visning
+  - Responsive hotpreview-visning
   - Klikk på bilde for fullskjermvisning
   - Bruk 🔄-knappen for å rotere individuelle bilder
   - Søk etter filnavn eller dato
@@ -121,7 +121,7 @@ FastAPI genererer automatisk API-dokumentasjon:
 Systemet bruker SQLite som lagres som `imalink.db` i `src/`-mappen.
 
 ### Tabeller:
-- **images** - Bildemetadata og thumbnails
+- **images** - Bildemetadata og hotpreviews
 - **import_sessions** - Sporing av import-prosesser
 
 ### Reset database:
@@ -213,7 +213,7 @@ sqlite3 "C:\temp\imalink.db" "SELECT COUNT(*) as total_authors FROM authors;"
 
 ### Ytelse
 - **Import-hastighet**: ~10-50 bilder/sekund (avhengig av størrelse)
-- **Thumbnail-generering**: Optimalisert for rask visning
+- **Hotpreview-generering**: Optimalisert for rask visning
 - **Database-ytelse**: Effektiv for 10,000+ bilder
 - **Minnebruk**: Lav (bakgrunnsprosessering)
 
@@ -232,7 +232,7 @@ Når Fase 1 fungerer tilfredsstillende:
 
 ## 💡 Tips
 
-- **Backup:** Database og thumbnails lagres lokalt - ta backup!
+- **Backup:** Database og hotpreviews lagres lokalt - ta backup!
 - **Ytelse:** Store katalogimporter kan ta tid - vær tålmodig
 - **Logging:** Sjekk konsollutskriften for detaljert informasjon
 - **Utvikling:** Bruk `reload=True` for automatisk restart ved endringer

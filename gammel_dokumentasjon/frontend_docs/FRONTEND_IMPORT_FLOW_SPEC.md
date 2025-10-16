@@ -9,7 +9,7 @@
 
 ## Overview
 
-This document provides a detailed technical specification of ImaLink's frontend-driven import system. All file processing, metadata extraction, and thumbnail generation happens in the browser using JavaScript/TypeScript. The backend serves purely as a data API for storing processed results. The process runs sequentially (not as background tasks) for simplicity and reliability.
+This document provides a detailed technical specification of ImaLink's frontend-driven import system. All file processing, metadata extraction, and hotpreview generation happens in the browser using JavaScript/TypeScript. The backend serves purely as a data API for storing processed results. The process runs sequentially (not as background tasks) for simplicity and reliability.
 
 ---
 
@@ -26,7 +26,7 @@ This document provides a detailed technical specification of ImaLink's frontend-
 │  │ • Directory     │  │ • EXIF Extract  │   │
 │  │   Scanning      │  │ • RAW/JPEG Pair │   │
 │  │ • File Reading  │  │ • Hash Generate │   │
-│  │ • Binary Data   │  │ • Thumbnail Gen │   │
+│  │ • Binary Data   │  │ • Hotpreview Gen │   │
 │  └─────────────────┘  └─────────────────┘   │
 │           │                     │           │
 │           └──────────┬──────────┘           │
@@ -277,7 +277,7 @@ async function processPhotoGroup(importId: number, group: FileGroup): Promise<bo
     // Step 3: Extract EXIF metadata
     const exifData = await extractEXIFData(group.primaryFile);
     
-    // Step 4: Generate hotpreview thumbnail
+    // Step 4: Generate hotpreview hotpreview
     const hotpreview = await generateHotpreview(group.primaryFile);
     
     // Step 5: Create Photo in backend
@@ -393,13 +393,13 @@ async function generateHotpreview(file: File): Promise<string> {
   try {
     const img = await loadImageFromFile(file);
     
-    // Create thumbnail canvas
+    // Create hotpreview canvas
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
     
-    // Calculate thumbnail dimensions (max 400px)
+    // Calculate hotpreview dimensions (max 400px)
     const maxSize = 400;
-    let { width, height } = calculateThumbnailSize(img.width, img.height, maxSize);
+    let { width, height } = calculateHotpreviewSize(img.width, img.height, maxSize);
     
     canvas.width = width;
     canvas.height = height;
@@ -510,7 +510,7 @@ export class ImportSessionsApi {
 - **File System Access**: Directory/file selection using Web APIs
 - **File Processing**: Reading file contents into memory
 - **EXIF Extraction**: Parsing metadata using client-side libraries
-- **Image Processing**: Thumbnail generation using Canvas API
+- **Image Processing**: Hotpreview generation using Canvas API
 - **Content Hashing**: Generating perceptual hashes for duplicates
 - **RAW/JPEG Pairing**: Grouping related files by basename
 - **Progress Management**: UI updates and user feedback
@@ -660,7 +660,7 @@ async function apiCallWithRetry(apiCall: () => Promise<any>, maxRetries = 3): Pr
 ### 9.2 Data Transmission
 - **Metadata Only**: Only extracted metadata sent to server
 - **No Original Files**: Original image files never uploaded
-- **Base64 Thumbnails**: Hotpreviews sent as base64 strings
+- **Base64 Hotpreviews**: Hotpreviews sent as base64 strings
 - **HTTPS Required**: All API communication encrypted
 
 ---

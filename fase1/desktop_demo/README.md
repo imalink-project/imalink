@@ -48,6 +48,6 @@ Dette er en prototype for å teste desktop client-konseptet hvor:
 Når denne fungerer bra, kan vi utvide til:
 - File picker for import
 - Progress bars for lange operasjoner
-- Thumbnail visning
+- Hotpreview visning
 - EXIF data extraction
 - Preview generation

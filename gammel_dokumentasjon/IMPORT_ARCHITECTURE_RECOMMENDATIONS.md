@@ -113,7 +113,7 @@ class ImageProcessor:
         )
         
     def generate_thumbnail(self, image_path: Path) -> bytes:
-        """Thumbnail-generering med EXIF rotation"""
+        """Hotpreview-generering med EXIF rotation"""
         
     def detect_image_type(self, image_path: Path) -> ImageType:
         """RAW vs JPEG detection og validering"""
@@ -157,7 +157,7 @@ class ImportStrategy(Enum):
 class ImportConfiguration:
     strategy: ImportStrategy
     include_duplicates: bool = False
-    extract_thumbnails: bool = True
+    extract_hotpreviews: bool = True
     deep_exif_scan: bool = True
     parallel_processing: bool = True
     max_concurrent_files: int = 4

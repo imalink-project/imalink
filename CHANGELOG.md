@@ -64,7 +64,7 @@ Desktop client gir:
 - Database-modeller og migrasjoner
 - Import-pipeline prototype
 - Første versjon av web-grensesnitt
-- EXIF-uttrekk og thumbnail-generering
+- EXIF-uttrekk og hotpreview-generering
 
 ### Teknisk
 - Etablert FastAPI + SQLite arkitektur

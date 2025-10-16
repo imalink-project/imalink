@@ -173,7 +173,7 @@ class Photo(Base, TimestampMixin):
     @staticmethod
     def _generate_hotpreview(file_path: Path) -> bytes:
         """
-        Generer optimalisert thumbnail for gallery-visning.
+        Generer optimalisert hotpreview for gallery-visning.
         Fast cached version for UI performance.
         """
         pass

@@ -14,7 +14,7 @@
 #### EXIF og orientering
 - ✅ **Automatisk orientering**: Bilder vises korrekt orientert som i File Explorer
 - ✅ **EXIF-metadata**: Komplett uttrekk av kamerainfo, GPS, dato tatt
-- ✅ **Thumbnail-generering**: Optimaliserte thumbnails med korrekt orientering
+- ✅ **Hotpreview-generering**: Optimaliserte hotpreviews med korrekt orientering
 - ✅ **Brukerrotasjon**: Mulighet for manuell rotasjon utover EXIF-orientering
 
 #### Fotograf-administrasjon
@@ -39,7 +39,7 @@
 
 #### Ytelse
 - **Optimalisert import**: Smart batching og minnehåndtering
-- **Rask thumbnail-generering**: Effektiv bildeprosessering
+- **Rask hotpreview-generering**: Effektiv bildeprosessering
 - **Database-indekser**: Optimalisert for rask søk og visning
 - **Lazy loading**: Bilder lastes kun når de trengs
 

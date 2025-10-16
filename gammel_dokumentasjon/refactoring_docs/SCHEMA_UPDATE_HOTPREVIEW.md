@@ -1,16 +1,16 @@
-# Database Schema Update: thumbnail → hotpreview 🔥
+# Database Schema Update: hotpreview → hotpreview 🔥
 
 ## 🎯 **Endring gjennomført**
 
 ### **Dato:** 6. oktober 2025
-### **Endring:** Omdøpt `thumbnail` → `preview_image` → **`hotpreview`** i Image-modellen
+### **Endring:** Omdøpt `hotpreview` → `preview_image` → **`hotpreview`** i Image-modellen
 
 ## ✅ **Hva er oppdatert:**
 
 ### 1. **Database Model**
 ```python
-# FØR (thumbnail):
-thumbnail = Column(LargeBinary)
+# FØR (hotpreview):
+hotpreview = Column(LargeBinary)
 
 # MIDLERTIDIG (preview_image):  
 preview_image = Column(LargeBinary)
@@ -60,12 +60,12 @@ await image_service.get_image_hotpreview(image_id)
 - 👁️ **"Preview"** - Tydelig formål (forhåndsvisning)
 - ⚡ **Ett ord** - Kortere og mer elegant enn `preview_image`
 - 🚀 **Moderne** - Høres teknisk sofistikert ut
-- 💡 **Unique** - Skiller seg helt fra generisk "thumbnail"
+- 💡 **Unique** - Skiller seg helt fra generisk "hotpreview"
 - 🎯 **Performance-focused** - Navnet selv antyder optimalisering
 
 ### **🆚 Evolution:**
 ```
-thumbnail (❌ generisk, forvirrende)
+hotpreview (❌ generisk, forvirrende)
     ↓
 preview_image (✅ beskrivende, men litt lang)  
     ↓
@@ -78,7 +78,7 @@ Når du oppdaterer en eksisterende database:
 
 ```sql
 -- SQLite migration  
-ALTER TABLE images RENAME COLUMN thumbnail TO hotpreview;
+ALTER TABLE images RENAME COLUMN hotpreview TO hotpreview;
 -- eller hvis du har preview_image:
 ALTER TABLE images RENAME COLUMN preview_image TO hotpreview;
 ```
@@ -108,7 +108,7 @@ Hvis du trenger å referere til hot previews:
 - Kommuniserer **performance** (hot = fast/cached)
 - Indikerer **formål** (preview = forhåndsvisning)
 - Er **modern og catchy** (kunne vært et produkt-navn!)
-- Eliminerer **forvirring** med generiske thumbnails
+- Eliminerer **forvirring** med generiske hotpreviews
 
 ---
 *🔥 **hotpreview** - Fast, modern, unique! Endring implementert som del av ImaLink's kontinuerlige kodekvalitetsforbedring.*

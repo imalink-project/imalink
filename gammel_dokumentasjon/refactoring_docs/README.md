@@ -40,7 +40,7 @@ See active documentation in:
 
 Key refactoring phases documented here:
 1. **Photo-centric import** - Shifted from file-centric to photo-centric model
-2. **Hotpreview system** - Renamed thumbnail → hotpreview
+2. **Hotpreview system** - Renamed hotpreview → hotpreview
 3. **Schema updates** - Various database field migrations
 4. **Import architecture** - Multiple iterations of import system design
 

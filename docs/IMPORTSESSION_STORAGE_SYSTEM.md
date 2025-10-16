@@ -25,7 +25,7 @@ ImportSession skal utvides til å bli et komplett arkiveringssystem som kopierer
 │   │   │   ├── IMG_001.jpg
 │   │   │   └── IMG_001.raw
 │   │   └── IMG_002.jpg
-│   └── thumbnails/                               # Genererte thumbnails (valgfritt)
+│   └── hotpreviews/                               # Genererte hotpreviews (valgfritt)
 ├── 20241008_import_wedding_photos_def67890/      # Annen ImportSession
 │   └── ...
 └── config.json                                  # Storage konfiguration

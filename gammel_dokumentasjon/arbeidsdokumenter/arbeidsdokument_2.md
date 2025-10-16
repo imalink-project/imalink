@@ -48,7 +48,7 @@ ImaLink skal være en intelligent database som bedrer tilgangen til mine bilder 
 #### 3.1.1 Bildeimport og -katalogisering
 - [x] Import fra kildemapper med automatisk EXIF-uttrekk
 - [x] Generering av unik identifikator (perceptuell hash) per bilde
-- [x] Automatisk thumbnail-generering og lagring
+- [x] Automatisk hotpreview-generering og lagring
 - [x] Støtte for JPEG og vanlige RAW-formater (CR2, NEF, ARW)
 - [x] Duplikatdeteksjon basert på perceptuell hash
 - [x] **Image Pool Service** med tre størrelser (small: 400x400, medium: 800x800, large: 1200x1200)
@@ -200,7 +200,7 @@ src/
 
 ### 5.3 Brukergrensesnitt-konsepter
 **IMPLEMENTERT:** Hovedvisninger:
-- [x] **Hovedgalleri** med responsivt thumbnail-grid og hover-effekter
+- [x] **Hovedgalleri** med responsivt hotpreview-grid og hover-effekter
 - [x] **Avansert bildeviewer** med modal-visning og pool-størrelse dropdown
 - [x] **Detaljvisning** med tre informasjonspaneler (fil, teknisk, metadata)
 - [x] **Søkegrensesnitt** med datepicker og fritekst-søk
@@ -257,7 +257,7 @@ PTGui for sammensetning.
 - [x] Database-design med SQLAlchemy modeller
 - [x] FastAPI backend med REST API
 - [x] Grunnleggende import-funksjonalitet med EXIF-uttrekk
-- [x] Bildegalleri med thumbnail-grid
+- [x] Bildegalleri med hotpreview-grid
 - [x] Image Pool Service med cascading optimization
 - [x] Avansert bildeviewer modal med pool-størrelser
 - [x] Full-size bildevisning med drag-scrolling
@@ -296,7 +296,7 @@ PTGui for sammensetning.
 
 ### 10.1 Tekniske Prestasjoner (Oktober 2025)
 **MÅLOPPNÅELSE MVP:**
-- ✅ **Import-hastighet**: Rask EXIF-uttrekk og thumbnail-generering
+- ✅ **Import-hastighet**: Rask EXIF-uttrekk og hotpreview-generering
 - ✅ **Søkerespons**: Umiddelbar søking i galleri ved bruk av database-indekser
 - ✅ **Bildevisning**: Tre optimaliserte pool-størrelser for rask lasting
 - ✅ **Brukeropplevelse**: Profesjonell drag-scrolling og responsiv design

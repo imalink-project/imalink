@@ -20,7 +20,7 @@ Disse verdiene brukes som placeholder/standardverdier i frontend input-felter og
 
 ### Image Processing Standards
 - **Pool Quality**: `85` (JPEG compression quality 1-100)
-- **Thumbnail Size**: `200x200` (default thumbnail dimensions)
+- **Hotpreview Size**: `200x200` (default hotpreview dimensions)
 
 ## Usage in Frontend
 

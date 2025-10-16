@@ -29,7 +29,7 @@ After frontend processing, data is structured with minimal metadata:
 // Frontend only extracts basic info + raw EXIF bytes
 interface PhotoGroupRequest {
   hothash: string;                    // Content hash for duplicate detection
-  hotpreview?: string;                // Base64 JPEG thumbnail
+  hotpreview?: string;                // Base64 JPEG hotpreview
   width?: number;                     // Basic image dimensions (from canvas/Image)
   height?: number;                    // Basic image dimensions (from canvas/Image)
   
@@ -86,7 +86,7 @@ interface BatchImportRequest {
 // Frontend sends minimal data + raw EXIF bytes
 const photoGroupRequest: PhotoGroupRequest = {
   hothash: "a1b2c3d4e5f6...",               // Content hash for duplicate detection
-  hotpreview: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...", // Thumbnail
+  hotpreview: "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQ...", // Hotpreview
   width: 4000,                              // Basic dimensions from canvas
   height: 3000,                             // Basic dimensions from canvas
   
@@ -188,7 +188,7 @@ class FileMetadata(BaseModel):
 # NEW: Raw EXIF request structure
 class PhotoGroupRequest(BaseModel):
     hothash: str = Field(..., description="Content hash for duplicate detection")
-    hotpreview: Optional[str] = Field(None, description="Base64 JPEG thumbnail")
+    hotpreview: Optional[str] = Field(None, description="Base64 JPEG hotpreview")
     width: Optional[int] = Field(None, description="Basic width from canvas/Image")
     height: Optional[int] = Field(None, description="Basic height from canvas/Image")
     
@@ -381,7 +381,7 @@ class ImageProcessor:
 - **Centralized Processing**: Single point for EXIF handling reduces inconsistencies
 
 #### 4.3.3 Separation of Concerns
-- **Frontend**: File handling, UI, basic image operations (dimensions, thumbnails)
+- **Frontend**: File handling, UI, basic image operations (dimensions, hotpreviews)
 - **Backend**: Complex metadata extraction, database operations, business logic
 - **Clear Interface**: Raw EXIF bytes provide clean contract between frontend/backend
 
@@ -490,7 +490,7 @@ async def test_backend_exif_processing():
     # Create Photo object
     photo = Photo(
         hothash=photo_group.hothash,              # Primary key
-        hotpreview=hotpreview_binary,             # Binary thumbnail data
+        hotpreview=hotpreview_binary,             # Binary hotpreview data
         
         # Image dimensions
         width=photo_group.exif_data.width,
@@ -746,7 +746,7 @@ await ImportSessionsApi.updateSession(importId, {
 File (binary) → EXIF (JSON) → Photo (database record)
 File (binary) → Raw EXIF (base64) → Image (database record)
 Image content → Hothash (string) → Primary key relationship
-Canvas thumbnail → Base64 string → Binary hotpreview
+Canvas hotpreview → Base64 string → Binary hotpreview
 ```
 
 ### 10.3 Database Relationships Created

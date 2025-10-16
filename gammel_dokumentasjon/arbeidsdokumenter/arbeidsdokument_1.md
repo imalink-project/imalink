@@ -52,7 +52,7 @@ I stedet for albumfunksjon vil jeg ha mulighet til å operere med markdown-dokum
 
 ## Noen viktige spesialegenskaper
 
-Et bilde, eller mer presist, et motiv, representeres ved en thumbnail generert på en eksakt spesifisert måte fra en kildefil. Thumbnailen blir lagret umiddelbart i databasen og skal aldri kunne endres. Fra thumbnailen genereres en phash som både identifiserer bildet og muliggjør søk etter lignende bilder. Hashen blir da nøkkel til motivet i databasen. Dersom samme motiv finnes med f.eks både raw og jpeg markeres begge bildene med samme hash.
+Et bilde, eller mer presist, et motiv, representeres ved en hotpreview generert på en eksakt spesifisert måte fra en kildefil. Hotpreviewen blir lagret umiddelbart i databasen og skal aldri kunne endres. Fra thumbnailen genereres en phash som både identifiserer bildet og muliggjør søk etter lignende bilder. Hashen blir da nøkkel til motivet i databasen. Dersom samme motiv finnes med f.eks både raw og jpeg markeres begge bildene med samme hash.
 
 Siden hashen er unik kan den brukes som nøkkel i dokumenter for visning av et bilde. Selve thumbnailen kan også brukes som søke-element.
 

@@ -471,7 +471,7 @@ class ValidationError(APIException):
 ### Planlagte Features
 - **Authentication & Authorization**: JWT basert brukerautentisering
 - **Advanced Search**: Full-text søk og tagging system  
-- **Image Processing**: Automatic resizing og thumbnail generering
+- **Image Processing**: Automatic resizing og hotpreview generering
 - **API Versioning**: Support for multiple API versioner
 - **Caching**: Redis basert caching for performance
 - **Monitoring**: Logging, metrics og health checks

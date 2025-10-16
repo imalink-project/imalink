@@ -28,8 +28,8 @@ Development testing scripts:
 - `test_exif_rotation.py` - Test EXIF rotation handling
 - `test_exif_stripping.py` - Test EXIF data stripping
 - `test_rotation_hash.py` - Test rotation hash calculation
-- `test_thumbnail_direct.py` - Test direct thumbnail generation
-- `test_thumbnail_rotation.py` - Test thumbnail rotation
+- `test_thumbnail_direct.py` - Test direct hotpreview generation
+- `test_thumbnail_rotation.py` - Test hotpreview rotation
 
 ## Usage
 
