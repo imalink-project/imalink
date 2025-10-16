@@ -1,18 +1,41 @@
 """
 Import session response schemas
 """
-from typing import List, Optional
+from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-class ImportResponse(BaseModel):
-    """Import session response model"""
+class ImportSessionResponse(BaseModel):
+    """Import session metadata response"""
     id: int
+    imported_at: datetime
+    title: Optional[str] = None
+    description: Optional[str] = None
+    storage_location: Optional[str] = None
+    default_author_id: Optional[int] = None
+    images_count: int = Field(0, description="Number of images in this import session")
+    
+    class Config:
+        from_attributes = True
+
+
+class ImportSessionListResponse(BaseModel):
+    """Response for import session list"""
+    sessions: list[ImportSessionResponse]
+    total: int = Field(..., description="Total number of sessions")
+    
+    class Config:
+        from_attributes = True
+
+
+# Backward compatibility - deprecated responses
+class ImportResponse(ImportSessionResponse):
+    """DEPRECATED: Use ImportSessionResponse instead"""
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
-    status: str = Field(..., description="Import status: in_progress, completed, failed")
-    source_path: str
+    status: str = "completed"
+    source_path: Optional[str] = None
     source_description: Optional[str] = None
     total_files_found: int = 0
     images_imported: int = 0
@@ -20,29 +43,20 @@ class ImportResponse(BaseModel):
     raw_files_skipped: int = 0
     single_raw_skipped: int = 0
     errors_count: int = 0
-    
-    # Progress tracking
     progress_percentage: float = 0.0
     files_processed: int = 0
     current_file: Optional[str] = None
     is_cancelled: bool = False
-    
-    # Import result classification and user feedback
-    import_result_type: Optional[str] = Field(None, description="Classification: all_new, all_duplicates, mixed")
-    user_feedback_message: Optional[str] = Field(None, description="User-friendly message about import result")
-    
-    # Optional: Client-managed storage directory name
-    storage_name: Optional[str] = Field(None, description="Storage directory name chosen by client (e.g., '20241004_vacation_photos')")
-    
-    class Config:
-        from_attributes = True
+    import_result_type: Optional[str] = None
+    user_feedback_message: Optional[str] = None
+    storage_name: Optional[str] = None
 
 
 class ImportStartResponse(BaseModel):
-    """Response when starting import session"""
+    """DEPRECATED: Response when starting import session"""
     message: str
     import_id: int
-    status: str
+    status: str = "completed"
 
 
 class ImportTestResponse(BaseModel):
@@ -55,25 +69,20 @@ class ImportTestResponse(BaseModel):
 
 
 class ImportListResponse(BaseModel):
-    """Response for import session list"""
-    imports: List[ImportResponse]
-    total: int = Field(..., description="Total number of sessions")
-    
-    class Config:
-        from_attributes = True
+    """DEPRECATED: Use ImportSessionListResponse instead"""
+    imports: list[ImportResponse] = []
+    total: int = 0
 
 
 class ImportProgressResponse(BaseModel):
-    """Response for import progress tracking"""
+    """DEPRECATED: Progress tracking is now client responsibility"""
     import_id: int
-    status: str
-    progress_percentage: float = 0.0
+    status: str = "completed"
+    progress_percentage: float = 100.0
     files_processed: int = 0
     total_files_found: int = 0
     current_file: Optional[str] = None
     is_cancelled: bool = False
-    
-    # Quick stats
     images_imported: int = 0
     duplicates_skipped: int = 0
     errors_count: int = 0
@@ -83,8 +92,8 @@ class ImportProgressResponse(BaseModel):
 
 
 class ImportCancelResponse(BaseModel):
-    """Response when cancelling import"""
+    """DEPRECATED: Cancellation is now client responsibility"""
     message: str
     import_id: int
     success: bool
-    status: str
+    status: str = "completed"

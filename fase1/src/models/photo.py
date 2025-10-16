@@ -59,7 +59,7 @@ class Photo(Base, TimestampMixin):
     # Relationships
     files = relationship("Image", back_populates="photo", cascade="all, delete-orphan")
     author = relationship("Author", back_populates="photos")
-    import_session = relationship("ImportSession", back_populates="photos")
+    # Note: No back_populates to ImportSession - access photos via ImportSession.images[].photo
     
     def __repr__(self):
         return f"<Photo(hash={self.hothash[:8]}..., title='{self.title or 'Untitled'}', files={len(self.files) if self.files else 0})>"

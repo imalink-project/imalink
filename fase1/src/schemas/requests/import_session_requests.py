@@ -5,16 +5,32 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 
-class ImportStartRequest(BaseModel):
-    """Request to start import session process"""
-    source_path: str = Field(..., description="Path to directory containing images")
-    source_description: str = Field("Manual import", description="Description of import source")
-    default_author_id: Optional[int] = Field(default=None, description="Default author ID for imported images")
+class ImportSessionCreateRequest(BaseModel):
+    """Request to create an import session (user's reference metadata)"""
+    title: Optional[str] = Field(None, max_length=255, description="User's title for this import (e.g., 'Italy Summer 2024')")
+    description: Optional[str] = Field(None, description="User's notes or comments about this import")
+    storage_location: Optional[str] = Field(None, description="Where client stored the files (e.g., 'D:/photos/2024/italy')")
+    default_author_id: Optional[int] = Field(None, description="Default photographer for this batch of photos")
+
+
+class ImportSessionUpdateRequest(BaseModel):
+    """Request to update import session metadata"""
+    title: Optional[str] = Field(None, max_length=255, description="Updated title")
+    description: Optional[str] = Field(None, description="Updated description")
+    storage_location: Optional[str] = Field(None, description="Updated storage location")
+    default_author_id: Optional[int] = Field(None, description="Updated default author")
+
+
+# Backward compatibility - deprecated
+class ImportStartRequest(ImportSessionCreateRequest):
+    """DEPRECATED: Use ImportSessionCreateRequest instead"""
+    source_path: Optional[str] = Field(None, description="DEPRECATED: Use storage_location")
+    source_description: Optional[str] = Field(None, description="DEPRECATED: Use description")
     
     @property
     def source_directory(self) -> str:
-        """Alias for backward compatibility"""
-        return self.source_path
+        """DEPRECATED: Alias for backward compatibility"""
+        return self.source_path or ""
 
 
 class ImportTestRequest(BaseModel):
@@ -23,5 +39,5 @@ class ImportTestRequest(BaseModel):
 
 
 class SetStorageNameRequest(BaseModel):
-    """Request to set storage name for import session"""
-    storage_name: str = Field(..., description="Storage name (directory name without path) with UUID suffix")
+    """DEPRECATED: Use ImportSessionUpdateRequest instead"""
+    storage_name: str = Field(..., description="Storage name (directory name without path)")
