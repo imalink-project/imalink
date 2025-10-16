@@ -146,49 +146,44 @@ class ImageService:
         Create new image with automatic Photo creation/association
         
         New architecture: Images drive Photo creation
-        - Image has hotpreview (thumbnail)
-        - Photo.hothash generated from Image.hotpreview
-        - If photo_hothash is None: Generate hotpreview → hothash → create new Photo
-        - If photo_hothash provided: Add Image to existing Photo
+        - Image has hotpreview (thumbnail) - REQUIRED
+        - Photo.hothash automatically generated from Image.hotpreview via SHA256
+        - First Image with new hotpreview → creates new Photo
+        - Subsequent Images with same hotpreview → added to existing Photo
         
-        First Image = Master (defines Photo metadata and has hotpreview)
-        Subsequent Images = Added to Photo, may or may not have hotpreview
+        Flow:
+        1. Validate hotpreview is provided
+        2. Generate hothash from hotpreview (SHA256)
+        3. Check if Photo with this hothash exists
+        4. If not exists → create new Photo
+        5. Create Image with photo_hothash
         """
         
-        # SCENARIO 1: No photo_hothash provided - create new Photo
-        if not image_data.photo_hothash:
-            # 1. Generate hotpreview from image file (if not provided)
-            if not image_data.hotpreview:
-                # TODO: Generate hotpreview from file
-                # For now, require hotpreview to be provided
-                raise ValidationError("hotpreview is required when creating first Image for new Photo")
-            
-            # 2. Generate hothash from hotpreview
-            hothash = await self._generate_hothash_from_hotpreview(image_data.hotpreview)
-            
-            # 3. Extract metadata from Image for Photo creation
+        # 1. Validate hotpreview is provided
+        if not image_data.hotpreview:
+            raise ValidationError("hotpreview is required when creating Image")
+        
+        # 2. Generate hothash from hotpreview
+        hothash = await self._generate_hothash_from_hotpreview(image_data.hotpreview)
+        
+        # 3. Check if Photo exists
+        existing_photo = self.photo_repo.get_by_hash(hothash)
+        
+        # 4. If Photo doesn't exist, create it
+        if not existing_photo:
+            # Extract metadata from Image for Photo creation
             photo_data = await self._extract_photo_metadata_from_image(image_data, hothash)
             
-            # 4. Create Photo first
+            # Create Photo
             photo = self.photo_repo.create(photo_data)
-            
-            # 5. Now create Image with the generated photo_hothash
-            image_data.photo_hothash = hothash
-            image = self.image_repo.create(image_data)
-            
-            return await self._convert_to_response(image)
         
-        # SCENARIO 2: photo_hothash provided - add to existing Photo
-        else:
-            # Validate that Photo exists
-            existing_photo = self.photo_repo.get_by_hash(image_data.photo_hothash)
-            if not existing_photo:
-                raise ValidationError(f"Photo with hothash {image_data.photo_hothash} does not exist")
-            
-            # Create Image and link to existing Photo
-            image = self.image_repo.create(image_data)
-            
-            return await self._convert_to_response(image)
+        # 5. Create Image with the generated photo_hothash
+        image_data_dict = image_data.model_dump()
+        image_data_dict['photo_hothash'] = hothash
+        
+        image = self.image_repo.create(image_data_dict)
+        
+        return await self._convert_to_response(image)
     
     async def update_image(
         self, 

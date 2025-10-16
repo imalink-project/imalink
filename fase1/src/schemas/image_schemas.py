@@ -92,12 +92,10 @@ class ImageCreateRequest(BaseModel):
     """Request model for creating new images - file-specific data only"""
     filename: str = Field(..., min_length=1, max_length=255, description="Filename with extension")
     
-    # NEW ARCHITECTURE: hotpreview stored in Image, photo_hothash links to Photo
-    # - hotpreview: Thumbnail/preview binary data (required for first Image to create Photo)
-    # - photo_hothash: Links Image to Photo (optional - if None, new Photo created)
-    hotpreview: Optional[bytes] = Field(None, description="Thumbnail/preview image binary data")
-    photo_hothash: Optional[str] = Field(None, min_length=1, max_length=64, 
-                                         description="Photo hothash - if not provided, new Photo created from hotpreview")
+    # NEW ARCHITECTURE: hotpreview stored in Image, photo_hothash auto-generated
+    # - hotpreview: Thumbnail/preview binary data (required to generate photo_hothash)
+    # - photo_hothash: Auto-calculated from hotpreview via SHA256 hash
+    hotpreview: Optional[bytes] = Field(None, description="Thumbnail/preview image binary data (required)")
     
     # Optional file metadata
     file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")

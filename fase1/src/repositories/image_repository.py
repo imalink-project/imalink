@@ -64,9 +64,12 @@ class ImageRepository:
         
         return query.count()
     
-    def create(self, image_data: ImageCreateRequest) -> Image:
+    def create(self, image_data: ImageCreateRequest | Dict[str, Any]) -> Image:
         """Create new image record"""
-        image_dict = image_data.dict()
+        if isinstance(image_data, dict):
+            image_dict = image_data
+        else:
+            image_dict = image_data.dict()
         
         image = Image(**image_dict)
         self.db.add(image)

@@ -196,11 +196,13 @@ async def create_image(
     Create new Image with automatic Photo creation/association
     
     NEW ARCHITECTURE: Images drive Photo creation
-    - If hothash is not provided: New Photo is created automatically from Image metadata
-    - If hothash is provided: Image is added to existing Photo with that hothash
+    - hotpreview is REQUIRED in the request (thumbnail binary data)
+    - photo_hothash is automatically generated from hotpreview via SHA256
+    - If Photo with this hothash exists: Image is added to existing Photo
+    - If Photo doesn't exist: New Photo is created automatically
     
-    First Image = Master (defines Photo metadata)
-    Subsequent Images = Added to Photo relationship only
+    First Image with new hotpreview = Creates new Photo (master)
+    Subsequent Images with same hotpreview = Added to existing Photo
     """
     try:
         return await image_service.create_image_with_photo(image_data)
@@ -208,7 +210,6 @@ async def create_image(
         raise HTTPException(status_code=e.status_code, detail=e.message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create image: {str(e)}")
-
 
 @router.post("/{image_id}/rotate")
 async def rotate_image(
