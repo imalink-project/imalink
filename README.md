@@ -43,6 +43,11 @@ Denne filosofien gjør ImaLink spesielt egnet for fotografer med store arkiver s
 
 ## 🚀 Kom i gang
 
+### 📚 Dokumentasjon
+- **[Fullstendig dokumentasjon](docs/README.md)** - Oversikt over all dokumentasjon
+- **[API Reference](docs/api/API_REFERENCE.md)** - REST API dokumentasjon
+- **[Qt Frontend Guide](docs/frontend/QT_FRONTEND_GUIDE.md)** - Qt desktop client utvikling
+
 ### Backend API:
 ```bash
 # Naviger til Fase 1
@@ -65,7 +70,7 @@ uv run python author_crud_demo.py
 open http://localhost:8550
 ```
 
-Se [Fase 1 README](./fase1/README.md) for detaljert dokumentasjon.
+Se [Fase 1 README](./fase1/README.md) for detaljert backend-dokumentasjon og [docs/](docs/) for fullstendig API og frontend guides.
 
 ## 🏗️ Utviklingsplan
 
