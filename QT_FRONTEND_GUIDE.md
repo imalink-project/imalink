@@ -204,6 +204,38 @@ class ImaLinkClient:
         )
         response.raise_for_status()
         return response.json()
+    
+    def find_similar_images(self, image_id: int, threshold: int = 5, limit: int = 10) -> List[dict]:
+        """Find images similar to given image using perceptual hash
+        
+        Args:
+            image_id: ID of the reference image
+            threshold: Hamming distance threshold (0-16, lower = more similar)
+            limit: Maximum number of results to return
+            
+        Returns:
+            List of similar images sorted by similarity (most similar first)
+        """
+        response = self.session.get(
+            f"{self.base_url}/image-files/similar/{image_id}",
+            params={"threshold": threshold, "limit": limit}
+        )
+        response.raise_for_status()
+        return response.json()
+    
+    def upload_image_with_similarity_check(self, file_path: str, 
+                                         check_duplicates: bool = True) -> dict:
+        """Upload image and optionally check for similar existing images"""
+        # First upload the image
+        result = self.import_image(file_path)
+        
+        if check_duplicates:
+            # Check for similar images after upload
+            image_id = result["id"]
+            similar = self.find_similar_images(image_id, threshold=3, limit=5)
+            result["similar_images"] = similar
+        
+        return result
 ```
 
 ## Qt Main Window Example
@@ -421,6 +453,408 @@ class GalleryView(QWidget):
             thumbnail = ThumbnailWidget(photo, self.api)
             thumbnail.clicked.connect(self.photo_selected)
             self.grid_layout.addWidget(thumbnail, row, col)
+
+
+## Image Similarity Search
+
+### Duplicate Finder Widget
+```python
+class DuplicateFinderWidget(QWidget):
+    """Widget for finding and managing duplicate images"""
+    
+    duplicates_found = Signal(list)
+    
+    def __init__(self, api_client):
+        super().__init__()
+        self.api = api_client
+        self.setup_ui()
+    
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        
+        # Controls
+        controls_layout = QHBoxLayout()
+        
+        # Threshold slider
+        controls_layout.addWidget(QLabel("Similarity Threshold:"))
+        self.threshold_slider = QSlider(Qt.Horizontal)
+        self.threshold_slider.setRange(0, 16)
+        self.threshold_slider.setValue(3)
+        self.threshold_label = QLabel("3")
+        self.threshold_slider.valueChanged.connect(
+            lambda v: self.threshold_label.setText(str(v))
+        )
+        controls_layout.addWidget(self.threshold_slider)
+        controls_layout.addWidget(self.threshold_label)
+        
+        # Find button
+        self.find_btn = QPushButton("Find Duplicates")
+        self.find_btn.clicked.connect(self.find_all_duplicates)
+        controls_layout.addWidget(self.find_btn)
+        
+        layout.addLayout(controls_layout)
+        
+        # Results area
+        self.results_scroll = QScrollArea()
+        self.results_widget = QWidget()
+        self.results_layout = QVBoxLayout(self.results_widget)
+        self.results_scroll.setWidget(self.results_widget)
+        self.results_scroll.setWidgetResizable(True)
+        layout.addWidget(self.results_scroll)
+        
+        # Status
+        self.status_label = QLabel("Click 'Find Duplicates' to start")
+        layout.addWidget(self.status_label)
+    
+    def find_all_duplicates(self):
+        """Find all duplicate groups in the database"""
+        self.find_btn.setEnabled(False)
+        self.status_label.setText("Searching for duplicates...")
+        
+        # Start background task
+        self.worker = DuplicateFinderWorker(
+            self.api, 
+            threshold=self.threshold_slider.value()
+        )
+        self.worker.duplicates_found.connect(self.display_duplicates)
+        self.worker.finished.connect(lambda: self.find_btn.setEnabled(True))
+        self.worker.start()
+    
+    def display_duplicates(self, duplicate_groups):
+        """Display found duplicate groups"""
+        # Clear existing results
+        while self.results_layout.count():
+            item = self.results_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        if not duplicate_groups:
+            self.status_label.setText("No duplicates found")
+            return
+        
+        self.status_label.setText(f"Found {len(duplicate_groups)} duplicate groups")
+        
+        # Display each group
+        for group_idx, group in enumerate(duplicate_groups):
+            group_widget = DuplicateGroupWidget(group, self.api)
+            self.results_layout.addWidget(group_widget)
+
+class DuplicateFinderWorker(QThread):
+    """Background worker for finding duplicates"""
+    duplicates_found = Signal(list)
+    
+    def __init__(self, api_client, threshold=3):
+        super().__init__()
+        self.api = api_client
+        self.threshold = threshold
+    
+    def run(self):
+        try:
+            # Get all images
+            all_images = self.api.get_image_files(limit=10000)
+            duplicate_groups = []
+            processed_ids = set()
+            
+            for image in all_images:
+                if image["id"] in processed_ids:
+                    continue
+                
+                # Find similar images
+                similar = self.api.find_similar_images(
+                    image["id"], 
+                    threshold=self.threshold,
+                    limit=50
+                )
+                
+                if similar:  # Found duplicates
+                    group = [image] + similar
+                    duplicate_groups.append(group)
+                    
+                    # Mark all as processed
+                    for img in group:
+                        processed_ids.add(img["id"])
+            
+            self.duplicates_found.emit(duplicate_groups)
+            
+        except Exception as e:
+            print(f"Error finding duplicates: {e}")
+            self.duplicates_found.emit([])
+
+class DuplicateGroupWidget(QWidget):
+    """Widget showing a group of duplicate images"""
+    
+    def __init__(self, image_group, api_client):
+        super().__init__()
+        self.images = image_group
+        self.api = api_client
+        self.setup_ui()
+    
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        
+        # Group header
+        header = QLabel(f"Duplicate Group ({len(self.images)} images)")
+        header.setStyleSheet("font-weight: bold; padding: 5px;")
+        layout.addWidget(header)
+        
+        # Image thumbnails in horizontal layout
+        thumbs_layout = QHBoxLayout()
+        
+        for image in self.images:
+            thumb_widget = QWidget()
+            thumb_layout = QVBoxLayout(thumb_widget)
+            
+            # Thumbnail (placeholder - implement with actual API call)
+            thumb_label = QLabel("📷")
+            thumb_label.setFixedSize(100, 100)
+            thumb_label.setAlignment(Qt.AlignCenter)
+            thumb_label.setStyleSheet("border: 1px solid #ccc;")
+            thumb_layout.addWidget(thumb_label)
+            
+            # Image info
+            info_text = f"{image['filename']}\n{image['file_size']} bytes"
+            if image.get('perceptual_hash'):
+                info_text += f"\npHash: {image['perceptual_hash'][:8]}..."
+            
+            info_label = QLabel(info_text)
+            info_label.setAlignment(Qt.AlignCenter)
+            info_label.setWordWrap(True)
+            thumb_layout.addWidget(info_label)
+            
+            # Delete button
+            delete_btn = QPushButton("Delete")
+            delete_btn.clicked.connect(
+                lambda checked, img=image: self.delete_image(img)
+            )
+            thumb_layout.addWidget(delete_btn)
+            
+            thumbs_layout.addWidget(thumb_widget)
+        
+        layout.addLayout(thumbs_layout)
+        
+        # Separator
+        separator = QFrame()
+        separator.setFrameShape(QFrame.HLine)
+        separator.setFrameShadow(QFrame.Sunken)
+        layout.addWidget(separator)
+    
+    def delete_image(self, image):
+        """Delete an image from the duplicate group"""
+        reply = QMessageBox.question(
+            self, "Confirm Delete", 
+            f"Delete {image['filename']}?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            try:
+                # Delete via photo API (cascade delete)
+                self.api.delete_photo(image['photo_hothash'])
+                
+                # Remove from group and refresh UI
+                self.images.remove(image)
+                self.setup_ui()
+                
+            except Exception as e:
+                QMessageBox.warning(self, "Error", f"Failed to delete: {e}")
+
+
+### Find Similar Images Widget
+```python
+class SimilarImagesFinder(QWidget):
+    """Widget for finding images similar to a selected image"""
+    
+    def __init__(self, api_client):
+        super().__init__()
+        self.api = api_client
+        self.reference_image_id = None
+        self.setup_ui()
+    
+    def setup_ui(self):
+        layout = QVBoxLayout(self)
+        
+        # Reference image selection
+        ref_layout = QHBoxLayout()
+        ref_layout.addWidget(QLabel("Reference Image ID:"))
+        self.image_id_input = QLineEdit()
+        self.image_id_input.setPlaceholderText("Enter image ID")
+        ref_layout.addWidget(self.image_id_input)
+        
+        self.select_btn = QPushButton("Find Similar")
+        self.select_btn.clicked.connect(self.find_similar)
+        ref_layout.addWidget(self.select_btn)
+        
+        layout.addLayout(ref_layout)
+        
+        # Threshold control
+        threshold_layout = QHBoxLayout()
+        threshold_layout.addWidget(QLabel("Similarity Threshold:"))
+        self.threshold_slider = QSlider(Qt.Horizontal)
+        self.threshold_slider.setRange(0, 16)
+        self.threshold_slider.setValue(5)
+        self.threshold_label = QLabel("5")
+        self.threshold_slider.valueChanged.connect(
+            lambda v: self.threshold_label.setText(str(v))
+        )
+        self.threshold_slider.valueChanged.connect(self.update_results)
+        threshold_layout.addWidget(self.threshold_slider)
+        threshold_layout.addWidget(self.threshold_label)
+        layout.addLayout(threshold_layout)
+        
+        # Results grid
+        self.results_scroll = QScrollArea()
+        self.results_widget = QWidget()
+        self.results_grid = QGridLayout(self.results_widget)
+        self.results_scroll.setWidget(self.results_widget)
+        self.results_scroll.setWidgetResizable(True)
+        layout.addWidget(self.results_scroll)
+        
+        # Status
+        self.status_label = QLabel("Enter image ID and click 'Find Similar'")
+        layout.addWidget(self.status_label)
+    
+    def set_reference_image(self, image_id: int):
+        """Set reference image from external source (e.g., gallery click)"""
+        self.reference_image_id = image_id
+        self.image_id_input.setText(str(image_id))
+        self.find_similar()
+    
+    def find_similar(self):
+        """Find images similar to the reference image"""
+        try:
+            image_id = int(self.image_id_input.text())
+        except ValueError:
+            self.status_label.setText("Please enter a valid image ID")
+            return
+        
+        self.reference_image_id = image_id
+        self.update_results()
+    
+    def update_results(self):
+        """Update results based on current threshold"""
+        if not self.reference_image_id:
+            return
+        
+        try:
+            threshold = self.threshold_slider.value()
+            similar_images = self.api.find_similar_images(
+                self.reference_image_id,
+                threshold=threshold,
+                limit=20
+            )
+            
+            self.display_results(similar_images)
+            
+        except Exception as e:
+            self.status_label.setText(f"Error: {e}")
+    
+    def display_results(self, images):
+        """Display similar images in grid"""
+        # Clear existing results
+        while self.results_grid.count():
+            item = self.results_grid.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        if not images:
+            self.status_label.setText("No similar images found")
+            return
+        
+        self.status_label.setText(f"Found {len(images)} similar images")
+        
+        # Display in grid (4 columns)
+        columns = 4
+        for idx, image in enumerate(images):
+            row = idx // columns
+            col = idx % columns
+            
+            # Create thumbnail widget
+            thumb_widget = self.create_thumbnail_widget(image)
+            self.results_grid.addWidget(thumb_widget, row, col)
+    
+    def create_thumbnail_widget(self, image):
+        """Create a thumbnail widget for an image"""
+        widget = QWidget()
+        layout = QVBoxLayout(widget)
+        layout.setSpacing(2)
+        
+        # Thumbnail placeholder
+        thumb_label = QLabel("📷")
+        thumb_label.setFixedSize(120, 120)
+        thumb_label.setAlignment(Qt.AlignCenter)
+        thumb_label.setStyleSheet("""
+            border: 1px solid #ccc;
+            background-color: #f5f5f5;
+        """)
+        layout.addWidget(thumb_label)
+        
+        # Image info
+        info_text = f"ID: {image['id']}\n{image['filename']}"
+        if image.get('perceptual_hash'):
+            info_text += f"\npHash: {image['perceptual_hash'][:8]}..."
+        
+        info_label = QLabel(info_text)
+        info_label.setAlignment(Qt.AlignCenter)
+        info_label.setWordWrap(True)
+        info_label.setStyleSheet("font-size: 10px;")
+        layout.addWidget(info_label)
+        
+        # Make clickable
+        widget.mousePressEvent = lambda event: self.on_image_clicked(image)
+        widget.setCursor(Qt.PointingHandCursor)
+        
+        return widget
+    
+    def on_image_clicked(self, image):
+        """Handle image click - could open detail view"""
+        print(f"Clicked image: {image['filename']}")
+        # Implement: open image detail, set as new reference, etc.
+
+
+### Integration with Main Gallery
+```python
+class EnhancedGalleryView(GalleryView):
+    """Enhanced gallery with similarity search integration"""
+    
+    def __init__(self, api_client):
+        super().__init__(api_client)
+        self.similarity_finder = SimilarImagesFinder(api_client)
+        
+        # Add similarity finder as a dock widget or tab
+        self.add_similarity_panel()
+    
+    def add_similarity_panel(self):
+        """Add similarity search panel to the gallery"""
+        # Create splitter for main gallery and similarity panel
+        splitter = QSplitter(Qt.Horizontal)
+        
+        # Move existing gallery to left side
+        gallery_widget = QWidget()
+        gallery_layout = QVBoxLayout(gallery_widget)
+        gallery_layout.addWidget(self)  # Move existing content
+        splitter.addWidget(gallery_widget)
+        
+        # Add similarity finder to right side
+        similarity_dock = QWidget()
+        similarity_layout = QVBoxLayout(similarity_dock)
+        similarity_layout.addWidget(QLabel("Find Similar Images"))
+        similarity_layout.addWidget(self.similarity_finder)
+        splitter.addWidget(similarity_dock)
+        
+        # Set initial sizes (70% gallery, 30% similarity)
+        splitter.setSizes([700, 300])
+    
+    def on_thumbnail_right_click(self, image_id):
+        """Handle right-click on thumbnail - show context menu"""
+        menu = QMenu(self)
+        
+        find_similar_action = menu.addAction("Find Similar Images")
+        find_similar_action.triggered.connect(
+            lambda: self.similarity_finder.set_reference_image(image_id)
+        )
+        
+        menu.exec_(QCursor.pos())
+```
 ```
 
 ## Configuration Management
@@ -552,16 +986,49 @@ api_url = f"http://{get_wsl_ip()}:8000/api/v1"
    curl http://172.x.x.x:8000/api/v1/debug/status
    ```
 
+## New: Image Similarity Features
+
+### Backend Support (Available Now)
+- ✅ **Perceptual Hash**: Auto-generated 16-bit pHash for all imported images
+- ✅ **Similarity Search API**: `GET /image-files/similar/{image_id}`
+- ✅ **Threshold Control**: Hamming distance 0-16 (0=identical, 16=different)
+- ✅ **Duplicate Detection**: Find near-identical images automatically
+
+### API Usage Examples
+```python
+# Find similar images
+similar = api_client.find_similar_images(
+    image_id=123,
+    threshold=5,    # Allow some differences
+    limit=10        # Max 10 results
+)
+
+# Upload with duplicate check
+result = api_client.upload_image_with_similarity_check(
+    "photo.jpg", 
+    check_duplicates=True
+)
+if result.get("similar_images"):
+    print("Warning: Similar images found!")
+```
+
+### Qt Implementation
+- ✅ **DuplicateFinderWidget**: Find and manage duplicate groups
+- ✅ **SimilarImagesFinder**: Interactive similarity search
+- ✅ **Enhanced Gallery**: Right-click "Find Similar" integration
+- ✅ **Background Processing**: Non-blocking similarity search
+
 ## Next Steps
 
 1. Create new repository: `imalink-qt-frontend`
-2. Implement basic API client
+2. Implement basic API client with similarity support
 3. Create main window with gallery view
-4. Add import functionality
-5. Add photo detail view
-6. Add search/filter
-7. Add settings dialog
-8. Package as Windows executable (PyInstaller)
+4. Add import functionality with duplicate detection
+5. Add photo detail view with "find similar" button
+6. Add duplicate finder tab/panel
+7. Add search/filter with similarity threshold
+8. Add settings dialog
+9. Package as Windows executable (PyInstaller)
 
 ---
 
