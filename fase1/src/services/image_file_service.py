@@ -324,7 +324,10 @@ class ImageFileService:
             return str(phash)
         except Exception as e:
             # Fallback: return None if perceptual hash generation fails
-            print(f"Warning: Could not generate perceptual hash: {e}")
+            print(f"Warning: Could not generate perceptual hash from hotpreview (ImageFileService): {e}")
+            print(f"DEBUG: Hotpreview data type: {type(hotpreview)}, size: {len(hotpreview) if hotpreview else 'None'}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def find_similar_images(self, image_id: int, threshold: int = 5, limit: int = 10) -> List[ImageFileResponse]:

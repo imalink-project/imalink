@@ -6,6 +6,27 @@
 ## Authentication
 Currently no authentication required (development phase).
 
+## Storage Structure
+ImaLink uses a well-organized file structure for data and media storage:
+
+```
+{DATA_DIRECTORY}/                    # /mnt/c/temp/00imalink_data/
+├── imalink.db                       # SQLite database
+└── coldpreviews/                    # Medium-size preview images
+    ├── ab/                          # First 2 chars of hothash
+    │   └── cd/                      # Next 2 chars of hothash  
+    │       └── abcd1234...jpg       # Coldpreview file
+    └── ef/
+        └── gh/
+            └── efgh5678...jpg
+```
+
+**Storage Details:**
+- **Database**: All metadata, hotpreview thumbnails (150x150) stored in SQLite
+- **Coldpreview**: Medium-size images (800-1200px) stored on filesystem
+- **Directory Structure**: 2-level hash-based directories for performance
+- **File Format**: JPEG with 85% quality for optimal size/quality balance
+
 ---
 
 ## 📸 Photos
@@ -134,7 +155,7 @@ Upload or update a coldpreview image for a photo.
     "width": 1200,
     "height": 800,
     "size": 234567,
-    "path": "storage/coldpreviews/ab/cd/abc123....jpg"
+    "path": "ab/cd/abc123....jpg"
   }
 }
 ```
@@ -142,7 +163,9 @@ Upload or update a coldpreview image for a photo.
 **Notes:**
 - Coldpreview images are automatically resized to max 1200px dimension
 - Images are saved as JPEG with 85% quality for optimal size/quality balance
-- Files are organized in 2-level directory structure for performance
+- Server handles file storage and organization automatically
+- Upload validates image format and content-type
+- Returns metadata including dimensions and file size
 
 ### GET /photos/{hothash}/coldpreview
 Get the coldpreview image for a photo with optional dynamic resizing.
@@ -181,9 +204,9 @@ Delete the coldpreview for a photo.
 ```
 
 **Notes:**
-- Removes coldpreview file from filesystem
-- Clears coldpreview metadata from database
+- Removes coldpreview file and metadata completely
 - Returns 404 if no coldpreview exists for the photo
+- Operation is idempotent - safe to call multiple times
 
 ---
 

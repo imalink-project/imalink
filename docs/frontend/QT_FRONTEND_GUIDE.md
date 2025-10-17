@@ -1082,10 +1082,11 @@ if result.get("similar_images"):
 Coldpreview provides medium-size preview images (800-1200px) for better detail viewing without downloading full resolution files. Unlike hotpreview (150x150 thumbnails), coldpreview offers sufficient quality for photo evaluation.
 
 ### Backend Support (Available Now)
-- ✅ **Filesystem Storage**: Efficient 2-level directory structure
-- ✅ **Dynamic Resizing**: On-the-fly resizing with width/height parameters
+- ✅ **Server Storage**: Backend handles file storage and organization
+- ✅ **Dynamic Resizing**: On-the-fly resizing with width/height parameters  
 - ✅ **API Endpoints**: PUT/GET/DELETE /photos/{hothash}/coldpreview
 - ✅ **Auto-optimization**: JPEG compression with quality control
+- ✅ **Upload Validation**: Automatic image format validation and error handling
 
 ### API Usage Examples
 ```python
@@ -1329,6 +1330,7 @@ class ColdpreviewUploadDialog(QDialog):
 3. **Size Optimization**: Use dynamic resizing parameters to fit UI containers
 4. **Error Handling**: Gracefully fall back to hotpreview if coldpreview is unavailable
 5. **User Choice**: Let users toggle between quality levels based on their needs
+6. **File Validation**: Backend automatically validates image format and content-type
 
 ## Next Steps
 

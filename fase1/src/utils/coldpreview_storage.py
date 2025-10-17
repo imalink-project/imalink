@@ -1,6 +1,17 @@
 """
 Coldpreview Storage Utility
 Handles filesystem operations for coldpreview images
+
+This utility provides server-side storage for medium-size preview images (coldpreviews).
+Coldpreviews are typically 800-1200px images that provide good quality for photo evaluation
+without requiring full resolution downloads.
+
+Key features:
+- Configurable storage location via core.config
+- Efficient 2-level directory structure for performance  
+- Automatic JPEG optimization and resizing
+- PIL-based image processing with error handling
+- Relative path storage for database references
 """
 import os
 import hashlib
@@ -9,12 +20,21 @@ from typing import Optional, Tuple
 from PIL import Image as PILImage
 import io
 
+from core.config import Config
+
 
 class ColdpreviewStorage:
     """Handles coldpreview file storage and retrieval"""
     
-    def __init__(self, base_path: str = "storage/coldpreviews"):
-        self.base_path = Path(base_path)
+    def __init__(self, base_path: Optional[str] = None):
+        if base_path is None:
+            # Use configured storage directory + coldpreviews subdirectory
+            config = Config()
+            # Place coldpreviews alongside database in the same data directory
+            self.base_path = Path(config.DATA_DIRECTORY) / "coldpreviews"
+        else:
+            self.base_path = Path(base_path)
+            
         self.base_path.mkdir(parents=True, exist_ok=True)
     
     def get_file_path(self, hothash: str) -> Path:
@@ -76,8 +96,8 @@ class ColdpreviewStorage:
         width, height = img.size
         file_size = file_path.stat().st_size
         
-        # Return relative path for database storage
-        relative_path = str(file_path.relative_to(self.base_path.parent))
+        # Return relative path for database storage (relative to base_path)
+        relative_path = str(file_path.relative_to(self.base_path))
         
         return relative_path, width, height, file_size
     
@@ -86,12 +106,12 @@ class ColdpreviewStorage:
         Load coldpreview from filesystem
         
         Args:
-            relative_path: Path relative to storage root
+            relative_path: Path relative to base_path
             
         Returns:
             Image bytes or None if not found
         """
-        full_path = self.base_path.parent / relative_path
+        full_path = self.base_path / relative_path
         
         if not full_path.exists():
             return None
@@ -154,12 +174,12 @@ class ColdpreviewStorage:
         Delete coldpreview file from filesystem
         
         Args:
-            relative_path: Path relative to storage root
+            relative_path: Path relative to base_path
             
         Returns:
             True if deleted successfully
         """
-        full_path = self.base_path.parent / relative_path
+        full_path = self.base_path / relative_path
         
         try:
             if full_path.exists():
@@ -236,7 +256,7 @@ class ColdpreviewStorage:
     
     def exists(self, relative_path: str) -> bool:
         """Check if coldpreview file exists"""
-        full_path = self.base_path.parent / relative_path
+        full_path = self.base_path / relative_path
         return full_path.exists()
     
     def get_storage_stats(self) -> dict:

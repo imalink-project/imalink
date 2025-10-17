@@ -212,15 +212,16 @@ class PhotoService:
     
     def upload_coldpreview(self, hothash: str, file_content: bytes) -> Dict[str, Any]:
         """Upload or update coldpreview for a photo"""
-        print(f"DEBUG: Starting coldpreview upload for hothash: {hothash}")
-        print(f"DEBUG: File content size: {len(file_content)} bytes")
+        print(f"DEBUG COLDPREVIEW: Starting coldpreview upload for hothash: {hothash}")
+        print(f"DEBUG COLDPREVIEW: File content size: {len(file_content)} bytes")
+        print(f"DEBUG COLDPREVIEW: This is the COLDPREVIEW service - no perceptual hash should be generated here")
         
         # Get photo to ensure it exists
         photo = self.photo_repo.get_by_hash(hothash)
         if not photo:
             raise NotFoundError("Photo", hothash)
         
-        print(f"DEBUG: Photo found: {photo.hothash}")
+        print(f"DEBUG COLDPREVIEW: Photo found: {photo.hothash}")
         
         # Use coldpreview storage utility
         from utils.coldpreview_storage import ColdpreviewStorage
@@ -228,11 +229,11 @@ class PhotoService:
         
         try:
             # Save coldpreview and get metadata (returns tuple)
-            print("DEBUG: Calling storage.save_coldpreview...")
+            print("DEBUG COLDPREVIEW: Calling storage.save_coldpreview...")
             relative_path, width, height, file_size = storage.save_coldpreview(hothash, file_content)
-            print(f"DEBUG: Coldpreview saved successfully: {width}x{height}, {file_size} bytes")
+            print(f"DEBUG COLDPREVIEW: Coldpreview saved successfully: {width}x{height}, {file_size} bytes")
         except Exception as e:
-            print(f"DEBUG: Error in save_coldpreview: {e}")
+            print(f"DEBUG COLDPREVIEW: Error in save_coldpreview: {e}")
             raise
         
         # Update photo with coldpreview metadata directly
@@ -245,7 +246,8 @@ class PhotoService:
         self.db.commit()
         self.db.refresh(photo)
         
-        print("DEBUG: Database updated successfully")
+        print("DEBUG COLDPREVIEW: Database updated successfully")
+        print("DEBUG COLDPREVIEW: Coldpreview upload completed - NO PERCEPTUAL HASH INVOLVED")
         
         return {
             'hothash': hothash,
