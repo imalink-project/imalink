@@ -210,3 +210,106 @@ class PhotoService:
         
         return format_map.get(ext, "unknown")
     
+    def upload_coldpreview(self, hothash: str, file_content: bytes) -> Dict[str, Any]:
+        """Upload or update coldpreview for a photo"""
+        print(f"DEBUG: Starting coldpreview upload for hothash: {hothash}")
+        print(f"DEBUG: File content size: {len(file_content)} bytes")
+        
+        # Get photo to ensure it exists
+        photo = self.photo_repo.get_by_hash(hothash)
+        if not photo:
+            raise NotFoundError("Photo", hothash)
+        
+        print(f"DEBUG: Photo found: {photo.hothash}")
+        
+        # Use coldpreview storage utility
+        from utils.coldpreview_storage import ColdpreviewStorage
+        storage = ColdpreviewStorage()
+        
+        try:
+            # Save coldpreview and get metadata (returns tuple)
+            print("DEBUG: Calling storage.save_coldpreview...")
+            relative_path, width, height, file_size = storage.save_coldpreview(hothash, file_content)
+            print(f"DEBUG: Coldpreview saved successfully: {width}x{height}, {file_size} bytes")
+        except Exception as e:
+            print(f"DEBUG: Error in save_coldpreview: {e}")
+            raise
+        
+        # Update photo with coldpreview metadata directly
+        setattr(photo, 'coldpreview_path', relative_path)
+        setattr(photo, 'coldpreview_width', width)
+        setattr(photo, 'coldpreview_height', height)
+        setattr(photo, 'coldpreview_size', file_size)
+        
+        # Commit changes
+        self.db.commit()
+        self.db.refresh(photo)
+        
+        print("DEBUG: Database updated successfully")
+        
+        return {
+            'hothash': hothash,
+            'width': width,
+            'height': height,
+            'size': file_size,
+            'path': relative_path
+        }
+    
+    def get_coldpreview(self, hothash: str, width: Optional[int] = None, height: Optional[int] = None) -> Optional[bytes]:
+        """Get coldpreview image for photo with optional resizing"""
+        # Get photo
+        photo = self.photo_repo.get_by_hash(hothash)
+        if not photo:
+            raise NotFoundError("Photo", hothash)
+        
+        # Check if coldpreview exists
+        if not getattr(photo, 'coldpreview_path', None):
+            return None
+        
+        # Use coldpreview storage utility
+        from utils.coldpreview_storage import ColdpreviewStorage
+        storage = ColdpreviewStorage()
+        
+        # Load coldpreview with optional resizing
+        if width or height:
+            # First load the original image
+            original_data = storage.load_coldpreview_by_hash(hothash)
+            if not original_data:
+                return None
+            # Then resize it
+            return storage.resize_coldpreview(original_data, target_width=width, target_height=height)
+        else:
+            return storage.load_coldpreview_by_hash(hothash)
+    
+    def delete_coldpreview(self, hothash: str) -> None:
+        """Delete coldpreview for photo"""
+        # Get photo
+        photo = self.photo_repo.get_by_hash(hothash)
+        if not photo:
+            raise NotFoundError("Photo", hothash)
+        
+        # Check if coldpreview exists
+        if not getattr(photo, 'coldpreview_path', None):
+            raise NotFoundError("Coldpreview", hothash)
+        
+        # Use coldpreview storage utility
+        from utils.coldpreview_storage import ColdpreviewStorage
+        storage = ColdpreviewStorage()
+        
+        # Delete from filesystem (need to construct full path from relative path)
+        # We need to pass the hothash since that's what the delete method expects
+        try:
+            storage.delete_coldpreview_by_hash(hothash)
+        except Exception:
+            pass  # File might already be deleted, continue with database cleanup
+        
+        # Clear metadata from database
+        setattr(photo, 'coldpreview_path', None)
+        setattr(photo, 'coldpreview_width', None)
+        setattr(photo, 'coldpreview_height', None)
+        setattr(photo, 'coldpreview_size', None)
+        
+        # Commit changes
+        self.db.commit()
+        self.db.refresh(photo)
+

@@ -14,7 +14,7 @@ This API provides:
 - DELETE: Remove photo and all associated image files (cascade)
 """
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Response, Query
+from fastapi import APIRouter, Depends, HTTPException, Response, Query, File, UploadFile
 from fastapi.responses import StreamingResponse
 import io
 
@@ -135,5 +135,90 @@ def get_hotpreview(
         raise HTTPException(status_code=500, detail=f"Failed to retrieve hotpreview: {str(e)}")
 
 
+@router.put("/{hothash}/coldpreview")
+async def upload_coldpreview(
+    hothash: str,
+    file: UploadFile = File(..., description="Coldpreview image file"),
+    photo_service: PhotoService = Depends(get_photo_service)
+):
+    """Upload or update coldpreview for photo"""
+    try:
+        # Validate file type
+        if not file.content_type or not file.content_type.startswith('image/'):
+            raise HTTPException(status_code=400, detail="File must be an image")
+        
+        # Read file content
+        file_content = await file.read()
+        
+        # Validate that content is not empty
+        if not file_content:
+            raise HTTPException(status_code=400, detail="File is empty")
+        
+        # Validate that it's a valid image by trying to open it
+        from PIL import Image as PILImage
+        import io
+        try:
+            test_img = PILImage.open(io.BytesIO(file_content))
+            test_img.verify()  # Check if it's a valid image
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
+        
+        result = photo_service.upload_coldpreview(hothash, file_content)
+        return create_success_response(
+            message="Coldpreview uploaded successfully",
+            data=result
+        )
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise  # Re-raise HTTP exceptions as-is
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to upload coldpreview: {str(e)}")
+
+
+@router.get("/{hothash}/coldpreview")
+def get_coldpreview(
+    hothash: str,
+    width: Optional[int] = Query(None, ge=100, le=2000, description="Target width for dynamic resizing"),
+    height: Optional[int] = Query(None, ge=100, le=2000, description="Target height for dynamic resizing"),
+    photo_service: PhotoService = Depends(get_photo_service)
+):
+    """Get coldpreview image for photo with optional resizing"""
+    try:
+        coldpreview_data = photo_service.get_coldpreview(hothash, width=width, height=height)
+        
+        if coldpreview_data:
+            return StreamingResponse(
+                io.BytesIO(coldpreview_data),
+                media_type="image/jpeg",
+                headers={
+                    "Content-Disposition": f"inline; filename=coldpreview_{hothash[:8]}.jpg",
+                    "Cache-Control": "public, max-age=3600"  # Cache for 1 hour
+                }
+            )
+        else:
+            raise HTTPException(status_code=404, detail="Coldpreview not found")
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve coldpreview: {str(e)}")
+
+
+@router.delete("/{hothash}/coldpreview")
+def delete_coldpreview(
+    hothash: str,
+    photo_service: PhotoService = Depends(get_photo_service)
+):
+    """Delete coldpreview for photo"""
+    try:
+        photo_service.delete_coldpreview(hothash)
+        return create_success_response(message="Coldpreview deleted successfully")
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to delete coldpreview: {str(e)}")
+
+
 # Additional utility endpoints
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
