@@ -26,6 +26,7 @@ class ImageFileResponse(BaseModel):
     
     # NEW: hotpreview is now stored in ImageFile
     has_hotpreview: bool = Field(False, description="Whether hotpreview is available")
+    perceptual_hash: Optional[str] = Field(None, description="Perceptual hash for similarity search")
     
     # Computed fields (provided by service layer)
     file_format: Optional[str] = Field(None, description="File format computed from filename")
@@ -83,6 +84,7 @@ class ImageFileCreateRequest(BaseModel):
     # - hotpreview: Hotpreview binary data (required to generate photo_hothash)
     # - photo_hothash: Auto-calculated from hotpreview via SHA256 hash
     hotpreview: Optional[bytes] = Field(None, description="Hotpreview image binary data (required)")
+    perceptual_hash: Optional[str] = Field(None, description="Perceptual hash for similarity search (auto-generated if not provided)")
     
     # Optional file metadata
     file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")

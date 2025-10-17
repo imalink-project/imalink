@@ -20,7 +20,7 @@ CRUD Operations:
 - UPDATE: Not supported - Images are immutable file records
 - DELETE: Not supported - Delete via Photo API (DELETE /photos/{hothash})
 """
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from fastapi.responses import FileResponse
 
@@ -116,6 +116,33 @@ def create_image(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create image: {str(e)}")
+
+# ===== SIMILARITY SEARCH =====
+
+@router.get("/similar/{image_id}", response_model=List[ImageFileResponse])
+async def find_similar_images(
+    image_id: int,
+    threshold: int = Query(5, ge=0, le=16, description="Hamming distance threshold (0=identical, 16=very different)"),
+    limit: int = Query(10, ge=1, le=100, description="Maximum number of similar images to return"),
+    image_file_service: ImageFileService = Depends(get_image_file_service)
+):
+    """
+    Find images similar to the given image using perceptual hash
+    
+    - **image_id**: ID of the reference image
+    - **threshold**: Hamming distance threshold (0-16, lower = more similar)
+    - **limit**: Maximum number of results to return
+    
+    Returns images sorted by similarity (most similar first)
+    """
+    try:
+        similar_images = image_file_service.find_similar_images(image_id, threshold, limit)
+        return similar_images
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error finding similar images: {str(e)}")
+
 
 # ===== UPDATE and DELETE are NOT supported for Images =====
 # 

@@ -8,6 +8,9 @@ from pathlib import Path
 import json
 import hashlib
 import base64
+from PIL import Image as PILImage
+import imagehash
+import io
 
 from repositories.image_file_repository import ImageFileRepository
 from repositories.photo_repository import PhotoRepository
@@ -155,6 +158,12 @@ class ImageFileService:
         # 2. Generate hothash from hotpreview
         hothash = self._generate_hothash_from_hotpreview(image_data.hotpreview)
         
+        # 2.5. Generate perceptual hash if not provided
+        if not image_data.perceptual_hash:
+            perceptual_hash = self._generate_perceptual_hash_from_hotpreview(image_data.hotpreview)
+        else:
+            perceptual_hash = image_data.perceptual_hash
+        
         # 3. Check if Photo exists
         existing_photo = self.photo_repo.get_by_hash(hothash)
         
@@ -166,9 +175,10 @@ class ImageFileService:
             # Create Photo
             photo = self.photo_repo.create(photo_data)
         
-        # 5. Create ImageFile with the generated photo_hothash
+        # 5. Create ImageFile with the generated photo_hothash and perceptual_hash
         image_data_dict = image_data.model_dump()
         image_data_dict['photo_hothash'] = hothash
+        image_data_dict['perceptual_hash'] = perceptual_hash
         
         image_file = self.image_file_repo.create(image_data_dict)
         
@@ -268,6 +278,7 @@ class ImageFileService:
             filename=filename,
             file_size=getattr(image_file, 'file_size', None),
             has_hotpreview=bool(getattr(image_file, 'hotpreview', None)),
+            perceptual_hash=getattr(image_file, 'perceptual_hash', None),
             # Computed fields
             file_format=computed_format,
             file_path=None,  # Could be computed by storage service if needed
@@ -296,6 +307,80 @@ class ImageFileService:
         """
         hothash = hashlib.sha256(hotpreview).hexdigest()
         return hothash
+    
+    def _generate_perceptual_hash_from_hotpreview(self, hotpreview: bytes) -> Optional[str]:
+        """
+        Generate perceptual hash from hotpreview for similarity search
+        Uses pHash algorithm (16-bit hash)
+        """
+        try:
+            # Convert bytes to PIL Image
+            img = PILImage.open(io.BytesIO(hotpreview))
+            
+            # Generate perceptual hash
+            phash = imagehash.phash(img)
+            
+            # Return as hex string (16 characters)
+            return str(phash)
+        except Exception as e:
+            # Fallback: return None if perceptual hash generation fails
+            print(f"Warning: Could not generate perceptual hash: {e}")
+            return None
+    
+    def find_similar_images(self, image_id: int, threshold: int = 5, limit: int = 10) -> List[ImageFileResponse]:
+        """
+        Find images similar to the given image using perceptual hash
+        
+        Args:
+            image_id: ID of the reference image
+            threshold: Hamming distance threshold (0-16, lower = more similar)
+            limit: Maximum number of results to return
+            
+        Returns:
+            List of similar images sorted by similarity (most similar first)
+        """
+        # Get the reference image
+        reference_image = self.image_file_repo.get_by_id(image_id)
+        if not reference_image:
+            raise NotFoundError(resource="ImageFile", id=image_id)
+        
+        if not getattr(reference_image, 'perceptual_hash', None):
+            raise ValidationError(f"ImageFile {image_id} has no perceptual hash")
+        
+        # Get all images with perceptual hash
+        all_images = self.image_file_repo.get_image_files(offset=0, limit=10000)
+        similar_images = []
+        
+        try:
+            reference_hash = imagehash.hex_to_hash(getattr(reference_image, 'perceptual_hash'))
+            
+            for image in all_images:
+                # Skip the reference image itself and images without perceptual hash
+                image_id_val = getattr(image, 'id')
+                image_phash = getattr(image, 'perceptual_hash', None)
+                
+                if image_id_val == image_id or not image_phash:
+                    continue
+                
+                try:
+                    image_hash = imagehash.hex_to_hash(image_phash)
+                    distance = reference_hash - image_hash  # Hamming distance
+                    
+                    if distance <= threshold:
+                        similar_images.append((image, distance))
+                except ValueError:
+                    # Skip images with invalid perceptual hash
+                    continue
+            
+            # Sort by similarity (lowest distance first)
+            similar_images.sort(key=lambda x: x[1])
+            
+            # Limit results and convert to response objects
+            limited_images = similar_images[:limit]
+            return [self._convert_to_response(image) for image, _ in limited_images]
+            
+        except ValueError as e:
+            raise ValidationError(f"Invalid perceptual hash format: {e}")
     
     def _generate_hothash_from_image(self, image_data: ImageFileCreateRequest) -> str:
         """

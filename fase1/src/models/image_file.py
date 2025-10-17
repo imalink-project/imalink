@@ -44,6 +44,7 @@ class ImageFile(Base, TimestampMixin):
     # File-specific processing data
     exif_data = Column(LargeBinary)  # Raw EXIF data stored as binary blob
     hotpreview = Column(LargeBinary)  # Hotpreview image for this file
+    perceptual_hash = Column(String(16), nullable=True, index=True)  # pHash for similarity search
     
     # Link to Photo (via hothash - not a FK since it's generated from hotpreview)
     photo_hothash = Column(String(64), ForeignKey('photos.hothash'), nullable=True, index=True)
