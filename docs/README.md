@@ -7,6 +7,7 @@ Felles dokumentasjon for ImaLink backend og frontend utvikling.
 ```
 docs/
 ├── README.md                    # Dette dokumentet
+├── FRONTEND_INTEGRATION.md     # Guide for frontend repositories
 ├── api/
 │   └── API_REFERENCE.md        # Komplett REST API referanse
 ├── frontend/
@@ -27,6 +28,7 @@ docs/
 - **WSL Setup**: Se Qt guide for Windows ↔ WSL kommunikasjon
 
 ### Felles Ressurser
+- **[Frontend Integration Guide](FRONTEND_INTEGRATION.md)** - Hvordan frontend repos kan referere til denne dokumentasjonen
 - **Base URL**: `http://localhost:8000/api/v1` (lokalt) eller `http://172.x.x.x:8000/api/v1` (WSL→Windows)
 - **Interactive API Docs**: `http://localhost:8000/docs` (når backend kjører)
 - **OpenAPI Spec**: `../openapi.json`
