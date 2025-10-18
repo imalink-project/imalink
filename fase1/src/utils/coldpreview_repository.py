@@ -1,13 +1,13 @@
 """
-Coldpreview Storage Utility
+Coldpreview Repository Utility
 Handles filesystem operations for coldpreview images
 
-This utility provides server-side storage for medium-size preview images (coldpreviews).
+This utility provides server-side repository for medium-size preview images (coldpreviews).
 Coldpreviews are typically 800-1200px images that provide good quality for photo evaluation
 without requiring full resolution downloads.
 
 Key features:
-- Configurable storage location via core.config
+- Configurable repository location via core.config
 - Efficient 2-level directory structure for performance  
 - Automatic JPEG optimization and resizing
 - PIL-based image processing with error handling
@@ -23,7 +23,7 @@ import io
 from core.config import Config
 
 
-class ColdpreviewStorage:
+class ColdpreviewRepository:
     """Handles coldpreview file storage and retrieval"""
     
     def __init__(self, base_path: Optional[str] = None):
@@ -259,8 +259,8 @@ class ColdpreviewStorage:
         full_path = self.base_path / relative_path
         return full_path.exists()
     
-    def get_storage_stats(self) -> dict:
-        """Get storage statistics"""
+    def get_repository_stats(self) -> dict:
+        """Get repository statistics"""
         total_files = 0
         total_size = 0
         

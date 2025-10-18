@@ -229,14 +229,14 @@ class PhotoService:
         
         print(f"DEBUG COLDPREVIEW: Photo found: {photo.hothash}")
         
-        # Use coldpreview storage utility
-        from utils.coldpreview_storage import ColdpreviewStorage
-        storage = ColdpreviewStorage()
+        # Use coldpreview repository utility
+        from utils.coldpreview_repository import ColdpreviewRepository
+        repository = ColdpreviewRepository()
         
         try:
             # Save coldpreview and get metadata (returns tuple)
-            print("DEBUG COLDPREVIEW: Calling storage.save_coldpreview...")
-            relative_path, width, height, file_size = storage.save_coldpreview(hothash, file_content)
+            print("DEBUG COLDPREVIEW: Calling repository.save_coldpreview...")
+            relative_path, width, height, file_size = repository.save_coldpreview(hothash, file_content)
             print(f"DEBUG COLDPREVIEW: Coldpreview saved successfully: {width}x{height}, {file_size} bytes")
         except Exception as e:
             print(f"DEBUG COLDPREVIEW: Error in save_coldpreview: {e}")
@@ -274,20 +274,20 @@ class PhotoService:
         if not getattr(photo, 'coldpreview_path', None):
             return None
         
-        # Use coldpreview storage utility
-        from utils.coldpreview_storage import ColdpreviewStorage
-        storage = ColdpreviewStorage()
+        # Use coldpreview repository utility
+        from utils.coldpreview_repository import ColdpreviewRepository
+        repository = ColdpreviewRepository()
         
         # Load coldpreview with optional resizing
         if width or height:
             # First load the original image
-            original_data = storage.load_coldpreview_by_hash(hothash)
+            original_data = repository.load_coldpreview_by_hash(hothash)
             if not original_data:
                 return None
             # Then resize it
-            return storage.resize_coldpreview(original_data, target_width=width, target_height=height)
+            return repository.resize_coldpreview(original_data, target_width=width, target_height=height)
         else:
-            return storage.load_coldpreview_by_hash(hothash)
+            return repository.load_coldpreview_by_hash(hothash)
     
     def delete_coldpreview(self, hothash: str) -> None:
         """Delete coldpreview for photo"""
@@ -300,14 +300,14 @@ class PhotoService:
         if not getattr(photo, 'coldpreview_path', None):
             raise NotFoundError("Coldpreview", hothash)
         
-        # Use coldpreview storage utility
-        from utils.coldpreview_storage import ColdpreviewStorage
-        storage = ColdpreviewStorage()
+        # Use coldpreview repository utility
+        from utils.coldpreview_repository import ColdpreviewRepository
+        repository = ColdpreviewRepository()
         
         # Delete from filesystem (need to construct full path from relative path)
         # We need to pass the hothash since that's what the delete method expects
         try:
-            storage.delete_coldpreview_by_hash(hothash)
+            repository.delete_coldpreview_by_hash(hothash)
         except Exception:
             pass  # File might already be deleted, continue with database cleanup
         
