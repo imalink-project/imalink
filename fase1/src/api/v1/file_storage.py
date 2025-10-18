@@ -42,11 +42,6 @@ class FileStorageMetadataResponse(BaseModel):
     full_path: str
     display_name: Optional[str]
     description: Optional[str]
-    is_active: bool
-    is_accessible: bool
-    total_files: int
-    total_size_bytes: int
-    storage_size_mb: float
     created_at: str
     updated_at: Optional[str]
 
@@ -141,11 +136,6 @@ async def list_file_storages(
                 "full_path": storage.full_path,
                 "display_name": storage.display_name,
                 "description": storage.description,
-                "is_active": storage.is_active,
-                "is_accessible": storage.is_accessible,
-                "total_files": storage.total_files or 0,
-                "total_size_bytes": storage.total_size_bytes or 0,
-                "storage_size_mb": storage.storage_size_mb,
                 "created_at": storage.created_at.isoformat() if storage.created_at else None,
                 "updated_at": storage.updated_at.isoformat() if storage.updated_at else None
             }
@@ -194,11 +184,6 @@ async def get_file_storage(
             "full_path": storage.full_path,
             "display_name": storage.display_name,
             "description": storage.description,
-            "is_active": storage.is_active,
-            "is_accessible": storage.is_accessible,
-            "total_files": storage.total_files or 0,
-            "total_size_bytes": storage.total_size_bytes or 0,
-            "storage_size_mb": storage.storage_size_mb,
             "created_at": storage.created_at.isoformat() if storage.created_at else None,
             "updated_at": storage.updated_at.isoformat() if storage.updated_at else None,
             "import_sessions_count": len(storage.import_sessions) if storage.import_sessions else 0
@@ -256,9 +241,8 @@ async def update_file_storage(
             "data": {
                 "storage_uuid": storage.storage_uuid,
                 "display_name": storage.display_name,
-                "is_accessible": storage.is_accessible,
-                "total_files": storage.total_files,
-                "storage_size_mb": storage.storage_size_mb
+                "description": storage.description,
+                "updated_at": storage.updated_at.isoformat() if storage.updated_at else None
             }
         }
         
