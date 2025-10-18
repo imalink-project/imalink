@@ -1,1353 +1,1364 @@
-# Qt Frontend Development Guide
-
-Guide for developing Qt-based frontend for ImaLink.
-
-## Architecture Overview
-
-```
-┌─────────────────┐         HTTP/REST        ┌──────────────────┐
-│   Qt Frontend   │ ◄─────────────────────► │  FastAPI Backend │
-│   (Windows)     │    JSON over HTTP        │     (WSL)        │
-└─────────────────┘                          └──────────────────┘
-        │                                              │
-        │                                              │
-    Qt Models                                    SQLite Database
-    Qt Views                                     SQLAlchemy ORM
-    QNetworkAccessManager                        Pydantic Schemas
-```
-
-## Technology Stack Recommendation
-
-### Qt Version
-- **Qt 6.x** (recommended) or Qt 5.15+
-- **PyQt6** or **PySide6** for Python
-- **Qt for Python** (official Python bindings)
-
-### Key Qt Modules
-- `QtWidgets` - Main UI components
-- `QtNetwork` - HTTP client (QNetworkAccessManager)
-- `QtCore` - Core functionality (QTimer, signals/slots)
-- `QtGui` - Image handling (QPixmap, QImage)
-- `QtConcurrent` - Background tasks
-
-### Additional Python Packages
-```
-PySide6>=6.6.0
-requests>=2.31.0  # Simpler than QtNetwork for REST
-Pillow>=10.0.0    # Image processing
-python-dateutil>=2.8.2  # Date parsing
-```
-
-## Project Structure
-
-```
-imalink-qt-frontend/
-├── main.py                 # Application entry point
-├── requirements.txt
-├── README.md
-│
-├── src/
-│   ├── __init__.py
-│   │
-│   ├── api/               # Backend communication
-│   │   ├── __init__.py
-│   │   ├── client.py      # Main API client
-│   │   └── models.py      # Data models (dataclasses)
-│   │
-│   ├── ui/                # UI components
-│   │   ├── __init__.py
-│   │   ├── main_window.py
-│   │   ├── gallery_view.py
-│   │   ├── import_dialog.py
-│   │   ├── photo_detail.py
-│   │   └── widgets/
-│   │       ├── thumbnail.py
-│   │       └── photo_card.py
-│   │
-│   ├── models/            # Qt models (MVC)
-│   │   ├── __init__.py
-│   │   ├── photo_model.py
-│   │   └── image_model.py
-│   │
-│   └── utils/
-│       ├── __init__.py
-│       ├── image_utils.py
-│       └── cache.py
-│
-└── resources/
-    ├── icons/
-    └── styles/
-        └── main.qss       # Qt StyleSheet
-```
-
-## API Client Implementation
-
-### Basic Client (src/api/client.py)
-
-```python
-import requests
-from typing import List, Optional
-from dataclasses import dataclass
-import base64
-from io import BytesIO
-from PIL import Image
-
-@dataclass
-class Photo:
-    """Photo data model matching API response"""
-    id: int
-    hothash: str
-    title: Optional[str] = None
-    description: Optional[str] = None
-    author_id: Optional[int] = None
-    rating: Optional[int] = None
-    location: Optional[str] = None
-    tags: List[str] = None
-    created_at: str = ""
-    updated_at: str = ""
-    
-    def __post_init__(self):
-        if self.tags is None:
-            self.tags = []
-
-class ImaLinkClient:
-    """HTTP client for ImaLink API"""
-    
-    def __init__(self, base_url: str = "http://localhost:8000/api/v1"):
-        self.base_url = base_url
-        self.session = requests.Session()
-        self.session.headers.update({
-            "Content-Type": "application/json"
-        })
-    
-    def get_photos(self, skip: int = 0, limit: int = 100) -> List[Photo]:
-        """Get paginated list of photos"""
-        response = self.session.get(
-            f"{self.base_url}/photos/",
-            params={"skip": skip, "limit": limit}
-        )
-        response.raise_for_status()
-        data = response.json()
-        return [Photo(**item) for item in data["items"]]
-    
-    def get_photo(self, hothash: str) -> Photo:
-        """Get single photo by hothash"""
-        response = self.session.get(f"{self.base_url}/photos/{hothash}")
-        response.raise_for_status()
-        return Photo(**response.json())
-    
-    def get_photo_thumbnail(self, hothash: str) -> bytes:
-        """Get photo thumbnail as JPEG bytes"""
-        response = self.session.get(
-            f"{self.base_url}/photos/{hothash}/hotpreview"
-        )
-        response.raise_for_status()
-        return response.content
-    
-    def get_photo_coldpreview(self, hothash: str, width: int = None, height: int = None) -> bytes:
-        """Get photo coldpreview as JPEG bytes with optional resizing
-        
-        Args:
-            hothash: Photo hash identifier
-            width: Target width for resizing (optional)
-            height: Target height for resizing (optional)
-            
-        Returns:
-            JPEG image bytes or raises exception if not found
-        """
-        params = {}
-        if width:
-            params["width"] = width
-        if height:
-            params["height"] = height
-            
-        response = self.session.get(
-            f"{self.base_url}/photos/{hothash}/coldpreview",
-            params=params
-        )
-        response.raise_for_status()
-        return response.content
-    
-    def upload_photo_coldpreview(self, hothash: str, image_path: str) -> dict:
-        """Upload coldpreview for a photo
-        
-        Args:
-            hothash: Photo hash identifier
-            image_path: Path to image file to upload as coldpreview
-            
-        Returns:
-            Response with coldpreview metadata
-        """
-        with open(image_path, 'rb') as f:
-            files = {'file': f}
-            response = self.session.put(
-                f"{self.base_url}/photos/{hothash}/coldpreview",
-                files=files
-            )
-        response.raise_for_status()
-        return response.json()
-    
-    def delete_photo_coldpreview(self, hothash: str) -> dict:
-        """Delete coldpreview for a photo
-        
-        Args:
-            hothash: Photo hash identifier
-            
-        Returns:
-            Success response
-        """
-        response = self.session.delete(
-            f"{self.base_url}/photos/{hothash}/coldpreview"
-        )
-        response.raise_for_status()
-        return response.json()
-    
-    def search_photos(self, title: str = None, tags: List[str] = None,
-                     rating_min: int = None, rating_max: int = None) -> List[Photo]:
-        """Search photos with filters"""
-        payload = {}
-        if title:
-            payload["title"] = title
-        if tags:
-            payload["tags"] = tags
-        if rating_min:
-            payload["rating_min"] = rating_min
-        if rating_max:
-            payload["rating_max"] = rating_max
-        
-        response = self.session.post(
-            f"{self.base_url}/photos/search",
-            json=payload
-        )
-        response.raise_for_status()
-        data = response.json()
-        return [Photo(**item) for item in data["items"]]
-    
-    def import_image(self, file_path: str, session_id: int = None) -> dict:
-        """Import a single image file"""
-        from pathlib import Path
-        
-        # Generate hotpreview (150x150 JPEG)
-        img = Image.open(file_path)
-        
-        # Handle EXIF rotation
-        try:
-            from PIL import ImageOps
-            img = ImageOps.exif_transpose(img)
-        except:
-            pass
-        
-        img.thumbnail((150, 150), Image.Resampling.LANCZOS)
-        
-        # Convert to JPEG bytes
-        buffer = BytesIO()
-        img.convert("RGB").save(buffer, format="JPEG", quality=85)
-        hotpreview_b64 = base64.b64encode(buffer.getvalue()).decode()
-        
-        # Get file info
-        path = Path(file_path)
-        payload = {
-            "filename": path.name,
-            "file_size": path.stat().st_size,
-            "file_path": str(path.absolute()),
-            "hotpreview": hotpreview_b64
-        }
-        
-        if session_id:
-            payload["import_session_id"] = session_id
-        
-        response = self.session.post(
-            f"{self.base_url}/image-files/",
-            json=payload
-        )
-        response.raise_for_status()
-        return response.json()
-    
-    def find_similar_images(self, image_id: int, threshold: int = 5, limit: int = 10) -> List[dict]:
-        """Find images similar to given image using perceptual hash
-        
-        Args:
-            image_id: ID of the reference image
-            threshold: Hamming distance threshold (0-16, lower = more similar)
-            limit: Maximum number of results to return
-            
-        Returns:
-            List of similar images sorted by similarity (most similar first)
-        """
-        response = self.session.get(
-            f"{self.base_url}/image-files/similar/{image_id}",
-            params={"threshold": threshold, "limit": limit}
-        )
-        response.raise_for_status()
-        return response.json()
-    
-    def upload_image_with_similarity_check(self, file_path: str, 
-                                         check_duplicates: bool = True) -> dict:
-        """Upload image and optionally check for similar existing images"""
-        # First upload the image
-        result = self.import_image(file_path)
-        
-        if check_duplicates:
-            # Check for similar images after upload
-            image_id = result["id"]
-            similar = self.find_similar_images(image_id, threshold=3, limit=5)
-            result["similar_images"] = similar
-        
-        return result
-```
-
-## Qt Main Window Example
-
-### Main Window (src/ui/main_window.py)
-
-```python
-from PySide6.QtWidgets import (
-    QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QToolBar, QPushButton, QStatusBar, QSplitter
-)
-from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QAction
-
-from .gallery_view import GalleryView
-from .photo_detail import PhotoDetailPanel
-from ..api.client import ImaLinkClient
-
-class MainWindow(QMainWindow):
-    """Main application window"""
-    
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("ImaLink Photo Manager")
-        self.resize(1400, 900)
-        
-        # API client
-        self.api = ImaLinkClient(base_url="http://172.x.x.x:8000/api/v1")
-        
-        self.setup_ui()
-        self.setup_toolbar()
-        self.setup_statusbar()
-        
-    def setup_ui(self):
-        """Setup main UI layout"""
-        central = QWidget()
-        self.setCentralWidget(central)
-        
-        layout = QVBoxLayout(central)
-        
-        # Splitter: Gallery | Detail Panel
-        splitter = QSplitter(Qt.Horizontal)
-        
-        # Gallery view
-        self.gallery = GalleryView(self.api)
-        self.gallery.photo_selected.connect(self.on_photo_selected)
-        splitter.addWidget(self.gallery)
-        
-        # Detail panel
-        self.detail_panel = PhotoDetailPanel(self.api)
-        splitter.addWidget(self.detail_panel)
-        
-        splitter.setSizes([900, 500])
-        
-        layout.addWidget(splitter)
-    
-    def setup_toolbar(self):
-        """Setup toolbar with actions"""
-        toolbar = QToolBar()
-        self.addToolBar(toolbar)
-        
-        # Import action
-        import_action = QAction("Import Images", self)
-        import_action.triggered.connect(self.on_import_clicked)
-        toolbar.addAction(import_action)
-        
-        toolbar.addSeparator()
-        
-        # Refresh action
-        refresh_action = QAction("Refresh", self)
-        refresh_action.triggered.connect(self.gallery.refresh)
-        toolbar.addAction(refresh_action)
-    
-    def setup_statusbar(self):
-        """Setup status bar"""
-        self.statusBar().showMessage("Ready")
-    
-    def on_photo_selected(self, hothash: str):
-        """Handle photo selection"""
-        self.detail_panel.load_photo(hothash)
-        self.statusBar().showMessage(f"Selected: {hothash[:16]}...")
-    
-    def on_import_clicked(self):
-        """Show import dialog"""
-        from .import_dialog import ImportDialog
-        dialog = ImportDialog(self.api, self)
-        if dialog.exec():
-            self.gallery.refresh()
-            self.statusBar().showMessage("Import completed")
-```
-
-## Qt Gallery View Example
-
-### Gallery View (src/ui/gallery_view.py)
-
-```python
-from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QScrollArea, QGridLayout,
-    QLabel, QPushButton
-)
-from PySide6.QtCore import Qt, Signal, QThread
-from PySide6.QtGui import QPixmap
-
-class PhotoLoader(QThread):
-    """Background thread for loading photos"""
-    photos_loaded = Signal(list)
-    
-    def __init__(self, api_client):
-        super().__init__()
-        self.api = api_client
-    
-    def run(self):
-        """Load photos in background"""
-        try:
-            photos = self.api.get_photos(limit=100)
-            self.photos_loaded.emit(photos)
-        except Exception as e:
-            print(f"Error loading photos: {e}")
-
-class ThumbnailWidget(QWidget):
-    """Single photo thumbnail widget"""
-    clicked = Signal(str)  # Emits hothash
-    
-    def __init__(self, photo, api_client):
-        super().__init__()
-        self.photo = photo
-        self.api = api_client
-        
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(5, 5, 5, 5)
-        
-        # Thumbnail
-        self.image_label = QLabel()
-        self.image_label.setFixedSize(150, 150)
-        self.image_label.setStyleSheet("border: 1px solid #ccc;")
-        self.image_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(self.image_label)
-        
-        # Title
-        title = photo.title or "Untitled"
-        title_label = QLabel(title)
-        title_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(title_label)
-        
-        # Load thumbnail
-        self.load_thumbnail()
-    
-    def load_thumbnail(self):
-        """Load thumbnail from API"""
-        try:
-            img_data = self.api.get_photo_thumbnail(self.photo.hothash)
-            pixmap = QPixmap()
-            pixmap.loadFromData(img_data)
-            self.image_label.setPixmap(pixmap)
-        except Exception as e:
-            self.image_label.setText("Error")
-            print(f"Error loading thumbnail: {e}")
-    
-    def mousePressEvent(self, event):
-        """Handle click"""
-        if event.button() == Qt.LeftButton:
-            self.clicked.emit(self.photo.hothash)
-
-class GalleryView(QWidget):
-    """Photo gallery grid view"""
-    photo_selected = Signal(str)  # Emits hothash
-    
-    def __init__(self, api_client):
-        super().__init__()
-        self.api = api_client
-        self.photos = []
-        
-        self.setup_ui()
-        self.refresh()
-    
-    def setup_ui(self):
-        """Setup UI layout"""
-        layout = QVBoxLayout(self)
-        
-        # Scroll area
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        
-        # Container for grid
-        self.grid_container = QWidget()
-        self.grid_layout = QGridLayout(self.grid_container)
-        self.grid_layout.setSpacing(10)
-        
-        scroll.setWidget(self.grid_container)
-        layout.addWidget(scroll)
-    
-    def refresh(self):
-        """Reload photos from API"""
-        self.loader = PhotoLoader(self.api)
-        self.loader.photos_loaded.connect(self.display_photos)
-        self.loader.start()
-    
-    def display_photos(self, photos):
-        """Display photos in grid"""
-        self.photos = photos
-        
-        # Clear existing
-        while self.grid_layout.count():
-            item = self.grid_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-        
-        # Add photos in grid (5 columns)
-        columns = 5
-        for idx, photo in enumerate(photos):
-            row = idx // columns
-            col = idx % columns
-            
-            thumbnail = ThumbnailWidget(photo, self.api)
-            thumbnail.clicked.connect(self.photo_selected)
-            self.grid_layout.addWidget(thumbnail, row, col)
-
-
-## Image Similarity Search
-
-### Duplicate Finder Widget
-```python
-class DuplicateFinderWidget(QWidget):
-    """Widget for finding and managing duplicate images"""
-    
-    duplicates_found = Signal(list)
-    
-    def __init__(self, api_client):
-        super().__init__()
-        self.api = api_client
-        self.setup_ui()
-    
-    def setup_ui(self):
-        layout = QVBoxLayout(self)
-        
-        # Controls
-        controls_layout = QHBoxLayout()
-        
-        # Threshold slider
-        controls_layout.addWidget(QLabel("Similarity Threshold:"))
-        self.threshold_slider = QSlider(Qt.Horizontal)
-        self.threshold_slider.setRange(0, 16)
-        self.threshold_slider.setValue(3)
-        self.threshold_label = QLabel("3")
-        self.threshold_slider.valueChanged.connect(
-            lambda v: self.threshold_label.setText(str(v))
-        )
-        controls_layout.addWidget(self.threshold_slider)
-        controls_layout.addWidget(self.threshold_label)
-        
-        # Find button
-        self.find_btn = QPushButton("Find Duplicates")
-        self.find_btn.clicked.connect(self.find_all_duplicates)
-        controls_layout.addWidget(self.find_btn)
-        
-        layout.addLayout(controls_layout)
-        
-        # Results area
-        self.results_scroll = QScrollArea()
-        self.results_widget = QWidget()
-        self.results_layout = QVBoxLayout(self.results_widget)
-        self.results_scroll.setWidget(self.results_widget)
-        self.results_scroll.setWidgetResizable(True)
-        layout.addWidget(self.results_scroll)
-        
-        # Status
-        self.status_label = QLabel("Click 'Find Duplicates' to start")
-        layout.addWidget(self.status_label)
-    
-    def find_all_duplicates(self):
-        """Find all duplicate groups in the database"""
-        self.find_btn.setEnabled(False)
-        self.status_label.setText("Searching for duplicates...")
-        
-        # Start background task
-        self.worker = DuplicateFinderWorker(
-            self.api, 
-            threshold=self.threshold_slider.value()
-        )
-        self.worker.duplicates_found.connect(self.display_duplicates)
-        self.worker.finished.connect(lambda: self.find_btn.setEnabled(True))
-        self.worker.start()
-    
-    def display_duplicates(self, duplicate_groups):
-        """Display found duplicate groups"""
-        # Clear existing results
-        while self.results_layout.count():
-            item = self.results_layout.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-        
-        if not duplicate_groups:
-            self.status_label.setText("No duplicates found")
-            return
-        
-        self.status_label.setText(f"Found {len(duplicate_groups)} duplicate groups")
-        
-        # Display each group
-        for group_idx, group in enumerate(duplicate_groups):
-            group_widget = DuplicateGroupWidget(group, self.api)
-            self.results_layout.addWidget(group_widget)
-
-class DuplicateFinderWorker(QThread):
-    """Background worker for finding duplicates"""
-    duplicates_found = Signal(list)
-    
-    def __init__(self, api_client, threshold=3):
-        super().__init__()
-        self.api = api_client
-        self.threshold = threshold
-    
-    def run(self):
-        try:
-            # Get all images
-            all_images = self.api.get_image_files(limit=10000)
-            duplicate_groups = []
-            processed_ids = set()
-            
-            for image in all_images:
-                if image["id"] in processed_ids:
-                    continue
-                
-                # Find similar images
-                similar = self.api.find_similar_images(
-                    image["id"], 
-                    threshold=self.threshold,
-                    limit=50
-                )
-                
-                if similar:  # Found duplicates
-                    group = [image] + similar
-                    duplicate_groups.append(group)
-                    
-                    # Mark all as processed
-                    for img in group:
-                        processed_ids.add(img["id"])
-            
-            self.duplicates_found.emit(duplicate_groups)
-            
-        except Exception as e:
-            print(f"Error finding duplicates: {e}")
-            self.duplicates_found.emit([])
-
-class DuplicateGroupWidget(QWidget):
-    """Widget showing a group of duplicate images"""
-    
-    def __init__(self, image_group, api_client):
-        super().__init__()
-        self.images = image_group
-        self.api = api_client
-        self.setup_ui()
-    
-    def setup_ui(self):
-        layout = QVBoxLayout(self)
-        
-        # Group header
-        header = QLabel(f"Duplicate Group ({len(self.images)} images)")
-        header.setStyleSheet("font-weight: bold; padding: 5px;")
-        layout.addWidget(header)
-        
-        # Image thumbnails in horizontal layout
-        thumbs_layout = QHBoxLayout()
-        
-        for image in self.images:
-            thumb_widget = QWidget()
-            thumb_layout = QVBoxLayout(thumb_widget)
-            
-            # Thumbnail (placeholder - implement with actual API call)
-            thumb_label = QLabel("📷")
-            thumb_label.setFixedSize(100, 100)
-            thumb_label.setAlignment(Qt.AlignCenter)
-            thumb_label.setStyleSheet("border: 1px solid #ccc;")
-            thumb_layout.addWidget(thumb_label)
-            
-            # Image info
-            info_text = f"{image['filename']}\n{image['file_size']} bytes"
-            if image.get('perceptual_hash'):
-                info_text += f"\npHash: {image['perceptual_hash'][:8]}..."
-            
-            info_label = QLabel(info_text)
-            info_label.setAlignment(Qt.AlignCenter)
-            info_label.setWordWrap(True)
-            thumb_layout.addWidget(info_label)
-            
-            # Delete button
-            delete_btn = QPushButton("Delete")
-            delete_btn.clicked.connect(
-                lambda checked, img=image: self.delete_image(img)
-            )
-            thumb_layout.addWidget(delete_btn)
-            
-            thumbs_layout.addWidget(thumb_widget)
-        
-        layout.addLayout(thumbs_layout)
-        
-        # Separator
-        separator = QFrame()
-        separator.setFrameShape(QFrame.HLine)
-        separator.setFrameShadow(QFrame.Sunken)
-        layout.addWidget(separator)
-    
-    def delete_image(self, image):
-        """Delete an image from the duplicate group"""
-        reply = QMessageBox.question(
-            self, "Confirm Delete", 
-            f"Delete {image['filename']}?",
-            QMessageBox.Yes | QMessageBox.No
-        )
-        
-        if reply == QMessageBox.Yes:
-            try:
-                # Delete via photo API (cascade delete)
-                self.api.delete_photo(image['photo_hothash'])
-                
-                # Remove from group and refresh UI
-                self.images.remove(image)
-                self.setup_ui()
-                
-            except Exception as e:
-                QMessageBox.warning(self, "Error", f"Failed to delete: {e}")
-
-
-### Find Similar Images Widget
-```python
-class SimilarImagesFinder(QWidget):
-    """Widget for finding images similar to a selected image"""
-    
-    def __init__(self, api_client):
-        super().__init__()
-        self.api = api_client
-        self.reference_image_id = None
-        self.setup_ui()
-    
-    def setup_ui(self):
-        layout = QVBoxLayout(self)
-        
-        # Reference image selection
-        ref_layout = QHBoxLayout()
-        ref_layout.addWidget(QLabel("Reference Image ID:"))
-        self.image_id_input = QLineEdit()
-        self.image_id_input.setPlaceholderText("Enter image ID")
-        ref_layout.addWidget(self.image_id_input)
-        
-        self.select_btn = QPushButton("Find Similar")
-        self.select_btn.clicked.connect(self.find_similar)
-        ref_layout.addWidget(self.select_btn)
-        
-        layout.addLayout(ref_layout)
-        
-        # Threshold control
-        threshold_layout = QHBoxLayout()
-        threshold_layout.addWidget(QLabel("Similarity Threshold:"))
-        self.threshold_slider = QSlider(Qt.Horizontal)
-        self.threshold_slider.setRange(0, 16)
-        self.threshold_slider.setValue(5)
-        self.threshold_label = QLabel("5")
-        self.threshold_slider.valueChanged.connect(
-            lambda v: self.threshold_label.setText(str(v))
-        )
-        self.threshold_slider.valueChanged.connect(self.update_results)
-        threshold_layout.addWidget(self.threshold_slider)
-        threshold_layout.addWidget(self.threshold_label)
-        layout.addLayout(threshold_layout)
-        
-        # Results grid
-        self.results_scroll = QScrollArea()
-        self.results_widget = QWidget()
-        self.results_grid = QGridLayout(self.results_widget)
-        self.results_scroll.setWidget(self.results_widget)
-        self.results_scroll.setWidgetResizable(True)
-        layout.addWidget(self.results_scroll)
-        
-        # Status
-        self.status_label = QLabel("Enter image ID and click 'Find Similar'")
-        layout.addWidget(self.status_label)
-    
-    def set_reference_image(self, image_id: int):
-        """Set reference image from external source (e.g., gallery click)"""
-        self.reference_image_id = image_id
-        self.image_id_input.setText(str(image_id))
-        self.find_similar()
-    
-    def find_similar(self):
-        """Find images similar to the reference image"""
-        try:
-            image_id = int(self.image_id_input.text())
-        except ValueError:
-            self.status_label.setText("Please enter a valid image ID")
-            return
-        
-        self.reference_image_id = image_id
-        self.update_results()
-    
-    def update_results(self):
-        """Update results based on current threshold"""
-        if not self.reference_image_id:
-            return
-        
-        try:
-            threshold = self.threshold_slider.value()
-            similar_images = self.api.find_similar_images(
-                self.reference_image_id,
-                threshold=threshold,
-                limit=20
-            )
-            
-            self.display_results(similar_images)
-            
-        except Exception as e:
-            self.status_label.setText(f"Error: {e}")
-    
-    def display_results(self, images):
-        """Display similar images in grid"""
-        # Clear existing results
-        while self.results_grid.count():
-            item = self.results_grid.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-        
-        if not images:
-            self.status_label.setText("No similar images found")
-            return
-        
-        self.status_label.setText(f"Found {len(images)} similar images")
-        
-        # Display in grid (4 columns)
-        columns = 4
-        for idx, image in enumerate(images):
-            row = idx // columns
-            col = idx % columns
-            
-            # Create thumbnail widget
-            thumb_widget = self.create_thumbnail_widget(image)
-            self.results_grid.addWidget(thumb_widget, row, col)
-    
-    def create_thumbnail_widget(self, image):
-        """Create a thumbnail widget for an image"""
-        widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setSpacing(2)
-        
-        # Thumbnail placeholder
-        thumb_label = QLabel("📷")
-        thumb_label.setFixedSize(120, 120)
-        thumb_label.setAlignment(Qt.AlignCenter)
-        thumb_label.setStyleSheet("""
-            border: 1px solid #ccc;
-            background-color: #f5f5f5;
-        """)
-        layout.addWidget(thumb_label)
-        
-        # Image info
-        info_text = f"ID: {image['id']}\n{image['filename']}"
-        if image.get('perceptual_hash'):
-            info_text += f"\npHash: {image['perceptual_hash'][:8]}..."
-        
-        info_label = QLabel(info_text)
-        info_label.setAlignment(Qt.AlignCenter)
-        info_label.setWordWrap(True)
-        info_label.setStyleSheet("font-size: 10px;")
-        layout.addWidget(info_label)
-        
-        # Make clickable
-        widget.mousePressEvent = lambda event: self.on_image_clicked(image)
-        widget.setCursor(Qt.PointingHandCursor)
-        
-        return widget
-    
-    def on_image_clicked(self, image):
-        """Handle image click - could open detail view"""
-        print(f"Clicked image: {image['filename']}")
-        # Implement: open image detail, set as new reference, etc.
-
-
-### Integration with Main Gallery
-```python
-class EnhancedGalleryView(GalleryView):
-    """Enhanced gallery with similarity search integration"""
-    
-    def __init__(self, api_client):
-        super().__init__(api_client)
-        self.similarity_finder = SimilarImagesFinder(api_client)
-        
-        # Add similarity finder as a dock widget or tab
-        self.add_similarity_panel()
-    
-    def add_similarity_panel(self):
-        """Add similarity search panel to the gallery"""
-        # Create splitter for main gallery and similarity panel
-        splitter = QSplitter(Qt.Horizontal)
-        
-        # Move existing gallery to left side
-        gallery_widget = QWidget()
-        gallery_layout = QVBoxLayout(gallery_widget)
-        gallery_layout.addWidget(self)  # Move existing content
-        splitter.addWidget(gallery_widget)
-        
-        # Add similarity finder to right side
-        similarity_dock = QWidget()
-        similarity_layout = QVBoxLayout(similarity_dock)
-        similarity_layout.addWidget(QLabel("Find Similar Images"))
-        similarity_layout.addWidget(self.similarity_finder)
-        splitter.addWidget(similarity_dock)
-        
-        # Set initial sizes (70% gallery, 30% similarity)
-        splitter.setSizes([700, 300])
-    
-    def on_thumbnail_right_click(self, image_id):
-        """Handle right-click on thumbnail - show context menu"""
-        menu = QMenu(self)
-        
-        find_similar_action = menu.addAction("Find Similar Images")
-        find_similar_action.triggered.connect(
-            lambda: self.similarity_finder.set_reference_image(image_id)
-        )
-        
-        menu.exec_(QCursor.pos())
-```
-```
-
-## Configuration Management
-
-### Config File (config.json)
-
-```json
-{
-  "api": {
-    "base_url": "http://172.20.144.1:8000/api/v1",
-    "timeout": 30
-  },
-  "ui": {
-    "thumbnail_size": 150,
-    "grid_columns": 5,
-    "cache_size_mb": 100
-  },
-  "import": {
-    "default_author_id": 1,
-    "auto_archive": true
-  }
-}
-```
-
-### Config Loader (src/utils/config.py)
-
-```python
-import json
-from pathlib import Path
-from dataclasses import dataclass
-
-@dataclass
-class AppConfig:
-    api_base_url: str = "http://localhost:8000/api/v1"
-    api_timeout: int = 30
-    thumbnail_size: int = 150
-    grid_columns: int = 5
-    
-    @classmethod
-    def load(cls, config_file: str = "config.json"):
-        """Load config from JSON file"""
-        path = Path(config_file)
-        if not path.exists():
-            return cls()
-        
-        with open(path) as f:
-            data = json.load(f)
-        
-        return cls(
-            api_base_url=data["api"]["base_url"],
-            api_timeout=data["api"]["timeout"],
-            thumbnail_size=data["ui"]["thumbnail_size"],
-            grid_columns=data["ui"]["grid_columns"]
-        )
-```
-
-## Finding WSL IP Address
-
-### Automatic WSL IP Discovery (Windows)
-
-```python
-import subprocess
-
-def get_wsl_ip() -> str:
-    """Get WSL IP address from Windows"""
-    try:
-        # Run wsl command to get IP
-        result = subprocess.run(
-            ["wsl", "hostname", "-I"],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        if result.returncode == 0:
-            # Returns something like "172.20.144.1 "
-            ip = result.stdout.strip().split()[0]
-            return ip
-    except Exception as e:
-        print(f"Error getting WSL IP: {e}")
-    
-    return "localhost"
-
-# Use in config
-api_url = f"http://{get_wsl_ip()}:8000/api/v1"
-```
-
-## Deployment Checklist
-
-### Windows Setup
-
-1. **Install Python 3.10+**
-2. **Install Qt**:
-   ```
-   pip install PySide6 requests Pillow
-   ```
-
-3. **Clone repository** or copy frontend folder
-
-4. **Create config.json**:
-   ```json
-   {
-     "api": {
-       "base_url": "http://AUTO:8000/api/v1"
-     }
-   }
-   ```
-   (AUTO will be replaced with WSL IP)
-
-5. **Run application**:
-   ```
-   python main.py
-   ```
-
-### WSL Backend Setup
-
-1. **Start backend with external access**:
-   ```bash
-   cd /home/kjell/git_prosjekt/imalink/fase1
-   uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-   ```
-
-2. **Find IP address**:
-   ```bash
-   hostname -I
-   ```
-
-3. **Test from Windows**:
-   ```powershell
-   curl http://172.x.x.x:8000/api/v1/debug/status
-   ```
-
-## New: Image Similarity Features
-
-### Backend Support (Available Now)
-- ✅ **Perceptual Hash**: Auto-generated 16-bit pHash for all imported images
-- ✅ **Similarity Search API**: `GET /image-files/similar/{image_id}`
-- ✅ **Threshold Control**: Hamming distance 0-16 (0=identical, 16=different)
-- ✅ **Duplicate Detection**: Find near-identical images automatically
-
-### API Usage Examples
-```python
-# Find similar images
-similar = api_client.find_similar_images(
-    image_id=123,
-    threshold=5,    # Allow some differences
-    limit=10        # Max 10 results
-)
-
-# Upload with duplicate check
-result = api_client.upload_image_with_similarity_check(
-    "photo.jpg", 
-    check_duplicates=True
-)
-if result.get("similar_images"):
-    print("Warning: Similar images found!")
-```
-
-### Qt Implementation
-- ✅ **DuplicateFinderWidget**: Find and manage duplicate groups
-- ✅ **SimilarImagesFinder**: Interactive similarity search
-- ✅ **Enhanced Gallery**: Right-click "Find Similar" integration
-- ✅ **Background Processing**: Non-blocking similarity search
-
-## New: Coldpreview Feature
-
-### Overview
-Coldpreview provides medium-size preview images (800-1200px) for better detail viewing without downloading full resolution files. Unlike hotpreview (150x150 thumbnails), coldpreview offers sufficient quality for photo evaluation.
-
-### Backend Support (Available Now)
-- ✅ **Server Storage**: Backend handles file storage and organization
-- ✅ **Dynamic Resizing**: On-the-fly resizing with width/height parameters  
-- ✅ **API Endpoints**: PUT/GET/DELETE /photos/{hothash}/coldpreview
-- ✅ **Auto-optimization**: JPEG compression with quality control
-- ✅ **Upload Validation**: Automatic image format validation and error handling
-
-### API Usage Examples
-```python
-# Upload coldpreview for a photo
-result = api_client.upload_photo_coldpreview(
-    hothash="abc123...",
-    image_path="photo_medium.jpg"
-)
-
-# Get coldpreview (original size)
-image_data = api_client.get_photo_coldpreview("abc123...")
-
-# Get resized coldpreview
-image_data = api_client.get_photo_coldpreview(
-    hothash="abc123...",
-    width=800,      # Resize to 800px width
-    height=600      # Max 600px height (maintains aspect ratio)
-)
-
-# Delete coldpreview
-api_client.delete_photo_coldpreview("abc123...")
-```
-
-### Qt Implementation Recommendations
-
-#### PhotoDetailView with Coldpreview
-```python
-class PhotoDetailView(QWidget):
-    """Detailed view of a single photo with coldpreview support"""
-    
-    def __init__(self, api_client: ImaLinkAPI):
-        super().__init__()
-        self.api_client = api_client
-        self.current_photo = None
-        self.setup_ui()
-    
-    def setup_ui(self):
-        layout = QVBoxLayout()
-        
-        # Image display area
-        self.image_label = QLabel()
-        self.image_label.setAlignment(Qt.AlignCenter)
-        self.image_label.setMinimumSize(800, 600)
-        self.image_label.setStyleSheet("border: 1px solid gray;")
-        layout.addWidget(self.image_label)
-        
-        # Controls
-        controls = QHBoxLayout()
-        
-        # Quality toggle buttons
-        self.hotpreview_btn = QPushButton("Thumbnail (150px)")
-        self.coldpreview_btn = QPushButton("Medium (800px)")
-        self.fullres_btn = QPushButton("Full Resolution")
-        
-        self.hotpreview_btn.clicked.connect(self.load_hotpreview)
-        self.coldpreview_btn.clicked.connect(self.load_coldpreview)
-        self.fullres_btn.clicked.connect(self.load_fullres)
-        
-        controls.addWidget(self.hotpreview_btn)
-        controls.addWidget(self.coldpreview_btn)
-        controls.addWidget(self.fullres_btn)
-        
-        layout.addLayout(controls)
-        self.setLayout(layout)
-    
-    def set_photo(self, photo: Photo):
-        """Load a photo for detailed viewing"""
-        self.current_photo = photo
-        # Start with coldpreview for good balance of quality/speed
-        self.load_coldpreview()
-    
-    def load_hotpreview(self):
-        """Load 150x150 thumbnail (fast, low quality)"""
-        if not self.current_photo:
-            return
-            
-        try:
-            image_data = self.api_client.get_photo_thumbnail(self.current_photo.hothash)
-            self.display_image(image_data, "Hotpreview (150x150)")
-        except Exception as e:
-            self.image_label.setText(f"Error loading hotpreview: {e}")
-    
-    def load_coldpreview(self):
-        """Load medium-size preview (good quality, fast)"""
-        if not self.current_photo:
-            return
-            
-        try:
-            # Get coldpreview resized to fit our display area
-            image_data = self.api_client.get_photo_coldpreview(
-                self.current_photo.hothash,
-                width=800,    # Fit our display area
-                height=600
-            )
-            self.display_image(image_data, "Coldpreview (800x600)")
-        except requests.HTTPError as e:
-            if e.response.status_code == 404:
-                self.image_label.setText("No coldpreview available")
-            else:
-                self.image_label.setText(f"Error loading coldpreview: {e}")
-        except Exception as e:
-            self.image_label.setText(f"Error loading coldpreview: {e}")
-    
-    def load_fullres(self):
-        """Load full resolution image (slow, high quality)"""
-        # Implementation depends on how full-resolution images are accessed
-        # This might require additional API endpoints or direct file access
-        self.image_label.setText("Full resolution loading not implemented yet")
-    
-    def display_image(self, image_data: bytes, label: str):
-        """Display image data in the label"""
-        pixmap = QPixmap()
-        pixmap.loadFromData(image_data)
-        
-        # Scale to fit while maintaining aspect ratio
-        scaled_pixmap = pixmap.scaled(
-            self.image_label.size(),
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation
-        )
-        
-        self.image_label.setPixmap(scaled_pixmap)
-        self.setWindowTitle(f"Photo Detail - {label}")
-```
-
-#### Gallery with Progressive Loading
-```python
-class PhotoGalleryWidget(QWidget):
-    """Gallery view with progressive loading strategy"""
-    
-    def load_photo_preview(self, photo: Photo, size_hint: str = "auto"):
-        """Load appropriate preview based on size hint
-        
-        Args:
-            photo: Photo object
-            size_hint: "thumbnail", "medium", "large", or "auto"
-        """
-        if size_hint == "auto":
-            # Decide based on display context
-            if self.thumbnail_size <= 150:
-                size_hint = "thumbnail"
-            elif self.thumbnail_size <= 400:
-                size_hint = "medium"
-            else:
-                size_hint = "large"
-        
-        if size_hint == "thumbnail":
-            # Use hotpreview for gallery thumbnails
-            return self.api_client.get_photo_thumbnail(photo.hothash)
-        
-        elif size_hint == "medium":
-            # Use coldpreview for medium-size displays
-            return self.api_client.get_photo_coldpreview(
-                photo.hothash,
-                width=self.thumbnail_size * 2,  # 2x for retina/high-DPI
-                height=self.thumbnail_size * 2
-            )
-        
-        else:  # large
-            # Use coldpreview at original size
-            return self.api_client.get_photo_coldpreview(photo.hothash)
-```
-
-#### ColdpreviewUploadDialog
-```python
-class ColdpreviewUploadDialog(QDialog):
-    """Dialog for uploading coldpreview to existing photos"""
-    
-    def __init__(self, api_client: ImaLinkAPI, photo: Photo):
-        super().__init__()
-        self.api_client = api_client
-        self.photo = photo
-        self.setup_ui()
-    
-    def setup_ui(self):
-        layout = QVBoxLayout()
-        
-        layout.addWidget(QLabel(f"Upload coldpreview for: {self.photo.title or 'Untitled'}"))
-        
-        # File selection
-        file_layout = QHBoxLayout()
-        self.file_path = QLineEdit()
-        browse_btn = QPushButton("Browse...")
-        browse_btn.clicked.connect(self.browse_file)
-        
-        file_layout.addWidget(QLabel("Image file:"))
-        file_layout.addWidget(self.file_path)
-        file_layout.addWidget(browse_btn)
-        layout.addLayout(file_layout)
-        
-        # Buttons
-        buttons = QHBoxLayout()
-        upload_btn = QPushButton("Upload")
-        cancel_btn = QPushButton("Cancel")
-        
-        upload_btn.clicked.connect(self.upload_coldpreview)
-        cancel_btn.clicked.connect(self.reject)
-        
-        buttons.addWidget(upload_btn)
-        buttons.addWidget(cancel_btn)
-        layout.addLayout(buttons)
-        
-        self.setLayout(layout)
-    
-    def browse_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Coldpreview Image",
-            "",
-            "Image Files (*.jpg *.jpeg *.png *.bmp *.tiff)"
-        )
-        if file_path:
-            self.file_path.setText(file_path)
-    
-    def upload_coldpreview(self):
-        if not self.file_path.text():
-            QMessageBox.warning(self, "Error", "Please select a file")
-            return
-        
-        try:
-            result = self.api_client.upload_photo_coldpreview(
-                self.photo.hothash,
-                self.file_path.text()
-            )
-            QMessageBox.information(
-                self,
-                "Success",
-                f"Coldpreview uploaded successfully!\n"
-                f"Size: {result['data']['width']}x{result['data']['height']} "
-                f"({result['data']['size']} bytes)"
-            )
-            self.accept()
-        except Exception as e:
-            QMessageBox.critical(self, "Error", f"Failed to upload coldpreview: {e}")
-```
-
-### Best Practices
-
-1. **Progressive Loading**: Start with hotpreview for fast gallery loading, upgrade to coldpreview on demand
-2. **Smart Caching**: Cache coldpreview data locally to avoid repeated downloads
-3. **Size Optimization**: Use dynamic resizing parameters to fit UI containers
-4. **Error Handling**: Gracefully fall back to hotpreview if coldpreview is unavailable
-5. **User Choice**: Let users toggle between quality levels based on their needs
-6. **File Validation**: Backend automatically validates image format and content-type
-
-## Next Steps
-
-1. Create new repository: `imalink-qt-frontend`
-2. Implement basic API client with similarity support
-3. Create main window with gallery view
-4. Add import functionality with duplicate detection
-5. Add photo detail view with "find similar" button
-6. Add duplicate finder tab/panel
-7. Add search/filter with similarity threshold
-8. Add settings dialog
-9. Package as Windows executable (PyInstaller)
+# ImaLink Qt Frontend Development Guide
+## Modern Qt Integration with Hybrid Storage Architecture
+
+**Version**: 2.0  
+**Date**: October 18, 2025  
+**Target**: Qt 6.x with C++ and Python bindings
 
 ---
 
-## Resources
+## 🎯 **Overview**
 
-- **Qt Documentation**: https://doc.qt.io/qtforpython-6/
-- **API Reference**: See `API_REFERENCE.md` in main repo
-- **FastAPI Docs**: http://localhost:8000/docs (when backend running)
+This guide covers developing Qt frontend applications that integrate with ImaLink's hybrid storage architecture. The frontend enables users to manage photos while leveraging ImaLink's revolutionary combination of database-powered organization and user-controlled file structures.
+
+---
+
+## 🏗️ **Architecture Integration**
+
+### **Qt Frontend ↔ ImaLink Backend**
+
+```
+┌─────────────────────────────────────┐
+│           Qt Frontend               │
+│  ┌─────────────┐  ┌─────────────┐   │
+│  │ FileStorage │  │ ImportSession│   │
+│  │ Management  │  │ Processing  │   │
+│  │             │  │             │   │
+│  │ File System │  │ HTTP Client │   │
+│  │ Browser     │  │ API Layer   │   │
+│  └─────────────┘  └─────────────┘   │
+└─────────────┬───────────┬───────────┘
+              │           │
+              │      HTTP/REST API
+              │    (Metadata Only)
+              │           │
+┌─────────────▼───────────▼───────────┐
+│         ImaLink Backend             │
+│  ┌──────────────┐ ┌──────────────┐  │
+│  │ FileStorage  │ │ ImportSession│  │
+│  │ Metadata     │ │ Metadata     │  │
+│  │ Storage      │ │ Storage      │  │
+│  └──────────────┘ └──────────────┘  │
+└─────────────────────────────────────┘
+```
+
+### **Key Integration Points**
+
+1. **FileStorage Management**: Qt handles creation, scanning, and monitoring of storage directories
+2. **File System Operations**: Qt's `QFileDialog`, `QDir`, `QFileInfo` for complete file management
+3. **ImportSession Processing**: Frontend handles file scanning, copying, and organization
+4. **HTTP Communication**: `QNetworkAccessManager` for sending metadata to backend
+5. **JSON Index Generation**: Frontend creates and maintains JSON indexes locally
+6. **Backend Integration**: Send only metadata and references to backend database
+
+---
+
+## 📚 **Qt Components Overview**
+
+### **Core Qt Classes for ImaLink Integration**
+
+#### **1. File System Management**
+```cpp
+// Qt Classes for File Operations
+QFileDialog          // Storage path selection
+QDir                 // Directory operations and scanning
+QFileInfo            // File metadata extraction
+QFileSystemWatcher   // Monitor for external file changes
+QStorageInfo         // Disk space and accessibility checking
+```
+
+#### **2. Network Communication**
+```cpp
+// Qt Classes for Backend Integration  
+QNetworkAccessManager // HTTP client for API calls
+QNetworkRequest       // HTTP request configuration
+QNetworkReply         // API response handling
+QJsonDocument         // JSON parsing and generation
+QJsonObject/Array     // JSON data structures
+```
+
+#### **3. UI Components**
+```cpp
+// Qt Widgets for ImaLink UI
+QTreeView            // FileStorage and ImportSession hierarchy
+QListWidget          // Photo thumbnail display
+QProgressBar         // Import and scanning progress
+QFileSystemModel     // File browser integration
+QTabWidget           // Multi-storage management
+```
+
+---
+
+## 🔌 **Backend API Integration**
+
+### **HTTP Client Service Class**
+
+```cpp
+// ImaLinkApiClient.h
+#pragma once
+#include <QObject>
+#include <QNetworkAccessManager>
+#include <QJsonObject>
+#include <QJsonDocument>
+
+class ImaLinkApiClient : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit ImaLinkApiClient(const QString& baseUrl = "http://localhost:8000/api/v1", 
+                             QObject *parent = nullptr);
+    
+    // FileStorage Metadata (Frontend creates directories, backend stores metadata)
+    void registerFileStorage(const QString& storageUuid, const QString& basePath, 
+                            const QString& displayName, const QString& description = QString());
+    void getFileStorageMetadata();
+    void updateFileStorageMetadata(const QString& storageUuid, const QJsonObject& metadata);
+    void deleteFileStorageRecord(const QString& storageUuid);
+    
+    // ImportSession Metadata (Frontend processes files, backend stores session info)
+    void registerImportSession(const QString& sessionUuid, const QString& title, 
+                              const QString& description, const QString& storageUuid, 
+                              int fileCount, qint64 totalSize, int defaultAuthorId = -1);
+    void getImportSessionMetadata();
+    void updateImportSessionStatus(const QString& sessionUuid, const QString& status);
+    
+    // Photo Metadata (Frontend indexes files, backend provides photo info)
+    void uploadPhotoMetadata(const QString& hothash, const QJsonObject& metadata);
+    void getPhotosBySession(const QString& sessionUuid);
+    void getPhotosByStorage(const QString& storageUuid);
+    void searchPhotos(const QJsonObject& searchCriteria);
+
+signals:
+    // FileStorage Metadata Signals
+    void fileStorageRegistered(const QJsonObject& storageMetadata);
+    void fileStorageMetadataReceived(const QJsonArray& storages);
+    void fileStorageUpdated(const QString& storageUuid, const QJsonObject& metadata);
+    
+    // ImportSession Metadata Signals
+    void importSessionRegistered(const QJsonObject& sessionMetadata);
+    void importSessionMetadataReceived(const QJsonArray& sessions);
+    
+    // Photo Metadata Signals
+    void photoMetadataUploaded(const QString& hothash, const QJsonObject& result);
+    void photosReceived(const QJsonArray& photos);
+    void photoSearchResults(const QJsonArray& results);
+    
+    // Error Signals
+    void apiError(const QString& operation, const QString& error);
+
+private slots:
+    void onNetworkReply();
+
+private:
+    QNetworkAccessManager* m_networkManager;
+    QString m_baseUrl;
+    
+    void sendRequest(const QString& method, const QString& endpoint, 
+                    const QJsonObject& data = QJsonObject());
+};
+```
+
+### **Implementation Example**
+
+```cpp
+// ImaLinkApiClient.cpp
+#include "ImaLinkApiClient.h"
+#include <QNetworkRequest>
+#include <QNetworkReply>
+#include <QJsonDocument>
+
+ImaLinkApiClient::ImaLinkApiClient(const QString& baseUrl, QObject *parent)
+    : QObject(parent)
+    , m_networkManager(new QNetworkAccessManager(this))
+    , m_baseUrl(baseUrl)
+{
+    connect(m_networkManager, &QNetworkAccessManager::finished,
+            this, &ImaLinkApiClient::onNetworkReply);
+}
+
+void ImaLinkApiClient::registerFileStorage(const QString& storageUuid,
+                                          const QString& basePath, 
+                                          const QString& displayName,
+                                          const QString& description)
+{
+    QJsonObject data;
+    data["storage_uuid"] = storageUuid;
+    data["base_path"] = basePath;
+    data["display_name"] = displayName;
+    if (!description.isEmpty()) {
+        data["description"] = description;
+    }
+    
+    sendRequest("POST", "/file-storage/register", data);
+}
+
+void ImaLinkApiClient::sendRequest(const QString& method, const QString& endpoint,
+                                  const QJsonObject& data)
+{
+    QUrl url(m_baseUrl + endpoint);
+    QNetworkRequest request(url);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+    
+    QJsonDocument doc(data);
+    QByteArray jsonData = doc.toJson();
+    
+    QNetworkReply* reply = nullptr;
+    if (method == "POST") {
+        reply = m_networkManager->post(request, jsonData);
+    } else if (method == "GET") {
+        reply = m_networkManager->get(request);
+    } else if (method == "PUT") {
+        reply = m_networkManager->put(request, jsonData);
+    }
+    
+    // Store operation context in reply for handling
+    reply->setProperty("operation", endpoint);
+}
+
+void ImaLinkApiClient::onNetworkReply()
+{
+    QNetworkReply* reply = qobject_cast<QNetworkReply*>(sender());
+    if (!reply) return;
+    
+    QString operation = reply->property("operation").toString();
+    
+    if (reply->error() != QNetworkReply::NoError) {
+        emit apiError(operation, reply->errorString());
+        reply->deleteLater();
+        return;
+    }
+    
+    QJsonDocument doc = QJsonDocument::fromJson(reply->readAll());
+    QJsonObject response = doc.object();
+    
+    // Handle different API responses
+    if (operation == "/file-storage/register") {
+        emit fileStorageRegistered(response["data"].toObject());
+    } else if (operation == "/file-storage/metadata") {
+        emit fileStorageMetadataReceived(response["data"].toObject()["storages"].toArray());
+    } else if (operation.startsWith("/import-sessions/register")) {
+        emit importSessionRegistered(response["data"].toObject());
+    }
+    // ... handle other operations
+    
+    reply->deleteLater();
+}
+```
+
+---
+
+## 🖼️ **Main Window Implementation**
+
+### **Primary Application Window**
+
+```cpp
+// MainWindow.h
+#pragma once
+#include <QMainWindow>
+#include <QTabWidget>
+#include <QTreeView>
+#include <QListWidget>
+#include <QProgressBar>
+#include <QLabel>
+#include "ImaLinkApiClient.h"
+#include "StorageManagerWidget.h"
+#include "ImportSessionWidget.h"
+#include "PhotoBrowserWidget.h"
+
+class MainWindow : public QMainWindow
+{
+    Q_OBJECT
+
+public:
+    explicit MainWindow(QWidget *parent = nullptr);
+    ~MainWindow();
+
+private slots:
+    // Storage Management
+    void onStorageCreated(const QJsonObject& storage);
+    void onStorageAccessibilityChanged(const QString& uuid, bool accessible);
+    
+    // Import Sessions
+    void onImportSessionCreated(const QJsonObject& session);
+    void onImportProgressUpdated(int sessionId, int progress);
+    
+    // File Operations
+    void onFileSystemChanged(const QString& path);
+    void refreshStorageStatus();
+
+private:
+    void setupUI();
+    void setupConnections();
+    void loadInitialData();
+    
+    // UI Components
+    QTabWidget* m_tabWidget;
+    StorageManagerWidget* m_storageManager;
+    ImportSessionWidget* m_importManager;  
+    PhotoBrowserWidget* m_photoBrowser;
+    QProgressBar* m_statusProgress;
+    QLabel* m_statusLabel;
+    
+    // Backend Integration
+    ImaLinkApiClient* m_apiClient;
+    QTimer* m_refreshTimer;
+};
+```
+
+### **Storage Manager Widget**
+
+```cpp
+// StorageManagerWidget.h  
+#pragma once
+#include <QWidget>
+#include <QTreeView>
+#include <QPushButton>
+#include <QProgressBar>
+#include <QLabel>
+#include <QFileSystemModel>
+#include "ImaLinkApiClient.h"
+
+class StorageManagerWidget : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit StorageManagerWidget(ImaLinkApiClient* apiClient, QWidget *parent = nullptr);
+
+public slots:
+    void refreshStorageMetadata();
+    void createNewStorage();
+    void scanStorageForChanges();
+    void generateLocalIndexes();
+    void syncWithBackend();
+
+private slots:
+    void onStorageSelectionChanged();
+    void onStorageDirectoryCreated(const QString& uuid, const QString& path);
+    void onLocalScanCompleted(const QString& uuid, const QJsonObject& changes);
+    void onIndexGenerationComplete(const QString& uuid);
+
+signals:
+    void storageSelected(const QString& storageUuid);
+    void storageCreated(const QString& storageUuid, const QString& path);
+    void scanProgressUpdated(int progress);
+    void indexGenerationProgress(int progress);
+    void syncCompleted(const QString& storageUuid);
+
+private:
+    void setupUI();
+    void setupStorageTree();
+    void updateStorageStatus(const QJsonObject& storage);
+    
+    ImaLinkApiClient* m_apiClient;
+    
+    // UI Components
+    QTreeView* m_storageTree;
+    QPushButton* m_createButton;
+    QPushButton* m_scanButton;  
+    QPushButton* m_generateIndexButton;
+    QPushButton* m_syncButton;
+    QProgressBar* m_scanProgress;
+    QProgressBar* m_indexProgress;
+    QLabel* m_statusLabel;
+    
+    // Data Models and State
+    QStandardItemModel* m_storageModel;
+    QString m_selectedStorageUuid;
+    QFileSystemWatcher* m_storageWatcher;
+};
+
+// StorageManagerWidget.cpp
+StorageManagerWidget::StorageManagerWidget(ImaLinkApiClient* apiClient, QWidget *parent)
+    : QWidget(parent)
+    , m_apiClient(apiClient)
+    , m_storageWatcher(new QFileSystemWatcher(this))
+{
+    setupUI();
+    
+    // Connect API signals for metadata operations
+    connect(m_apiClient, &ImaLinkApiClient::fileStorageMetadataReceived,
+            this, &StorageManagerWidget::onStorageMetadataReceived);
+    connect(m_apiClient, &ImaLinkApiClient::fileStorageRegistered,
+            this, &StorageManagerWidget::onStorageRegistered);
+    
+    // Connect file system watcher for local changes
+    connect(m_storageWatcher, &QFileSystemWatcher::directoryChanged,
+            this, &StorageManagerWidget::onDirectoryChanged);
+    
+    // Load initial metadata
+    refreshStorageMetadata();
+}
+
+void StorageManagerWidget::createNewStorage()
+{
+    // Open dialog to select base path
+    QString basePath = QFileDialog::getExistingDirectory(
+        this, 
+        tr("Select Storage Base Directory"),
+        QDir::homePath(),
+        QFileDialog::ShowDirsOnly | QFileDialog::DontResolveSymlinks
+    );
+    
+    if (!basePath.isEmpty()) {
+        // Get display name from user
+        bool ok;
+        QString displayName = QInputDialog::getText(
+            this,
+            tr("Storage Name"),
+            tr("Enter display name for this storage:"),
+            QLineEdit::Normal,
+            QDir(basePath).dirName(),
+            &ok
+        );
+        
+        if (ok && !displayName.isEmpty()) {
+            // Generate UUID for storage
+            QString storageUuid = QUuid::createUuid().toString(QUuid::WithoutBraces);
+            
+            // Create physical directory structure
+            createStorageDirectory(basePath, storageUuid);
+            
+            // Register with backend (metadata only)
+            m_apiClient->registerFileStorage(storageUuid, basePath, displayName);
+        }
+    }
+}
+
+void StorageManagerWidget::scanStorageForChanges()
+{
+    if (m_selectedStorageUuid.isEmpty()) {
+        QMessageBox::information(this, tr("No Selection"), 
+                                tr("Please select a storage to scan."));
+        return;
+    }
+    
+    m_scanProgress->setVisible(true);
+    m_scanProgress->setValue(0);
+    m_statusLabel->setText(tr("Scanning storage for changes..."));
+    
+    // Perform local file system scan (frontend responsibility)
+    performLocalStorageScan(m_selectedStorageUuid);
+}
+
+void StorageManagerWidget::performLocalStorageScan(const QString& storageUuid)
+{
+    // Get storage path from model
+    QString storagePath = getStoragePath(storageUuid);
+    if (storagePath.isEmpty()) return;
+    
+    // Scan directory structure
+    QDir storageDir(storagePath);
+    scanDirectoryRecursively(storageDir);
+    
+    // Generate/update JSON indexes
+    generateLocalIndexes();
+    
+    // Sync changes with backend
+    syncWithBackend();
+}
+```
+
+---
+
+## � **Frontend-Backend Responsibility Matrix**
+
+### **Frontend Responsibilities (Qt Application)**
+
+| **Operation** | **Frontend Action** | **Backend Interaction** |
+|---------------|---------------------|-------------------------|
+| **Storage Creation** | Create directory structure with UUID naming | Register metadata only |
+| **File Import** | Copy files, organize structure, generate hashes | Upload file metadata records |
+| **Index Generation** | Create JSON indexes locally | No backend involvement |
+| **File Scanning** | Scan directories, detect changes | Sync metadata updates |
+| **Photo Processing** | Extract EXIF, generate hotpreviews | Store photo metadata |
+| **Directory Reorganization** | Move/rename files freely | Update file paths in metadata |
+
+### **API Endpoints (Metadata Operations Only)**
+
+```http
+# FileStorage Metadata Management
+POST   /api/v1/file-storage/register          # Register new storage metadata
+GET    /api/v1/file-storage/metadata          # Get all storage metadata
+PUT    /api/v1/file-storage/{uuid}/metadata   # Update storage metadata
+DELETE /api/v1/file-storage/{uuid}            # Remove storage record
+
+# ImportSession Metadata Management  
+POST   /api/v1/import-sessions/register        # Register session metadata
+GET    /api/v1/import-sessions/metadata        # Get session metadata
+PUT    /api/v1/import-sessions/{uuid}/status   # Update session status
+
+# Photo Metadata Management
+POST   /api/v1/photos/metadata                 # Upload photo metadata batch
+GET    /api/v1/photos/by-session/{uuid}       # Get photos by session
+GET    /api/v1/photos/by-storage/{uuid}       # Get photos by storage
+POST   /api/v1/photos/search                  # Search photos by criteria
+```
+
+### **Local File Operations (No Backend Interaction)**
+
+```cpp
+// Directory Structure Creation
+void createStorageStructure(const QString& basePath, const QString& uuid) {
+    QDir baseDir(basePath);
+    QString storageName = QString("imalink_%1").arg(uuid);
+    
+    // Create main directories
+    baseDir.mkdir(storageName);
+    QDir storageDir(baseDir.filePath(storageName));
+    storageDir.mkdir("imports");
+    storageDir.mkdir("photos"); 
+    storageDir.mkdir(".imalink");
+    storageDir.mkdir(".imalink/hotpreviews");
+    
+    // Create index files
+    QJsonObject masterIndex;
+    masterIndex["storage_uuid"] = uuid;
+    masterIndex["created_at"] = QDateTime::currentDateTime().toString(Qt::ISODate);
+    masterIndex["import_sessions"] = QJsonArray();
+    
+    QFile indexFile(storageDir.filePath("index.json"));
+    indexFile.open(QIODevice::WriteOnly);
+    indexFile.write(QJsonDocument(masterIndex).toJson());
+}
+
+// File Import Processing
+void ImportSessionWidget::processImportBatch() {
+    QString sessionUuid = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    m_currentSessionUuid = sessionUuid;
+    
+    // Create session directory
+    QString sessionDir = getSessionDirectory(sessionUuid);
+    QDir().mkpath(sessionDir);
+    
+    // Copy files with progress tracking
+    for (const QString& sourceFile : m_imageFiles) {
+        QString targetFile = generateTargetPath(sourceFile, sessionDir);
+        copyFileWithProgress(sourceFile, targetFile);
+        
+        // Generate hothash and extract metadata
+        QString hothash = generateHothash(targetFile);
+        QJsonObject metadata = extractFileMetadata(targetFile);
+        
+        emit fileCopyCompleted(sourceFile, targetFile);
+    }
+    
+    // Generate session index locally
+    generateSessionIndex();
+    
+    // Register with backend (metadata only)
+    registerWithBackend();
+}
+```
+
+---
+
+## �📁 **File System Integration**
+
+### **Directory Browser with Storage Awareness**
+
+```cpp
+// FileSystemBrowser.h
+#pragma once
+#include <QWidget>
+#include <QTreeView>
+#include <QFileSystemModel>
+#include <QFileInfo>
+#include <QDir>
+
+class FileSystemBrowser : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit FileSystemBrowser(QWidget *parent = nullptr);
+    
+    void setStorageRoot(const QString& path);
+    void highlightImportSession(int sessionId);
+
+public slots:
+    void refreshView();
+    void navigateToPath(const QString& path);
+
+signals:
+    void fileSelected(const QString& filePath);
+    void directoryChanged(const QString& newPath);
+    void importSessionDetected(const QString& sessionPath);
+
+private slots:
+    void onItemDoubleClicked(const QModelIndex& index);
+    void onSelectionChanged(const QItemSelection& selected);
+
+private:
+    void setupUI();
+    void detectImaLinkStructure(const QString& path);
+    bool isImaLinkStorage(const QString& path);
+    
+    QTreeView* m_fileTree;
+    QFileSystemModel* m_fileModel;
+    QString m_currentStorageRoot;
+    QStringList m_sessionDirectories;
+};
+
+// Implementation highlights
+bool FileSystemBrowser::isImaLinkStorage(const QString& path)
+{
+    QDir dir(path);
+    
+    // Check for ImaLink storage structure
+    if (dir.dirName().startsWith("imalink_")) {
+        // Check for required subdirectories
+        return dir.exists("imports") && 
+               dir.exists("photos") && 
+               dir.exists(".imalink") &&
+               QFile::exists(dir.filePath("index.json"));
+    }
+    
+    return false;
+}
+
+void FileSystemBrowser::detectImaLinkStructure(const QString& path)
+{
+    QDir dir(path);
+    
+    if (isImaLinkStorage(path)) {
+        // Found ImaLink storage, scan for session indexes
+        QDir importsDir(dir.filePath("imports"));
+        QStringList sessionFiles = importsDir.entryList(
+            QStringList() << "session_*.json", 
+            QDir::Files
+        );
+        
+        m_sessionDirectories.clear();
+        for (const QString& sessionFile : sessionFiles) {
+            // Extract session ID and add to tracking
+            QString sessionId = sessionFile.mid(8, sessionFile.length() - 13); // Remove "session_" and ".json"
+            m_sessionDirectories.append(sessionId);
+        }
+        
+        emit importSessionDetected(path);
+    }
+}
+```
+
+---
+
+## 🔄 **Import Workflow Implementation**
+
+### **Import Session Manager**
+
+```cpp
+// ImportSessionWidget.h
+#pragma once
+#include <QWidget>
+#include <QWizard>
+#include <QLabel>
+#include <QLineEdit>
+#include <QTextEdit>
+#include <QComboBox>
+#include <QProgressBar>
+#include <QListWidget>
+
+class ImportSessionWidget : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit ImportSessionWidget(ImaLinkApiClient* apiClient, QWidget *parent = nullptr);
+
+public slots:
+    void startNewImport();
+    void selectSourceDirectory();
+    void processImportBatch();
+    void copyFilesToStorage();
+    void generateSessionIndex();
+    void registerWithBackend();
+
+signals:
+    void importCompleted(const QString& sessionUuid);
+    void importProgressUpdated(int progress);
+    void fileCopyCompleted(const QString& sourceFile, const QString& targetFile);
+    void sessionIndexGenerated(const QString& sessionUuid);
+
+private:
+    void setupUI();
+    void validateImportSettings();
+    void scanSourceDirectory();
+    
+    ImaLinkApiClient* m_apiClient;
+    
+    // UI Components
+    QLineEdit* m_titleEdit;
+    QTextEdit* m_descriptionEdit;
+    QComboBox* m_storageCombo;
+    QComboBox* m_authorCombo;
+    QLabel* m_sourcePath;
+    QListWidget* m_fileList;
+    QProgressBar* m_importProgress;
+    QPushButton* m_startButton;
+    
+    // Import State
+    QString m_selectedSourcePath;
+    QStringList m_imageFiles;
+    QString m_selectedStorageUuid;
+    QString m_currentSessionUuid;
+    int m_selectedAuthorId;
+    
+    // File Processing
+    QThread* m_importThread;
+    QTimer* m_progressTimer;
+};
+
+// Import Wizard Implementation
+class ImportWizard : public QWizard
+{
+    Q_OBJECT
+
+public:
+    explicit ImportWizard(ImaLinkApiClient* apiClient, QWidget *parent = nullptr);
+
+private:
+    enum PageId {
+        SourceSelectionPage,
+        StorageSelectionPage,
+        MetadataPage,
+        ProcessingPage,
+        CompletionPage
+    };
+    
+    ImaLinkApiClient* m_apiClient;
+};
+
+// Source Selection Page
+class SourceSelectionPage : public QWizardPage
+{
+    Q_OBJECT
+
+public:
+    explicit SourceSelectionPage(QWidget *parent = nullptr);
+    
+    bool validatePage() override;
+    QString selectedPath() const { return m_pathEdit->text(); }
+
+private slots:
+    void browseForDirectory();
+    void scanDirectory();
+
+private:
+    QLineEdit* m_pathEdit;
+    QPushButton* m_browseButton;
+    QLabel* m_fileCountLabel;
+    QListWidget* m_previewList;
+    
+    QStringList m_foundFiles;
+};
+
+void SourceSelectionPage::browseForDirectory()
+{
+    QString path = QFileDialog::getExistingDirectory(
+        this,
+        tr("Select Source Directory"),
+        m_pathEdit->text().isEmpty() ? QDir::homePath() : m_pathEdit->text(),
+        QFileDialog::ShowDirsOnly
+    );
+    
+    if (!path.isEmpty()) {
+        m_pathEdit->setText(path);
+        scanDirectory();
+    }
+}
+
+void SourceSelectionPage::scanDirectory()
+{
+    QString path = m_pathEdit->text();
+    if (path.isEmpty()) return;
+    
+    QDir dir(path);
+    QStringList imageExtensions = {"*.jpg", "*.jpeg", "*.cr2", "*.nef", "*.arw", "*.dng", "*.png", "*.tiff"};
+    
+    m_foundFiles = dir.entryList(imageExtensions, QDir::Files);
+    
+    m_fileCountLabel->setText(tr("Found %1 image files").arg(m_foundFiles.count()));
+    
+    // Show preview of first 10 files
+    m_previewList->clear();
+    for (int i = 0; i < qMin(10, m_foundFiles.count()); ++i) {
+        QListWidgetItem* item = new QListWidgetItem(m_foundFiles.at(i));
+        m_previewList->addItem(item);
+    }
+    
+    if (m_foundFiles.count() > 10) {
+        QListWidgetItem* moreItem = new QListWidgetItem(tr("... and %1 more files").arg(m_foundFiles.count() - 10));
+        moreItem->setFlags(Qt::NoItemFlags);
+        m_previewList->addItem(moreItem);
+    }
+}
+```
+
+---
+
+## 🖼️ **Photo Browser Integration**
+
+### **Thumbnail View with Hotpreview Support**
+
+```cpp
+// PhotoBrowserWidget.h
+#pragma once
+#include <QWidget>
+#include <QListWidget>
+#include <QLabel>
+#include <QScrollArea>
+#include <QNetworkAccessManager>
+#include <QPixmap>
+
+class PhotoBrowserWidget : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit PhotoBrowserWidget(ImaLinkApiClient* apiClient, QWidget *parent = nullptr);
+    
+    void setImportSession(int sessionId);
+    void setStorageLocation(const QString& storageUuid);
+
+public slots:
+    void refreshPhotos();
+    void showPhotoDetails(const QString& hothash);
+
+signals:
+    void photoSelected(const QString& hothash);
+    void photoDoubleClicked(const QString& filePath);
+
+private slots:
+    void onThumbnailClicked(QListWidgetItem* item);
+    void onThumbnailLoaded();
+
+private:
+    void setupUI();
+    void loadThumbnails();
+    void loadHotpreview(const QString& hothash, QListWidgetItem* item);
+    
+    ImaLinkApiClient* m_apiClient;
+    QNetworkAccessManager* m_thumbnailLoader;
+    
+    // UI Components
+    QListWidget* m_photoGrid;
+    QLabel* m_photoDetails;
+    QScrollArea* m_detailsArea;
+    
+    // Current State
+    int m_currentSessionId;
+    QString m_currentStorageUuid;
+    QJsonArray m_currentPhotos;
+};
+
+// Thumbnail Loading Implementation
+void PhotoBrowserWidget::loadHotpreview(const QString& hothash, QListWidgetItem* item)
+{
+    // Construct hotpreview URL based on storage structure
+    // Format: {storage_root}/.imalink/hotpreviews/{hash[0:2]}/{hash[2:4]}/{hash}.jpg
+    QString previewPath = QString("/.imalink/hotpreviews/%1/%2/%3.jpg")
+        .arg(hothash.left(2))
+        .arg(hothash.mid(2, 2))  
+        .arg(hothash);
+    
+    // For local files, load directly
+    QPixmap thumbnail;
+    if (thumbnail.load(m_currentStorageRoot + previewPath)) {
+        item->setIcon(QIcon(thumbnail.scaled(200, 200, Qt::KeepAspectRatio, Qt::SmoothTransformation)));
+    } else {
+        // Fallback to generic image icon
+        item->setIcon(style()->standardIcon(QStyle::SP_FileIcon));
+    }
+}
+```
+
+---
+
+## ⚙️ **Configuration and Settings**
+
+### **Application Settings Management**
+
+```cpp
+// SettingsManager.h
+#pragma once
+#include <QObject>
+#include <QSettings>
+#include <QString>
+
+class SettingsManager : public QObject
+{
+    Q_OBJECT
+
+public:
+    static SettingsManager* instance();
+    
+    // API Configuration
+    QString apiBaseUrl() const;
+    void setApiBaseUrl(const QString& url);
+    
+    QString apiToken() const;
+    void setApiToken(const QString& token);
+    
+    // Storage Preferences
+    QString defaultStoragePath() const;
+    void setDefaultStoragePath(const QString& path);
+    
+    QStringList recentStorages() const;
+    void addRecentStorage(const QString& storageUuid, const QString& displayName);
+    
+    // UI Preferences
+    int thumbnailSize() const;
+    void setThumbnailSize(int size);
+    
+    bool autoScanOnStartup() const;
+    void setAutoScanOnStartup(bool enabled);
+    
+    // Import Preferences
+    QString lastImportDirectory() const;
+    void setLastImportDirectory(const QString& path);
+    
+    int defaultAuthorId() const;
+    void setDefaultAuthorId(int authorId);
+
+signals:
+    void settingsChanged();
+
+private:
+    explicit SettingsManager(QObject *parent = nullptr);
+    QSettings* m_settings;
+    
+    static SettingsManager* s_instance;
+};
+
+// Settings Dialog
+class SettingsDialog : public QDialog
+{
+    Q_OBJECT
+
+public:
+    explicit SettingsDialog(QWidget *parent = nullptr);
+
+private slots:
+    void onApiUrlChanged();
+    void onStoragePathBrowse();
+    void saveSettings();
+    void resetToDefaults();
+
+private:
+    void setupUI();
+    void loadCurrentSettings();
+    
+    // UI Components
+    QLineEdit* m_apiUrlEdit;
+    QLineEdit* m_apiTokenEdit;
+    QLineEdit* m_storagePathEdit;
+    QSpinBox* m_thumbnailSizeSpin;
+    QCheckBox* m_autoScanCheck;
+};
+```
+
+---
+
+## 🔍 **Monitoring and Status**
+
+### **Storage Health Monitor**
+
+```cpp
+// StorageHealthMonitor.h
+#pragma once
+#include <QObject>
+#include <QTimer>
+#include <QJsonObject>
+#include <QJsonArray>
+
+class StorageHealthMonitor : public QObject
+{
+    Q_OBJECT
+
+public:
+    explicit StorageHealthMonitor(ImaLinkApiClient* apiClient, QObject *parent = nullptr);
+    
+    void startMonitoring(int intervalMs = 30000); // Default 30 seconds
+    void stopMonitoring();
+    
+    void checkStorageHealth(const QString& storageUuid);
+    void checkAllStorages();
+
+signals:
+    void storageHealthChanged(const QString& storageUuid, bool healthy);
+    void storageAccessibilityChanged(const QString& storageUuid, bool accessible);  
+    void lowDiskSpace(const QString& storageUuid, qint64 freeBytes);
+    void indexIntegrityIssue(const QString& storageUuid, const QStringList& issues);
+
+private slots:
+    void performHealthCheck();
+    void onHealthCheckResult(const QString& storageUuid, const QJsonObject& status);
+
+private:
+    ImaLinkApiClient* m_apiClient;
+    QTimer* m_healthCheckTimer;
+    QStringList m_monitoredStorages;
+    
+    void analyzeStorageStatus(const QJsonObject& status);
+    void checkDiskSpace(const QString& storageUuid);
+    void verifyIndexIntegrity(const QString& storageUuid);
+};
+
+// Status Bar Widget  
+class StatusBarWidget : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit StatusBarWidget(QWidget *parent = nullptr);
+    
+    void setStorageStatus(const QString& storageUuid, const QString& status);
+    void setConnectionStatus(bool connected);
+    void showProgressIndicator(const QString& operation, int progress = -1);
+    void hideProgressIndicator();
+
+private:
+    void setupUI();
+    
+    QLabel* m_connectionLabel;
+    QLabel* m_storageLabel;
+    QProgressBar* m_progressBar;
+    QLabel* m_operationLabel;
+};
+```
+
+---
+
+## 🧪 **Testing and Debugging**
+
+### **Mock API Client for Development**
+
+```cpp
+// MockApiClient.h (for development/testing)
+#pragma once
+#include "ImaLinkApiClient.h"
+#include <QTimer>
+
+class MockApiClient : public ImaLinkApiClient
+{
+    Q_OBJECT
+
+public:
+    explicit MockApiClient(QObject *parent = nullptr);
+    
+    // Override API methods with mock responses
+    void createFileStorage(const QString& basePath, const QString& displayName, 
+                          const QString& description = QString()) override;
+    void getFileStorages() override;
+    void generateAllIndexes(const QString& storageUuid) override;
+
+private slots:
+    void emitMockResponse();
+
+private:
+    void scheduleMockResponse(const QString& operation, const QJsonObject& data);
+    
+    QTimer* m_mockTimer;
+    QString m_pendingOperation;
+    QJsonObject m_pendingData;
+    
+    // Mock data generators
+    QJsonObject generateMockStorage(const QString& basePath, const QString& displayName);
+    QJsonArray generateMockStorageList();
+    QJsonObject generateMockSession(int id, const QString& title);
+};
+
+// Debug Console for API Testing
+class ApiDebugConsole : public QWidget
+{
+    Q_OBJECT
+
+public:
+    explicit ApiDebugConsole(ImaLinkApiClient* apiClient, QWidget *parent = nullptr);
+
+private slots:
+    void sendCustomRequest();
+    void onApiResponse(const QString& operation, const QJsonObject& response);
+    void onApiError(const QString& operation, const QString& error);
+
+private:
+    void setupUI();
+    void addLogEntry(const QString& type, const QString& message);
+    
+    ImaLinkApiClient* m_apiClient;
+    
+    QLineEdit* m_endpointEdit;
+    QComboBox* m_methodCombo;
+    QTextEdit* m_requestBody;
+    QPushButton* m_sendButton;
+    QTextEdit* m_responseLog;
+};
+```
+
+---
+
+## 📚 **Deployment and Distribution**
+
+### **CMake Configuration**
+
+```cmake
+# CMakeLists.txt
+cmake_minimum_required(VERSION 3.20)
+project(ImaLinkQt)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# Find Qt6
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network)
+
+# Enable automatic MOC, UIC, and RCC
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON) 
+set(CMAKE_AUTORCC ON)
+
+# Source files
+set(SOURCES
+    src/main.cpp
+    src/MainWindow.cpp
+    src/ImaLinkApiClient.cpp
+    src/StorageManagerWidget.cpp
+    src/ImportSessionWidget.cpp
+    src/PhotoBrowserWidget.cpp
+    src/FileSystemBrowser.cpp
+    src/SettingsManager.cpp
+    src/StorageHealthMonitor.cpp
+    src/StatusBarWidget.cpp
+)
+
+set(HEADERS
+    src/MainWindow.h
+    src/ImaLinkApiClient.h
+    src/StorageManagerWidget.h
+    src/ImportSessionWidget.h
+    src/PhotoBrowserWidget.h
+    src/FileSystemBrowser.h
+    src/SettingsManager.h
+    src/StorageHealthMonitor.h
+    src/StatusBarWidget.h
+)
+
+# Create executable
+add_executable(ImaLinkQt ${SOURCES} ${HEADERS})
+
+# Link Qt libraries
+target_link_libraries(ImaLinkQt Qt6::Core Qt6::Widgets Qt6::Network)
+
+# Platform-specific configurations
+if(WIN32)
+    set_property(TARGET ImaLinkQt PROPERTY WIN32_EXECUTABLE TRUE)
+endif()
+
+# Install configuration
+install(TARGETS ImaLinkQt
+    RUNTIME DESTINATION bin
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+)
+```
+
+### **Application Packaging**
+
+```bash
+#!/bin/bash
+# build_release.sh - Build and package ImaLink Qt application
+
+set -e
+
+BUILD_DIR="build_release"
+INSTALL_DIR="ImaLinkQt_Install"
+
+# Clean previous builds
+rm -rf "$BUILD_DIR" "$INSTALL_DIR"
+
+# Create build directory
+mkdir "$BUILD_DIR"
+cd "$BUILD_DIR"
+
+# Configure with CMake
+cmake .. -DCMAKE_BUILD_TYPE=Release \
+         -DCMAKE_INSTALL_PREFIX="../$INSTALL_DIR"
+
+# Build
+make -j$(nproc)
+
+# Install
+make install
+
+cd ..
+
+# Create application bundle (macOS) or installer (Windows/Linux)
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    # macOS App Bundle
+    macdeployqt "$INSTALL_DIR/ImaLinkQt.app" -dmg
+elif [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    # Windows Installer
+    windeployqt "$INSTALL_DIR/bin/ImaLinkQt.exe"
+else
+    # Linux AppImage
+    linuxdeploy --appdir "$INSTALL_DIR" \
+               --executable "$INSTALL_DIR/bin/ImaLinkQt" \
+               --desktop-file resources/ImaLinkQt.desktop \
+               --icon-file resources/imalink.png \
+               --output appimage
+fi
+
+echo "Build completed successfully!"
+```
+
+---
+
+## 🔧 **Configuration Examples**
+
+### **Application Configuration File**
+
+```ini
+# imalink-qt.conf
+[API]
+base_url=http://localhost:8000/api/v1
+timeout=30000
+retry_attempts=3
+
+[Storage]
+default_base_path=/home/user/Photos
+auto_scan_interval=300000
+max_concurrent_operations=5
+
+[UI]
+thumbnail_size=200  
+grid_columns=5
+theme=system
+language=auto
+
+[Import]
+default_author_id=1
+auto_generate_titles=true
+preserve_directory_structure=true
+supported_formats=jpg,jpeg,cr2,nef,arw,dng,png,tiff
+
+[Monitoring]
+health_check_interval=30000
+low_disk_warning_mb=1024
+enable_notifications=true
+```
+
+### **Logging Configuration**
+
+```cpp
+// Logger.h
+#pragma once
+#include <QObject>
+#include <QFile>
+#include <QTextStream>
+#include <QDateTime>
+
+class Logger : public QObject
+{
+    Q_OBJECT
+
+public:
+    enum LogLevel {
+        Debug,
+        Info,
+        Warning,
+        Error,
+        Critical
+    };
+
+    static Logger* instance();
+    
+    void log(LogLevel level, const QString& category, const QString& message);
+    void setLogLevel(LogLevel minLevel);
+    void setLogFile(const QString& filePath);
+
+public slots:
+    void debug(const QString& message) { log(Debug, "APP", message); }
+    void info(const QString& message) { log(Info, "APP", message); }
+    void warning(const QString& message) { log(Warning, "APP", message); }
+    void error(const QString& message) { log(Error, "APP", message); }
+    void critical(const QString& message) { log(Critical, "APP", message); }
+
+private:
+    explicit Logger(QObject *parent = nullptr);
+    
+    static Logger* s_instance;
+    LogLevel m_minLevel;
+    QFile* m_logFile;
+    QTextStream* m_logStream;
+};
+
+// Usage throughout application:
+// Logger::instance()->info("Application started");
+// Logger::instance()->error("Failed to connect to API: " + error);
+```
+
+---
+
+## 🚀 **Getting Started**
+
+### **Quick Setup Checklist**
+
+1. **Prerequisites**
+   - [ ] Qt 6.x installed
+   - [ ] CMake 3.20+
+   - [ ] ImaLink backend running on `localhost:8000`
+   - [ ] C++17 compatible compiler
+
+2. **Project Setup**
+   - [ ] Clone/create Qt project structure
+   - [ ] Configure CMakeLists.txt with dependencies
+   - [ ] Set up API client configuration
+   - [ ] Configure logging and settings
+
+3. **Basic Integration**
+   - [ ] Implement ImaLinkApiClient class
+   - [ ] Create main window with storage manager
+   - [ ] Set up file system browser
+   - [ ] Test API connectivity
+
+4. **Advanced Features**
+   - [ ] Implement import workflow wizard
+   - [ ] Add photo browser with hotpreview support
+   - [ ] Set up storage health monitoring
+   - [ ] Create settings and configuration management
+
+### **Development Workflow**
+
+1. **Start Backend**: Ensure ImaLink backend is running
+2. **Mock Development**: Use MockApiClient during UI development
+3. **Integration Testing**: Test with real backend API
+4. **User Testing**: Validate workflows with actual photo imports
+5. **Performance Optimization**: Profile and optimize for large collections
+
+---
+
+## 📞 **Support and Resources**
+
+### **Key Documentation Links**
+- [Storage Architecture](../STORAGE_ARCHITECTURE.md) - Backend system design
+- [API Reference](../api/API_REFERENCE.md) - Complete API documentation including FileStorage
+- [Storage Workflows](../STORAGE_WORKFLOW.md) - Backend workflow examples
+
+### **Qt Resources**
+- [Qt6 Documentation](https://doc.qt.io/qt-6/)
+- [QNetworkAccessManager](https://doc.qt.io/qt-6/qnetworkaccessmanager.html)
+- [QFileSystemModel](https://doc.qt.io/qt-6/qfilesystemmodel.html)
+- [QJsonDocument](https://doc.qt.io/qt-6/qjsondocument.html)
+
+### **Best Practices**
+- Always handle API errors gracefully with user feedback
+- Implement progress indicators for long operations
+- Use Qt's model/view architecture for data display
+- Leverage Qt's threading for non-blocking operations
+- Follow Qt coding conventions and naming patterns
+
+---
+
+*This guide enables developers to create powerful Qt applications that fully leverage ImaLink's hybrid storage architecture, providing users with intuitive photo management while maintaining the flexibility of the underlying system.*

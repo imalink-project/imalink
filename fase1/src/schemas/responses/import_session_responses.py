@@ -12,7 +12,6 @@ class ImportSessionResponse(BaseModel):
     imported_at: datetime
     title: Optional[str] = None
     description: Optional[str] = None
-    storage_location: Optional[str] = None
     default_author_id: Optional[int] = None
     images_count: int = Field(0, description="Number of images in this import session")
     

@@ -28,14 +28,12 @@ class ImportSessionService:
         self,
         title: Optional[str] = None,
         description: Optional[str] = None,
-        storage_location: Optional[str] = None,
         default_author_id: Optional[int] = None
     ):
         """Create a simple ImportSession (user metadata only)"""
         session = self.import_repo.create_simple(
             title=title,
             description=description,
-            storage_location=storage_location,
             default_author_id=default_author_id
         )
         
@@ -68,7 +66,6 @@ class ImportSessionService:
         session_id: int,
         title: Optional[str] = None,
         description: Optional[str] = None,
-        storage_location: Optional[str] = None,
         default_author_id: Optional[int] = None
     ):
         """Update ImportSession metadata"""
@@ -76,7 +73,6 @@ class ImportSessionService:
             session_id=session_id,
             title=title,
             description=description,
-            storage_location=storage_location,
             default_author_id=default_author_id
         )
         

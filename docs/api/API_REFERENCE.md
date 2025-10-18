@@ -13,7 +13,155 @@ ImaLink uses a well-organized file structure for data and media storage:
 {DATA_DIRECTORY}/                    # /mnt/c/temp/00imalink_data/
 ├── imalink.db                       # SQLite database
 └── coldpreviews/                    # Medium-size preview images
-    ├── ab/                          # First 2 chars of hothash
+    ├── ab/                    ### DELETE /file-storage/{storage_uuid}
+Delete a FileStorage (permanent).
+
+**Path Parameters:**
+- `storage_uuid` (string): The storage's UUID
+
+**Response**: 204 No Content
+
+---
+
+## 🧪 FileStorage Testing Examples
+
+### cURL Examples
+
+**Create FileStorage:**
+```bash
+curl -X POST http://localhost:8000/api/v1/file-storage/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "base_path": "/external/photos",
+    "- `files` (array): Associated ImageFile objects
+- `created_at` (datetime): When photo was imported
+- `updated_at` (datetime): When photo was last updated
+
+### FileStorageResponse
+
+Complete FileStorage object with metadata and computed paths.
+
+**TypeScript Interface:**
+```typescript
+interface FileStorageResponse {
+  id: number;
+  storage_uuid: string;
+  directory_name: string;      // Auto-generated: imalink_YYYYMMDD_HHMMSS_uuid8
+  base_path: string;
+  full_path: string;           // Computed: {base_path}/{directory_name}
+  display_name?: string;
+  description?: string;
+  created_at: string;         // ISO 8601
+  updated_at: string;         // ISO 8601
+}
+```
+
+### FileStorageCreateRequest
+
+Request body for creating new FileStorage.
+
+**TypeScript Interface:**
+```typescript
+interface FileStorageCreateRequest {
+  base_path: string;           // Required: Base filesystem path
+  display_name?: string;       // Optional: User-friendly display name
+  description?: string;        // Optional: User description
+}
+```
+
+### FileStorageUpdateRequest
+
+Request body for updating existing FileStorage.
+
+**TypeScript Interface:**
+```typescript
+interface FileStorageUpdateRequest {
+  display_name?: string;       // Optional: User-friendly display name
+  description?: string;        // Optional: User description
+}
+```
+
+**Note**: Only metadata fields can be updated. Physical paths and UUIDs are immutable.
+
+---
+
+## �🔗 Interactive Documentation_name": "External Drive Photos",
+    "description": "Main photo storage on external SSD"
+  }'
+```
+
+**Get All FileStorages:**
+```bash
+curl -X GET http://localhost:8000/api/v1/file-storage/
+```
+
+**Get Specific FileStorage:**
+```bash
+curl -X GET http://localhost:8000/api/v1/file-storage/abc123-def456-ghi789
+```
+
+**Update FileStorage:**
+```bash
+curl -X PUT http://localhost:8000/api/v1/file-storage/abc123-def456-ghi789 \
+  -H "Content-Type: application/json" \
+  -d '{
+    "display_name": "Updated Display Name",
+    "description": "Updated description"
+  }'
+```
+
+**Delete FileStorage:**
+```bash
+curl -X DELETE http://localhost:8000/api/v1/file-storage/abc123-def456-ghi789
+```
+
+### Python Examples
+
+```python
+import requests
+
+BASE_URL = "http://localhost:8000/api/v1"
+
+# Create FileStorage
+storage_data = {
+    "base_path": "/external/photos",
+    "display_name": "External Drive Photos",
+    "description": "Main photo storage on external SSD"
+}
+response = requests.post(f"{BASE_URL}/file-storage/", 
+                        json=storage_data)
+storage = response.json()["data"]
+
+# Get all FileStorages
+response = requests.get(f"{BASE_URL}/file-storage/")
+storages = response.json()
+
+# Get specific FileStorage
+uuid = storage["storage_uuid"]
+response = requests.get(f"{BASE_URL}/file-storage/{uuid}")
+specific_storage = response.json()
+
+# Update FileStorage
+update_data = {
+    "display_name": "Updated Name",
+    "description": "Updated description"
+}
+response = requests.put(f"{BASE_URL}/file-storage/{uuid}",
+                       json=update_data)
+updated_storage = response.json()
+
+# Delete FileStorage
+response = requests.delete(f"{BASE_URL}/file-storage/{uuid}")
+# Returns 204 No Content
+```
+
+---
+
+## �🔧 Debug Endpoints
+
+**⚠️ Development only - will be removed in production**
+
+### GET /debug/status chars of hothash
     │   └── cd/                      # Next 2 chars of hothash  
     │       └── abcd1234...jpg       # Coldpreview file
     └── ef/
@@ -22,7 +170,46 @@ ImaLink uses a well-organized file structure for data and media storage:
 ```
 
 **Storage Details:**
-- **Database**: All metadata, hotpreview thumbnails (150x150) stored in SQLite
+- **Database**: All metadata, hotpreview- `created_at` (datetime): When photo was imported
+- `updated_at` (datetime): When photo was last updated
+
+### FileStorageResponse
+
+Complete FileStorage object with metadata and computed paths.
+
+**Fields:**
+- `id` (int): Internal database ID
+- `storage_uuid` (string): Unique UUID identifier  
+- `directory_name` (string): Auto-generated directory name (imalink_YYYYMMDD_HHMMSS_uuid8)
+- `base_path` (string): Base filesystem path where storage is located
+- `full_path` (string): Complete path (base_path + directory_name) - computed
+- `display_name` (string, optional): User-friendly display name
+- `description` (string, optional): User description of the storage
+- `created_at` (datetime): When storage was created
+- `updated_at` (datetime): When storage was last updated
+
+### FileStorageCreateRequest
+
+Request body for creating new FileStorage.
+
+**Fields:**
+- `base_path` (string): Base filesystem path (required)
+- `display_name` (string, optional): User-friendly display name
+- `description` (string, optional): User description
+
+### FileStorageUpdateRequest
+
+Request body for updating existing FileStorage.
+
+**Fields:**
+- `display_name` (string, optional): User-friendly display name
+- `description` (string, optional): User description
+
+**Note**: Only metadata fields can be updated. Physical paths and UUIDs are immutable.
+
+---
+
+## 🔗 Interactive Documentationnails (150x150) stored in SQLite
 - **Coldpreview**: Medium-size images (800-1200px) stored on filesystem
 - **Directory Structure**: 2-level hash-based directories for performance
 - **File Format**: JPEG with 85% quality for optimal size/quality balance
@@ -45,29 +232,39 @@ List all photos with pagination.
 {
   "items": [
     {
-      "id": 1,
-      "hothash": "abc123...",
+      "hothash": "9e183676fb52ebe03ffa615080a99d3e3756751be7bc43bc3d275870d4ebe220",
       "title": "Sunset",
       "description": "Beautiful sunset",
+      "width": 4000,
+      "height": 3000,
+      "hotpreview": "base64-encoded-thumbnail...",
+      "coldpreview_path": "9e/18/9e183676fb52ebe03ffa615080a99d3e3756751be7bc43bc3d275870d4ebe220.jpg",
+      "coldpreview_width": 1200,
+      "coldpreview_height": 900,
+      "coldpreview_size": 245760,
+      "taken_at": "2024-04-27T10:30:15",
+      "gps_latitude": 59.9139,
+      "gps_longitude": 10.7522,
       "author_id": 1,
       "author": {
         "id": 1,
-        "name": "John Doe",
-        "email": "john@example.com"
+        "name": "John Doe"
       },
       "rating": 5,
-      "location": "Oslo",
-      "tags": ["sunset", "nature"],
-      "image_files": [
+      "tags": ["sunset", "nature", "oslo"],
+      "has_gps": true,
+      "has_raw_companion": false,
+      "primary_filename": "IMG_001.jpg",
+      "files": [
         {
           "id": 1,
           "filename": "IMG_001.jpg",
-          "file_size": 2048000,
-          "original_path": "/path/to/image.jpg"
+          "file_format": "JPEG",
+          "file_size": 2048000
         }
       ],
-      "created_at": "2024-04-27T12:00:00",
-      "updated_at": "2024-04-27T12:00:00"
+      "created_at": "2024-04-27T12:00:00Z",
+      "updated_at": "2024-04-27T12:00:00Z"
     }
   ],
   "total": 150,
@@ -425,7 +622,101 @@ Get a single import session by ID.
 
 ---
 
-## 🔧 Debug Endpoints
+## � FileStorage
+
+FileStorage manages physical storage locations for image files in the hybrid storage architecture.
+
+### POST /file-storage/
+Create a new FileStorage location.
+
+**Request Body**: `FileStorageCreateRequest`
+```json
+{
+  "base_path": "/external/photos",
+  "display_name": "External Drive Photos",
+  "description": "Main photo storage on external SSD"
+}
+```
+
+**Response**: `FileStorageResponse` (201 Created)
+```json
+{
+  "success": true,
+  "data": {
+    "id": 5,
+    "storage_uuid": "abc123-def456-ghi789",
+    "directory_name": "imalink_20241018_143052_a1b2c3d4",
+    "base_path": "/external/photos",
+    "full_path": "/external/photos/imalink_20241018_143052_a1b2c3d4",
+    "display_name": "External Drive Photos",
+    "description": "Main photo storage on external SSD",
+    "created_at": "2024-10-18T14:30:52Z"
+  }
+}
+```
+
+### GET /file-storage/
+List all FileStorage locations.
+
+**Query Parameters:**
+- `skip` (int, optional): Default 0
+- `limit` (int, optional): Default 100
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "storages": [
+      {
+        "id": 5,
+        "storage_uuid": "abc123-def456-ghi789",
+        "directory_name": "imalink_20241018_143052_a1b2c3d4",
+        "display_name": "External Drive Photos",
+        "base_path": "/external/photos",
+        "full_path": "/external/photos/imalink_20241018_143052_a1b2c3d4"
+      }
+    ],
+    "total_count": 1
+  }
+}
+```
+
+### GET /file-storage/{storage_uuid}
+Get a specific FileStorage by UUID.
+
+**Path Parameters:**
+- `storage_uuid` (string): The storage's UUID
+
+**Response**: `FileStorageResponse`
+
+### PUT /file-storage/{storage_uuid}
+Update a FileStorage.
+
+**Path Parameters:**
+- `storage_uuid` (string): The storage's UUID
+
+**Request Body**: `FileStorageUpdateRequest`
+```json
+{
+  "display_name": "Updated Display Name",
+  "description": "Updated description"
+}
+```
+
+**Response**: `FileStorageResponse`
+
+### DELETE /file-storage/{storage_uuid}
+Delete a FileStorage (permanent).
+
+**Path Parameters:**
+- `storage_uuid` (string): The storage's UUID
+
+**Response**: 204 No Content
+
+---
+
+## �🔧 Debug Endpoints
 
 **⚠️ Development only - will be removed in production**
 
@@ -704,7 +995,41 @@ All errors follow this format:
 
 ---
 
-## 🔗 Interactive Documentation
+## � Schema Reference
+
+### PhotoResponse
+
+Complete photo object with all metadata and preview information.
+
+**Fields:**
+- `hothash` (string): Content-based hash identifier (SHA256 of hotpreview)
+- `hotpreview` (string, optional): Base64-encoded thumbnail (150x150 JPEG)
+- `width` (int, optional): Original image width in pixels
+- `height` (int, optional): Original image height in pixels
+- `coldpreview_path` (string, optional): Filesystem path to coldpreview file
+- `coldpreview_width` (int, optional): Coldpreview width in pixels  
+- `coldpreview_height` (int, optional): Coldpreview height in pixels
+- `coldpreview_size` (int, optional): Coldpreview file size in bytes
+- `taken_at` (datetime, optional): When photo was taken (from EXIF)
+- `gps_latitude` (float, optional): GPS latitude coordinate
+- `gps_longitude` (float, optional): GPS longitude coordinate
+- `title` (string, optional): User-assigned title
+- `description` (string, optional): User description/notes
+- `tags` (array[string], optional): List of tags
+- `rating` (int): User rating (0-5 stars)
+- `author_id` (int, optional): Author/photographer ID
+- `author` (object, optional): Author details with id and name
+- `import_session_id` (int, optional): Import session ID
+- `has_gps` (bool): Whether photo has GPS coordinates
+- `has_raw_companion` (bool): Whether photo has both JPEG and RAW files
+- `primary_filename` (string, optional): Primary filename for display
+- `files` (array): Associated ImageFile objects
+- `created_at` (datetime): When photo was imported
+- `updated_at` (datetime): When photo was last updated
+
+---
+
+## �🔗 Interactive Documentation
 
 When server is running, access:
 - **Swagger UI**: http://localhost:8000/docs

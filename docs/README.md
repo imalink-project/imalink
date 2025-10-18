@@ -1,83 +1,114 @@
-# ImaLink Documentation
+# ImaLink Documentation Index
+## Storage Architecture & Implementation Guide
 
-Felles dokumentasjon for ImaLink backend og frontend utvikling.
+**Last Updated**: October 18, 2025  
+**Version**: 2.0
 
-## 📚 Dokumentasjonsstruktur
+---
 
-```
-docs/
-├── README.md                    # Dette dokumentet
-├── FRONTEND_INTEGRATION.md     # Guide for frontend repositories
-├── api/
-│   └── API_REFERENCE.md        # Komplett REST API referanse
-├── frontend/
-│   └── QT_FRONTEND_GUIDE.md    # Qt frontend utviklingsguide
-└── general_api_guidelines.md   # (eksisterende)
-```
+## 📖 **Documentation Overview**
 
-## 🔗 Hurtigreferanser
+This documentation set covers ImaLink's revolutionary **Hybrid Storage Architecture** - a system that combines database-powered organization with complete user control over file structure.
 
-### Backend Utviklere
-- **[API Reference](api/API_REFERENCE.md)** - Komplett REST API dokumentasjon
-- **[Service Layer Guide](../fase1/docs/service_layer_guide.md)** - Backend arkitektur
-- **[General API Guidelines](general_api_guidelines.md)** - API design prinsipper
+---
 
-### Frontend Utviklere  
-- **[Qt Frontend Guide](frontend/QT_FRONTEND_GUIDE.md)** - Komplett Qt utviklingsguide
-- **[API Reference](api/API_REFERENCE.md)** - API endpoints og eksempler
-- **WSL Setup**: Se Qt guide for Windows ↔ WSL kommunikasjon
+## 📁 **Core Documentation**
 
-### Felles Ressurser
-- **[Frontend Integration Guide](FRONTEND_INTEGRATION.md)** - Hvordan frontend repos kan referere til denne dokumentasjonen
-- **Base URL**: `http://localhost:8000/api/v1` (lokalt) eller `http://172.x.x.x:8000/api/v1` (WSL→Windows)
-- **Interactive API Docs**: `http://localhost:8000/docs` (når backend kjører)
-- **OpenAPI Spec**: `../openapi.json`
+### **[Storage Architecture](STORAGE_ARCHITECTURE.md)**
+Complete overview of the hybrid storage system design and philosophy.
 
-## 🚀 Rask start
+**Key Topics:**
+- Per-ImportSession JSON indexing
+- Hothash-based file identification  
+- User-controlled file organization
+- Database recovery mechanisms
+- Technical implementation details
 
-### Backend
-```bash
-cd fase1
-uv run uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
-```
+**Read this first** to understand the core concepts and benefits.
 
-### Frontend (Qt)
-```bash
-# Se frontend/QT_FRONTEND_GUIDE.md for komplett oppsett
-pip install PySide6 requests Pillow
-python main.py
-```
+---
 
-## 📋 Funksjonsoversikt
+### **[API Reference](api/API_REFERENCE.md)**  
+Complete API documentation for all endpoints including FileStorage management.
 
-### Core Features
-- ✅ **Photo Management**: CRUD operasjoner for foto metadata
-- ✅ **Image Import**: Automatisk JPEG/RAW par-gjenkjenning
-- ✅ **Preview System**: 
-  - Hotpreview (150x150) for gallery thumbnails
-  - Coldpreview (800-1200px) for detail viewing
-- ✅ **Perceptual Hash**: Automatisk dublettgjenkjenning
-- ✅ **Similarity Search**: Finn lignende bilder basert på innhold
+**Key Topics:**
+- FileStorage management endpoints
+- Index generation and maintenance APIs
+- Scanning and synchronization operations
+- Error handling and status codes
+- Request/response formats
 
-### API Endpoints
-- **Photos**: `/photos/` - Hovedentiteter med metadata
-- **Image Files**: `/image-files/` - Fysiske filer
-- **Authors**: `/authors/` - Fotografer/opphavsrett
-- **Import Sessions**: `/import-sessions/` - Batch import tracking
-- **Similarity**: `/image-files/similar/{id}` - Finn lignende bilder
-- **Previews**: 
-  - `/photos/{hash}/hotpreview` - 150x150 thumbnails
-  - `/photos/{hash}/coldpreview` - Medium-size previews
+**Essential for developers** integrating with the storage system.
 
-## 🔄 Oppdatering av dokumentasjon
+---
 
-Begge dokumenter vedlikeholdes i dette repoet og deles mellom backend/frontend teams.
+### **[Storage Workflows](STORAGE_WORKFLOW.md)**
+Practical examples and step-by-step workflows for common scenarios.
 
-**For å oppdatere:**
-1. Rediger filer i `docs/` mappen
-2. Commit endringer til hovedrepoet
-3. Frontend repo kan referere til disse dokumentene
+**Key Topics:**
+- First-time setup procedures
+- Regular photo import workflows
+- File reorganization handling
+- Multi-storage management
+- Disaster recovery procedures
+- Monitoring and maintenance
 
-**Synkronisering:**
-- Frontend repositories bør lenke til disse dokumentene i stedet for å duplisere dem
-- Bruk relative paths eller repo-links for referanser
+**Perfect for administrators** and power users managing ImaLink installations.
+
+---
+
+### **Legacy Documentation**
+- **[General API Guidelines](general_api_guidelines.md)** - REST API standards and conventions
+- **[Service Layer Guide](service_layer_guide.md)** - Architecture patterns and service implementation
+- **[Legacy API Reference](api/API_REFERENCE.md)** - Previous endpoint documentation
+
+---
+
+## 🎯 **Quick Start Guide**
+
+### **New Users: Getting Started**
+1. Read [Storage Architecture](STORAGE_ARCHITECTURE.md) - Overview and concepts
+2. Follow [Workflow 1](STORAGE_WORKFLOW.md#workflow-1-first-time-setup) - First-time setup
+3. Try [Workflow 2](STORAGE_WORKFLOW.md#workflow-2-regular-photo-import) - Import your first photos
+
+### **Developers: API Integration**
+1. Review [API Reference](api/API_REFERENCE.md) - Complete endpoint documentation
+2. Check [FileStorage Testing Examples](api/API_REFERENCE.md#filestorage-testing-examples) - cURL and Python examples  
+3. Implement using [Schema Reference](api/API_REFERENCE.md#schema-reference) - TypeScript models
+
+### **Administrators: System Management**
+1. Set up [Health Monitoring](STORAGE_WORKFLOW.md#workflow-7-health-monitoring) - Daily checks
+2. Plan [Storage Migration](STORAGE_WORKFLOW.md#workflow-5-storage-migration) procedures
+3. Prepare [Disaster Recovery](STORAGE_WORKFLOW.md#workflow-6-disaster-recovery) plans
+
+---
+
+## 🔑 **Key Concepts Summary**
+
+### **FileStorage**
+- Physical storage location with UUID-based naming
+- Directory structure: \`imalink_YYYYMMDD_HHMMSS_uuid8\`
+- Contains master index and per-session indexes
+- Supports any storage medium (local, external, NAS, cloud)
+
+### **ImportSession** 
+- User's reference metadata for a batch of imported photos
+- Natural grouping: "Italy Vacation", "Wedding Photos", etc.
+- Each session gets its own JSON index file
+- Linked to FileStorage via foreign key relationship
+
+### **JSON Indexes**
+- **Master Index**: \`index.json\` - Overview of all sessions in storage
+- **Session Indexes**: \`imports/session_X.json\` - Complete file metadata per session
+- Enable offline browsing and database reconstruction
+- Self-contained with all necessary recovery information
+
+### **Hothash Identification**
+- Universal file identifier computed from image content
+- Location-independent - files can be moved freely
+- Duplicate-resistant and version-safe
+- Enables cross-system compatibility
+
+---
+
+*This documentation represents the complete guide to ImaLink's innovative storage architecture - enabling unprecedented flexibility while maintaining the power of structured data management.*

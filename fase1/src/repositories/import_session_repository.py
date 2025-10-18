@@ -43,7 +43,6 @@ class ImportSessionRepository:
         self,
         title: Optional[str] = None,
         description: Optional[str] = None,
-        storage_location: Optional[str] = None,
         default_author_id: Optional[int] = None
     ) -> ImportSession:
         """Create a simple ImportSession (user metadata only)"""
@@ -51,7 +50,6 @@ class ImportSessionRepository:
             imported_at=datetime.now(),
             title=title,
             description=description,
-            storage_location=storage_location,
             default_author_id=default_author_id
         )
         
@@ -65,7 +63,6 @@ class ImportSessionRepository:
         session_id: int,
         title: Optional[str] = None,
         description: Optional[str] = None,
-        storage_location: Optional[str] = None,
         default_author_id: Optional[int] = None
     ) -> Optional[ImportSession]:
         """Update ImportSession metadata"""
@@ -77,8 +74,6 @@ class ImportSessionRepository:
             session.title = title
         if description is not None:
             session.description = description
-        if storage_location is not None:
-            session.storage_location = storage_location
         if default_author_id is not None:
             session.default_author_id = default_author_id
         

@@ -44,7 +44,6 @@ def create_import_session(
         response = service.create_simple_session(
             title=request.title,
             description=request.description,
-            storage_location=request.storage_location,
             default_author_id=request.default_author_id
         )
         
@@ -99,7 +98,6 @@ def update_import_session(
             session_id=import_id,
             title=request.title,
             description=request.description,
-            storage_location=request.storage_location,
             default_author_id=request.default_author_id
         )
         

@@ -12,8 +12,12 @@ Et enkelt og intuitivt verktøy for organisering av store bildematerialer.
 - **EXIF-rotasjon**: Automatisk orientering av bilder som i File Explorer
 - **RAW+JPEG håndtering**: Smart deteksjon og håndtering av RAW-filer
 - **Duplikatdeteksjon**: Perceptuell hash for å unngå duplikater
+- **Preview System**: 
+  - Hotpreview (150x150) lagret i database for rask tilgang
+  - Coldpreview (800-1200px) lagret på disk for detaljvisning
+- **Similarity Search**: Find lignende bilder basert på perceptual hash
 - **Fotograf-admin**: Fullstendig CRUD med email og bio
-- **Modern arkitektur**: FastAPI + SQLite + Flet desktop
+- **Modern arkitektur**: FastAPI + SQLite + Qt frontend support
 
 ## 🧠 Designfilosofi
 
@@ -41,7 +45,25 @@ ImaLink følger noen unike prinsipper som skiller den fra andre fotoarkiveringsp
 
 Denne filosofien gjør ImaLink spesielt egnet for fotografer med store arkiver som må håndtere bilder på tvers av forskjellige lagringsmedier og systemer.
 
-## 🚀 Kom i gang
+## � Lagringsstruktur
+
+ImaLink organiserer data i en ryddig struktur:
+
+```
+{DATA_DIRECTORY}/                    # /mnt/c/temp/00imalink_data/
+├── imalink.db                       # Hoveddatabase (SQLite)
+└── coldpreviews/                    # Medium-size preview bilder
+    ├── ab/cd/abcd1234...jpg        # Organisert i 2-nivå hash-struktur
+    └── ef/gh/efgh5678...jpg        # For optimal ytelse
+```
+
+**Lagringsprinsipper:**
+- **Database**: Metadata, hotpreview (150x150), perceptual hashes
+- **Filesystem**: Kun coldpreview (800-1200px) for detaljvisning
+- **Hash-basert**: Filnavn er content-hash for garantert unikhet
+- **Skalerbar**: 2-nivå katalogstruktur håndterer millioner av bilder
+
+## �🚀 Kom i gang
 
 ### 📚 Dokumentasjon
 - **[Fullstendig dokumentasjon](docs/README.md)** - Oversikt over all dokumentasjon
