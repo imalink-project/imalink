@@ -27,7 +27,6 @@ router = APIRouter()
 # Request/Response Models
 class FileStorageCreateRequest(BaseModel):
     """Request model for creating a new FileStorage"""
-    storage_uuid: str = Field(..., description="UUID for the storage directory")
     base_path: str = Field(..., description="Base path where storage is located")
     display_name: str = Field(..., description="User-friendly name for the storage")
     description: Optional[str] = Field(None, description="Optional description")
@@ -61,33 +60,18 @@ async def create_file_storage(
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
     """
-    Create a new FileStorage record (metadata only)
+    Create a new FileStorage record with auto-generated UUID and directory name
     
-    The frontend has already created the physical directory structure.
-    This endpoint just registers the metadata in the database.
+    Backend generates UUID and directory name automatically.
+    Frontend uses returned directory_name to create physical directory.
     """
     try:
-        # Check if storage with this UUID already exists
-        existing = db.query(FileStorage).filter(
-            FileStorage.storage_uuid == request.storage_uuid
-        ).first()
-        
-        if existing:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail=f"FileStorage with UUID {request.storage_uuid} already exists"
-            )
-        
-        # Create new FileStorage record
+        # Create new FileStorage record (UUID and directory_name auto-generated)
         storage = FileStorage(
             base_path=request.base_path,
             display_name=request.display_name,
             description=request.description
         )
-        
-        # Override the auto-generated UUID with the one from frontend
-        storage.storage_uuid = request.storage_uuid
-        # full_path is now a computed property
         
         db.add(storage)
         db.commit()
