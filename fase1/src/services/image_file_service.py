@@ -16,7 +16,7 @@ from repositories.image_file_repository import ImageFileRepository
 from repositories.photo_repository import PhotoRepository
 from schemas.image_file_schemas import (
     ImageFileResponse, ImageFileCreateRequest, ImageFileUpdateRequest, 
-    ImageFileSearchRequest
+    ImageFileSearchRequest, StorageInfoUpdateRequest
 )
 from schemas.photo_schemas import PhotoCreateRequest
 from schemas.common import PaginatedResponse, create_paginated_response
@@ -180,6 +180,11 @@ class ImageFileService:
         image_data_dict['photo_hothash'] = hothash
         image_data_dict['perceptual_hash'] = perceptual_hash
         
+        # Set imported_time automatically if not provided
+        if 'imported_time' not in image_data_dict or not image_data_dict['imported_time']:
+            from datetime import datetime
+            image_data_dict['imported_time'] = datetime.utcnow()
+        
         image_file = self.image_file_repo.create(image_data_dict)
         
         return self._convert_to_response(image_file)
@@ -279,6 +284,16 @@ class ImageFileService:
             file_size=getattr(image_file, 'file_size', None),
             has_hotpreview=bool(getattr(image_file, 'hotpreview', None)),
             perceptual_hash=getattr(image_file, 'perceptual_hash', None),
+            
+            # NEW - Import tracking fields
+            import_session_id=getattr(image_file, 'import_session_id', None),
+            imported_time=getattr(image_file, 'imported_time', None),
+            imported_info=getattr(image_file, 'imported_info', None),
+            
+            # NEW - Storage location fields
+            local_storage_info=getattr(image_file, 'local_storage_info', None),
+            cloud_storage_info=getattr(image_file, 'cloud_storage_info', None),
+            
             # Computed fields
             file_format=computed_format,
             file_path=None,  # Could be computed by storage service if needed
@@ -438,6 +453,36 @@ class ImageFileService:
             description=None,
             tags=[],
             rating=0,
-            author_id=None,
-            import_session_id=image_data.import_session_id
+            author_id=None
         )
+    
+    def update_storage_info(self, image_file_id: int, storage_info: 'StorageInfoUpdateRequest') -> 'ImageFileResponse':
+        """Update storage information for an image file"""
+        # Check if image file exists
+        image_file = self.image_file_repo.get_by_id(image_file_id)
+        if not image_file:
+            raise NotFoundError("ImageFile", image_file_id)
+        
+        # Update storage info
+        update_data = {}
+        if storage_info.local_storage_info is not None:
+            update_data['local_storage_info'] = storage_info.local_storage_info
+        if storage_info.cloud_storage_info is not None:
+            update_data['cloud_storage_info'] = storage_info.cloud_storage_info
+        
+        # Apply updates
+        updated_image_file = self.image_file_repo.update(image_file_id, update_data)
+        return self._convert_to_response(updated_image_file)
+    
+    def get_storage_info(self, image_file_id: int) -> dict:
+        """Get storage information for an image file"""
+        image_file = self.image_file_repo.get_by_id(image_file_id)
+        if not image_file:
+            raise NotFoundError("ImageFile", image_file_id)
+        
+        return {
+            "local_storage_info": getattr(image_file, 'local_storage_info', None),
+            "cloud_storage_info": getattr(image_file, 'cloud_storage_info', None),
+            "imported_info": getattr(image_file, 'imported_info', None),
+            "imported_time": getattr(image_file, 'imported_time', None)
+        }

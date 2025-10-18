@@ -4,7 +4,7 @@ ImageFile model for storing individual file metadata
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Column, Integer, String, DateTime, LargeBinary, Float, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, LargeBinary, Float, Text, ForeignKey, JSON
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -49,8 +49,14 @@ class ImageFile(Base, TimestampMixin):
     # Link to Photo (via hothash - not a FK since it's generated from hotpreview)
     photo_hothash = Column(String(64), ForeignKey('photos.hothash'), nullable=True, index=True)
     
-    # Import tracking (file-level)
+    # Import tracking (file-level) - EXPANDED
     import_session_id = Column(Integer, ForeignKey('import_sessions.id'), nullable=True, index=True)
+    imported_time = Column(DateTime, nullable=True)  # When this specific file was imported
+    imported_info = Column(JSON, nullable=True)      # Import context and original location
+    
+    # Storage location tracking - where files can be found now
+    local_storage_info = Column(JSON, nullable=True)   # Current local storage details
+    cloud_storage_info = Column(JSON, nullable=True)   # Current cloud storage details
     
     # Relationships
     photo = relationship("Photo", back_populates="image_files", foreign_keys=[photo_hothash])

@@ -63,9 +63,14 @@ class Photo(Base, TimestampMixin):
     tags = Column(JSON)               # List of tags ["nature", "landscape"]
     rating = Column(Integer, default=0)  # 1-5 star rating
     
-    # Authorship and import tracking
+    # Authorship (import tracking moved to ImageFile level)
     author_id = Column(Integer, ForeignKey('authors.id'), nullable=True, index=True)
-    import_session_id = Column(Integer, ForeignKey('import_sessions.id'), nullable=True, index=True)
+    
+    # Coldpreview - medium-size preview for detail views (800-1200px)
+    coldpreview_path = Column(String(255), nullable=True)  # Filesystem path to coldpreview file
+    coldpreview_width = Column(Integer, nullable=True)     # Width in pixels
+    coldpreview_height = Column(Integer, nullable=True)    # Height in pixels
+    coldpreview_size = Column(Integer, nullable=True)      # File size in bytes
     
     # Relationships
     image_files = relationship("ImageFile", back_populates="photo", cascade="all, delete-orphan", 
@@ -122,3 +127,21 @@ class Photo(Base, TimestampMixin):
         if self.image_files:
             return getattr(self.image_files[0], 'filename', 'Unknown')
         return "Unknown"
+    
+    @property
+    def import_sessions(self) -> List[int]:
+        """Get all unique import sessions for this photo's files"""
+        sessions = [f.import_session_id for f in self.image_files if f.import_session_id]
+        return list(set(sessions))
+    
+    @property
+    def first_imported(self) -> Optional[datetime]:
+        """Get earliest import time across all files"""
+        times = [f.imported_time for f in self.image_files if f.imported_time]
+        return min(times) if times else None
+    
+    @property
+    def last_imported(self) -> Optional[datetime]:
+        """Get latest import time across all files"""
+        times = [f.imported_time for f in self.image_files if f.imported_time]
+        return max(times) if times else None

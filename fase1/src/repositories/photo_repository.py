@@ -94,8 +94,8 @@ class PhotoRepository:
             description=photo_data.description,
             tags=tags_json,
             rating=photo_data.rating or 0,
-            author_id=photo_data.author_id,
-            import_session_id=photo_data.import_session_id
+            author_id=photo_data.author_id
+            # import_session_id removed - now tracked at ImageFile level
         )
         
         self.db.add(photo)

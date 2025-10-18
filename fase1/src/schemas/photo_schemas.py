@@ -36,6 +36,12 @@ class PhotoResponse(BaseModel):
     width: Optional[int] = Field(None, description="Original image width in pixels")
     height: Optional[int] = Field(None, description="Original image height in pixels")
     
+    # Coldpreview metadata (medium-size preview for detail views)
+    coldpreview_path: Optional[str] = Field(None, description="Filesystem path to coldpreview file")
+    coldpreview_width: Optional[int] = Field(None, description="Coldpreview width in pixels")
+    coldpreview_height: Optional[int] = Field(None, description="Coldpreview height in pixels")
+    coldpreview_size: Optional[int] = Field(None, description="Coldpreview file size in bytes")
+    
     # Content metadata
     taken_at: Optional[datetime] = Field(None, description="When photo was taken (from EXIF)")
     gps_latitude: Optional[float] = Field(None, description="GPS latitude")
@@ -54,7 +60,11 @@ class PhotoResponse(BaseModel):
     # Relationships
     author: Optional[AuthorSummary] = Field(None, description="Photo author/photographer")
     author_id: Optional[int] = Field(None, description="Author ID")
-    import_session_id: Optional[int] = Field(None, description="Import session ID")
+    
+    # Import information (computed from ImageFiles)
+    import_sessions: List[int] = Field(default_factory=list, description="All import sessions for this photo's files")
+    first_imported: Optional[datetime] = Field(None, description="Earliest import time")
+    last_imported: Optional[datetime] = Field(None, description="Latest import time")
     
     # Computed properties
     has_gps: bool = Field(False, description="Whether photo has GPS coordinates")
@@ -107,7 +117,7 @@ class PhotoCreateRequest(BaseModel):
     
     # Relationships
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
-    import_session_id: Optional[int] = Field(None, description="Import session ID")
+    # import_session_id removed - now tracked at ImageFile level
 
 
 class PhotoUpdateRequest(BaseModel):

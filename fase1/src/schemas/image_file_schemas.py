@@ -2,7 +2,7 @@
 ImageFile-related Pydantic schemas for API requests and responses
 Provides type-safe data models for image operations
 """
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 import json
@@ -27,6 +27,15 @@ class ImageFileResponse(BaseModel):
     # NEW: hotpreview is now stored in ImageFile
     has_hotpreview: bool = Field(False, description="Whether hotpreview is available")
     perceptual_hash: Optional[str] = Field(None, description="Perceptual hash for similarity search")
+    
+    # Import tracking (NEW EXPANDED FIELDS)
+    import_session_id: Optional[int] = Field(None, description="Import session ID")
+    imported_time: Optional[datetime] = Field(None, description="When this file was imported")
+    imported_info: Optional[Dict[str, Any]] = Field(None, description="Import context and original location")
+    
+    # Storage location tracking (NEW)
+    local_storage_info: Optional[Dict[str, Any]] = Field(None, description="Local storage metadata")
+    cloud_storage_info: Optional[Dict[str, Any]] = Field(None, description="Cloud storage metadata")
     
     # Computed fields (provided by service layer)
     file_format: Optional[str] = Field(None, description="File format computed from filename")
@@ -92,8 +101,11 @@ class ImageFileCreateRequest(BaseModel):
     # Optional binary EXIF data
     exif_data: Optional[bytes] = Field(None, description="Raw EXIF data as binary blob")
     
-    # Optional import tracking
+    # Import context (NEW EXPANDED FIELDS)
     import_session_id: Optional[int] = Field(None, description="Import session ID")
+    imported_info: Optional[Dict[str, Any]] = Field(None, description="Import context and original location")
+    local_storage_info: Optional[Dict[str, Any]] = Field(None, description="Local storage info")
+    cloud_storage_info: Optional[Dict[str, Any]] = Field(None, description="Cloud storage info")
     
     # NOTE: Visual metadata (taken_at, width, height, GPS, author_id) belongs to Photo model
 
@@ -103,6 +115,12 @@ class ImageFileUpdateRequest(BaseModel):
     # NOTE: title, description, tags, rating moved to ImageMetadata table
     # NOTE: user_rotation removed - rotation is a Photo-level concern
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
+
+
+class StorageInfoUpdateRequest(BaseModel):
+    """Request model for updating storage information"""
+    local_storage_info: Optional[Dict[str, Any]] = Field(None, description="Local storage info")
+    cloud_storage_info: Optional[Dict[str, Any]] = Field(None, description="Cloud storage info")
 
 
 class ImageFileSearchRequest(BaseModel):

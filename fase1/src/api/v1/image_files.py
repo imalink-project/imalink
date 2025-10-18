@@ -27,7 +27,7 @@ from fastapi.responses import FileResponse
 from core.dependencies import get_image_file_service
 from services.image_file_service import ImageFileService
 from schemas.image_file_schemas import (
-    ImageFileResponse, ImageFileCreateRequest, ImageFileUpdateRequest
+    ImageFileResponse, ImageFileCreateRequest, ImageFileUpdateRequest, StorageInfoUpdateRequest
 )
 from schemas.common import PaginatedResponse, create_success_response
 from core.exceptions import NotFoundError, ValidationError, DuplicateImageError
@@ -142,6 +142,35 @@ async def find_similar_images(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error finding similar images: {str(e)}")
+
+
+@router.put("/{image_file_id}/storage-info")
+def update_storage_info(
+    image_file_id: int,
+    storage_info: 'StorageInfoUpdateRequest',
+    image_file_service: ImageFileService = Depends(get_image_file_service)
+):
+    """Update storage information for an image file"""
+    try:
+        return image_file_service.update_storage_info(image_file_id, storage_info)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating storage info: {str(e)}")
+
+
+@router.get("/{image_file_id}/storage-info")
+def get_storage_info(
+    image_file_id: int,
+    image_file_service: ImageFileService = Depends(get_image_file_service)
+):
+    """Get storage information for an image file"""
+    try:
+        return image_file_service.get_storage_info(image_file_id)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error retrieving storage info: {str(e)}")
 
 
 # ===== UPDATE and DELETE are NOT supported for Images =====
