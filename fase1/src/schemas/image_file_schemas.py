@@ -2,10 +2,11 @@
 ImageFile-related Pydantic schemas for API requests and responses
 Provides type-safe data models for image operations
 """
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 import json
+import base64
 
 
 class AuthorSummary(BaseModel):
@@ -92,7 +93,7 @@ class ImageFileCreateRequest(BaseModel):
     # NEW ARCHITECTURE: hotpreview stored in ImageFile, photo_hothash auto-generated
     # - hotpreview: Hotpreview binary data (required to generate photo_hothash)
     # - photo_hothash: Auto-calculated from hotpreview via SHA256 hash
-    hotpreview: Optional[bytes] = Field(None, description="Hotpreview image binary data (required)")
+    hotpreview: Optional[Union[bytes, str]] = Field(None, description="Hotpreview image binary data or Base64 string (required)")
     perceptual_hash: Optional[str] = Field(None, description="Perceptual hash for similarity search (auto-generated if not provided)")
     
     # Optional file metadata
@@ -108,6 +109,48 @@ class ImageFileCreateRequest(BaseModel):
     cloud_storage_info: Optional[Dict[str, Any]] = Field(None, description="Cloud storage info")
     
     # NOTE: Visual metadata (taken_at, width, height, GPS, author_id) belongs to Photo model
+    
+    @field_validator('hotpreview')
+    @classmethod
+    def validate_hotpreview(cls, v: Union[bytes, str, None]) -> Optional[bytes]:
+        """
+        Convert hotpreview from Base64 string to bytes if needed
+        Supports both direct bytes and Base64-encoded strings
+        """
+        if v is None:
+            return None
+        
+        # If already bytes, return as-is
+        if isinstance(v, bytes):
+            return v
+        
+        # If string, try to decode as Base64
+        if isinstance(v, str):
+            try:
+                # Remove data URL prefix if present (data:image/jpeg;base64,...)
+                if v.startswith('data:'):
+                    # Split on comma and take the data part
+                    _, data = v.split(',', 1)
+                    v = data
+                
+                # Decode Base64
+                decoded = base64.b64decode(v)
+                
+                # Basic validation: should have some content
+                if len(decoded) < 10:
+                    raise ValueError("Hotpreview too small after decoding")
+                
+                # Basic JPEG validation: check for JPEG magic bytes
+                if decoded[0] == 0xFF and decoded[1] == 0xD8:
+                    return decoded
+                else:
+                    # Not JPEG, but might be valid image data - let PIL handle it later
+                    return decoded
+                    
+            except Exception as e:
+                raise ValueError(f"Invalid hotpreview Base64 data: {str(e)}")
+        
+        raise ValueError("Hotpreview must be bytes or Base64 string")
 
 
 class ImageFileUpdateRequest(BaseModel):

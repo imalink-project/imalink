@@ -338,9 +338,51 @@ class ImageFileService:
             # Return as hex string (16 characters)
             return str(phash)
         except Exception as e:
-            # Fallback: return None if perceptual hash generation fails
+            # Enhanced debugging for hotpreview issues
             print(f"Warning: Could not generate perceptual hash from hotpreview (ImageFileService): {e}")
             print(f"DEBUG: Hotpreview data type: {type(hotpreview)}, size: {len(hotpreview) if hotpreview else 'None'}")
+            
+            if hotpreview and len(hotpreview) > 0:
+                # Check if it's Base64 encoded data
+                if isinstance(hotpreview, str):
+                    print("DEBUG: Hotpreview is string (possibly Base64), trying to decode...")
+                    try:
+                        import base64
+                        decoded = base64.b64decode(hotpreview)
+                        print(f"DEBUG: Successfully decoded Base64, new size: {len(decoded)}")
+                        # Try again with decoded data
+                        img = PILImage.open(io.BytesIO(decoded))
+                        phash = imagehash.phash(img)
+                        return str(phash)
+                    except Exception as decode_err:
+                        print(f"DEBUG: Base64 decode failed: {decode_err}")
+                
+                # Convert to bytes if it's memoryview
+                if isinstance(hotpreview, memoryview):
+                    hotpreview_bytes = hotpreview.tobytes()
+                else:
+                    hotpreview_bytes = hotpreview
+                
+                # Check first few bytes to see file format
+                header = hotpreview_bytes[:10] if len(hotpreview_bytes) >= 10 else hotpreview_bytes
+                print(f"DEBUG: Hotpreview header bytes: {[hex(b) for b in header]}")
+                
+                # Check for JPEG magic bytes (FF D8)
+                if len(hotpreview_bytes) >= 2:
+                    if hotpreview_bytes[0] == 0xFF and hotpreview_bytes[1] == 0xD8:
+                        print("DEBUG: JPEG magic bytes detected")
+                    else:
+                        print(f"DEBUG: Not JPEG format - first bytes: {hex(hotpreview_bytes[0])}, {hex(hotpreview_bytes[1])}")
+                        
+                        # Try to detect if it's text/base64
+                        try:
+                            text_sample = hotpreview_bytes[:50].decode('utf-8', errors='ignore')
+                            print(f"DEBUG: Hotpreview as text sample: '{text_sample}'")
+                            if all(c in 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=' for c in text_sample if c.isprintable()):
+                                print("DEBUG: Looks like Base64 text")
+                        except:
+                            pass
+            
             import traceback
             traceback.print_exc()
             return None
