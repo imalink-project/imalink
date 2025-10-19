@@ -42,7 +42,7 @@ class ImageFile(Base, TimestampMixin):
     file_size = Column(Integer)  # Size in bytes
     
     # File-specific processing data
-    exif_data = Column(LargeBinary)  # Raw EXIF data stored as binary blob
+    exif_dict = Column(JSON, nullable=True)  # Parsed EXIF metadata as JSON (extracted by frontend)
     hotpreview = Column(LargeBinary)  # Hotpreview image for this file
     perceptual_hash = Column(String(16), nullable=True, index=True)  # pHash for similarity search
     

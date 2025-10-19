@@ -12,6 +12,8 @@ I ditt frontend repository, legg til følgende i README.md:
 **Viktig**: All dokumentasjon ligger i hovedrepoet for å unngå duplikater.
 
 - **[API Reference](https://github.com/kjelkols/imalink/blob/main/docs/api/API_REFERENCE.md)** - REST API dokumentasjon
+- **[EXIF Extraction Guide](https://github.com/kjelkols/imalink/blob/main/docs/FRONTEND_EXIF_EXTRACTION_GUIDE.md)** - Detaljert EXIF implementasjonsguide (påkrevd)
+- **[EXIF Specification](https://github.com/kjelkols/imalink/blob/main/docs/FRONTEND_EXIF_SPECIFICATION.md)** - EXIF JSON strukturspesifikasjon
 - **[Qt Frontend Guide](https://github.com/kjelkols/imalink/blob/main/docs/frontend/QT_FRONTEND_GUIDE.md)** - Qt utviklingsguide  
 - **[Dokumentasjonsoversikt](https://github.com/kjelkols/imalink/blob/main/docs/README.md)** - Alle dokumenter
 
@@ -31,6 +33,8 @@ git clone https://github.com/kjelkols/imalink.git
 Dette frontend-prosjektet bruker ImaLink backend API.
 
 - **[API Reference](https://github.com/kjelkols/imalink/blob/main/docs/api/API_REFERENCE.md)** - REST API dokumentasjon
+- **[EXIF Extraction Guide](https://github.com/kjelkols/imalink/blob/main/docs/FRONTEND_EXIF_EXTRACTION_GUIDE.md)** - Praktisk implementasjonsguide (påkrevd)
+- **[EXIF Specification](https://github.com/kjelkols/imalink/blob/main/docs/FRONTEND_EXIF_SPECIFICATION.md)** - JSON strukturspesifikasjon
 - **[Backend Repository](https://github.com/kjelkols/imalink)** - Hovedrepo med full dokumentasjon
 
 ### Backend Setup

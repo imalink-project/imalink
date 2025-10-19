@@ -21,21 +21,7 @@ from core.exceptions import NotFoundError, DuplicateImageError, ValidationError
 from models import Photo, ImageFile
 
 
-# Placeholder ImageProcessor class (would be implemented separately)
-class ImageProcessor:
-    """ImageFile processing utilities"""
-    
-    def has_raw_companion(self, file_path: str) -> bool:
-        """Check if image_file has RAW companion file"""
-        # TODO: Implement RAW companion detection
-        return False
-    
 
-    
-    def cleanup_image_files(self, file_path: str, image_id: int) -> None:
-        """Clean up image_file files"""
-        # TODO: Implement file cleanup
-        pass
 
 
 class ImageFileService:
@@ -45,7 +31,6 @@ class ImageFileService:
         self.db = db
         self.image_file_repo = ImageFileRepository(db)
         self.photo_repo = PhotoRepository(db)
-        self.image_processor = ImageProcessor()
     
     def get_image_files(
         self, 
@@ -412,20 +397,47 @@ class ImageFileService:
         taken_at = None
         gps_latitude = None
         gps_longitude = None
-        
-        if image_data.exif_data:
-            # Parse EXIF data to extract metadata
-            # This is a simplified version - in production, use proper EXIF parsing
+
+        if image_data.exif_dict:
+            # Extract metadata from frontend-parsed EXIF JSON
             try:
-                from PIL import ImageFile as PILImage
-                from PIL.ExifTags import TAGS
-                import io
+                from datetime import datetime
                 
-                # Try to extract dimensions and other metadata from EXIF
-                # Note: This is placeholder logic - real implementation would be more robust
+                # Extract taken_at from date_taken field
+                if "date_taken" in image_data.exif_dict:
+                    date_taken = image_data.exif_dict["date_taken"]
+                    if isinstance(date_taken, str):
+                        # Try multiple datetime formats
+                        for fmt in ['%Y-%m-%d %H:%M:%S', '%Y:%m:%d %H:%M:%S']:
+                            try:
+                                taken_at = datetime.strptime(date_taken, fmt)
+                                break
+                            except ValueError:
+                                continue
+                    elif isinstance(date_taken, datetime):
+                        taken_at = date_taken
+                
+                # Extract GPS coordinates from gps field
+                if "gps" in image_data.exif_dict and image_data.exif_dict["gps"]:
+                    gps_data = image_data.exif_dict["gps"]
+                    if isinstance(gps_data, dict):
+                        if "latitude" in gps_data and gps_data["latitude"] is not None:
+                            gps_latitude = float(gps_data["latitude"])
+                        if "longitude" in gps_data and gps_data["longitude"] is not None:
+                            gps_longitude = float(gps_data["longitude"])
+                
+                # Extract image dimensions from image_info
+                if "image_info" in image_data.exif_dict and image_data.exif_dict["image_info"]:
+                    image_info = image_data.exif_dict["image_info"]
+                    if isinstance(image_info, dict):
+                        if "width" in image_info and image_info["width"] is not None:
+                            width = int(image_info["width"])
+                        if "height" in image_info and image_info["height"] is not None:
+                            height = int(image_info["height"])
+                            
+            except Exception:
+                # Silently fail if EXIF processing fails - fields will remain None
                 pass
-            except Exception as e:
-                print(f"Warning: Failed to parse EXIF data: {e}")
         
         # Create PhotoCreateRequest with extracted data (NO hotpreview)
         return PhotoCreateRequest(
@@ -537,4 +549,6 @@ class ImageFileService:
         image_file = self.image_file_repo.create(image_data_dict)
         
         return self._convert_to_response(image_file)
+    
+
     

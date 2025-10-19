@@ -42,6 +42,41 @@ Complete API documentation for all endpoints including FileStorage management.
 
 ---
 
+## 🎨 **Frontend Development**
+
+### **[EXIF Extraction Guide](FRONTEND_EXIF_EXTRACTION_GUIDE.md)**
+Comprehensive implementation guide for extracting EXIF metadata on frontend platforms.
+
+**Key Topics:**
+- GPS coordinate conversion (DMS → decimal degrees)
+- DateTime format standardization
+- Platform-specific libraries (JavaScript, Python, Swift, Java)
+- Priority field recommendations
+- Error handling and validation
+- Complete code examples
+
+**Critical for frontend developers** - EXIF processing is frontend responsibility.
+
+---
+
+### **[EXIF JSON Specification](FRONTEND_EXIF_SPECIFICATION.md)**
+JSON structure specification for sending EXIF data to the API.
+
+**Key Topics:**
+- Required JSON format
+- Field priorities and grouping
+- API integration examples
+- Backend processing expectations
+
+**Reference document** for API integration.
+
+---
+
+### **[Frontend Integration](FRONTEND_INTEGRATION.md)**
+Documentation links and setup guide for frontend repositories.
+
+---
+
 ### **[Storage Workflows](STORAGE_WORKFLOW.md)**
 Practical examples and step-by-step workflows for common scenarios.
 

@@ -99,8 +99,8 @@ class ImageFileCreateRequest(BaseModel):
     # Optional file metadata
     file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")
     
-    # Optional binary EXIF data
-    exif_data: Optional[bytes] = Field(None, description="Raw EXIF data as binary blob")
+    # Parsed EXIF metadata (frontend responsibility)
+    exif_dict: Optional[Dict[str, Any]] = Field(None, description="Parsed EXIF metadata as JSON structure (extracted by frontend)")
     
     # Import context (NEW EXPANDED FIELDS)
     import_session_id: Optional[int] = Field(None, description="Import session ID")
