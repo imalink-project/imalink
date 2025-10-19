@@ -67,10 +67,8 @@ class Photo(Base, TimestampMixin):
     author_id = Column(Integer, ForeignKey('authors.id'), nullable=True, index=True)
     
     # Coldpreview - medium-size preview for detail views (800-1200px)
+    # SIMPLIFIED: Only store path, metadata is read dynamically from file
     coldpreview_path = Column(String(255), nullable=True)  # Filesystem path to coldpreview file
-    coldpreview_width = Column(Integer, nullable=True)     # Width in pixels
-    coldpreview_height = Column(Integer, nullable=True)    # Height in pixels
-    coldpreview_size = Column(Integer, nullable=True)      # File size in bytes
     
     # Relationships
     image_files = relationship("ImageFile", back_populates="photo", cascade="all, delete-orphan", 

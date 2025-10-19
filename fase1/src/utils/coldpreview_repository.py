@@ -259,6 +259,42 @@ class ColdpreviewRepository:
         full_path = self.base_path / relative_path
         return full_path.exists()
     
+    def get_coldpreview_metadata(self, relative_path: str) -> Optional[dict]:
+        """
+        Get coldpreview metadata dynamically from file
+        
+        Args:
+            relative_path: Path relative to base_path
+            
+        Returns:
+            Dict with width, height, size or None if file not found
+        """
+        if not relative_path:
+            return None
+            
+        full_path = self.base_path / relative_path
+        
+        if not full_path.exists():
+            return None
+        
+        try:
+            # Get file size from filesystem
+            file_size = full_path.stat().st_size
+            
+            # Get image dimensions from PIL
+            img = PILImage.open(full_path)
+            width, height = img.size
+            
+            return {
+                "width": width,
+                "height": height,
+                "size": file_size,
+                "path": relative_path
+            }
+        except Exception:
+            # If file is corrupted or not readable, return None
+            return None
+    
     def get_repository_stats(self) -> dict:
         """Get repository statistics"""
         total_files = 0

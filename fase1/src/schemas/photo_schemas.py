@@ -36,11 +36,12 @@ class PhotoResponse(BaseModel):
     width: Optional[int] = Field(None, description="Original image width in pixels")
     height: Optional[int] = Field(None, description="Original image height in pixels")
     
-    # Coldpreview metadata (medium-size preview for detail views)
+    # Coldpreview metadata (medium-size preview for detail views) 
+    # SIMPLIFIED: Only path stored, dimensions/size computed dynamically when needed
     coldpreview_path: Optional[str] = Field(None, description="Filesystem path to coldpreview file")
-    coldpreview_width: Optional[int] = Field(None, description="Coldpreview width in pixels")
-    coldpreview_height: Optional[int] = Field(None, description="Coldpreview height in pixels")
-    coldpreview_size: Optional[int] = Field(None, description="Coldpreview file size in bytes")
+    coldpreview_width: Optional[int] = Field(None, description="Coldpreview width (computed from file)")
+    coldpreview_height: Optional[int] = Field(None, description="Coldpreview height (computed from file)")  
+    coldpreview_size: Optional[int] = Field(None, description="Coldpreview file size (computed from file)")
     
     # Content metadata
     taken_at: Optional[datetime] = Field(None, description="When photo was taken (from EXIF)")

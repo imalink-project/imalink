@@ -4,13 +4,10 @@ Orchestrates image_file operations and implements business rules
 """
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from pathlib import Path
-import json
 import hashlib
-import base64
-from PIL import Image as PILImage
 import imagehash
 import io
+from PIL import Image as PILImage
 
 from repositories.image_file_repository import ImageFileRepository
 from repositories.photo_repository import PhotoRepository
@@ -33,46 +30,7 @@ class ImageProcessor:
         # TODO: Implement RAW companion detection
         return False
     
-    def can_generate_hotpreview(self, file_path: str) -> bool:
-        """Check if hotpreview can be generated"""
-        return Path(file_path).exists()
-    
-    def generate_hotpreview(self, file_path: str) -> Optional[bytes]:
-        """Generate hotpreview for image_file with EXIF rotation and stripped metadata"""
-        try:
-            from PIL import ImageFile, ImageOps
-            import io
-            
-            if not Path(file_path).exists():
-                return None
-                
-            # Open and resize image_file to hotpreview size
-            with ImageFile.open(file_path) as img:
-                # CRITICAL: Apply EXIF rotation before any processing
-                img_fixed = ImageOps.exif_transpose(img.copy())
-                
-                # Strip EXIF data (not needed in hotpreviews)
-                if img_fixed and hasattr(img_fixed, 'info') and img_fixed.info:
-                    img_fixed.info.pop('exif', None)
-                
-                # Convert to RGB if needed (for JPEG output)  
-                if img_fixed and img_fixed.mode in ('RGBA', 'LA', 'P'):
-                    img_fixed = img_fixed.convert('RGB')
-                
-                # Create hotpreview using PIL's thumbnail method (maintaining aspect ratio)
-                if img_fixed:
-                    img_fixed.thumbnail((200, 200), ImageFile.Resampling.LANCZOS)
-                    
-                    # Save as JPEG bytes
-                    hotpreview_io = io.BytesIO()
-                    img_fixed.save(hotpreview_io, format='JPEG', quality=85, optimize=True)
-                    return hotpreview_io.getvalue()
-                
-                return None
-                
-        except Exception as e:
-            print(f"Error generating hotpreview for {file_path}: {e}")
-            return None
+
     
     def cleanup_image_files(self, file_path: str, image_id: int) -> None:
         """Clean up image_file files"""
@@ -135,59 +93,45 @@ class ImageFileService:
     
     def create_image_file_with_photo(self, image_data: ImageFileCreateRequest) -> ImageFileResponse:
         """
-        Create new image_file with automatic Photo creation/association
+        Create ImageFile with automatic Photo creation/linking
         
-        New architecture: Images drive Photo creation
-        - ImageFile has hotpreview - REQUIRED
-        - Photo.hothash automatically generated from ImageFile.hotpreview via SHA256
-        - First ImageFile with new hotpreview → creates new Photo
-        - Subsequent Images with same hotpreview → added to existing Photo
+        Backend receives hotpreview from frontend and:
+        1. Generate hothash from hotpreview (SHA256)
+        2. Check if Photo exists by hothash (duplicate detection)
+        3. If exists: Add ImageFile to existing Photo
+        4. If not: Create new Photo + ImageFile
         
-        Flow:
-        1. Validate hotpreview is provided
-        2. Generate hothash from hotpreview (SHA256)
-        3. Check if Photo with this hothash exists
-        4. If not exists → create new Photo
-        5. Create ImageFile with photo_hothash
+        Note: coldpreview is sent separately via PUT /photos/{hash}/coldpreview
         """
         
         # 1. Validate hotpreview is provided
         if not image_data.hotpreview:
             raise ValidationError("hotpreview is required when creating ImageFile")
         
-        # 2. Generate hothash from hotpreview
-        hothash = self._generate_hothash_from_hotpreview(image_data.hotpreview)
-        
-        # 2.5. Generate perceptual hash if not provided
-        if not image_data.perceptual_hash:
-            perceptual_hash = self._generate_perceptual_hash_from_hotpreview(image_data.hotpreview)
+        # 2. Cast hotpreview to bytes - Pydantic validator can return Union[bytes, str] 
+        # but our processing methods expect bytes
+        if isinstance(image_data.hotpreview, str):
+            hotpreview_bytes = image_data.hotpreview.encode('utf-8')
         else:
-            perceptual_hash = image_data.perceptual_hash
+            hotpreview_bytes = image_data.hotpreview
         
-        # 3. Check if Photo exists
-        existing_photo = self.photo_repo.get_by_hash(hothash)
+        # 3. Generate hothash from hotpreview (SHA256)
+        hothash = self._generate_hothash_from_hotpreview(hotpreview_bytes)
         
-        # 4. If Photo doesn't exist, create it
-        if not existing_photo:
-            # Extract metadata from ImageFile for Photo creation
-            photo_data = self._extract_photo_metadata_from_image(image_data, hothash)
-            
-            # Create Photo
-            photo = self.photo_repo.create(photo_data)
+        # 4. Check if Photo exists by hothash (duplicate detection)
+        existing_photo = self._simple_photo_exists_check(hothash)
         
-        # 5. Create ImageFile with the generated photo_hothash and perceptual_hash
-        image_data_dict = image_data.model_dump()
-        image_data_dict['photo_hothash'] = hothash
-        image_data_dict['perceptual_hash'] = perceptual_hash
+        perceptual_hash = self._generate_perceptual_hash_if_missing(
+            image_data.perceptual_hash, 
+            hotpreview_bytes
+        )
         
-        # Set imported_time automatically if not provided
-        if 'imported_time' not in image_data_dict or not image_data_dict['imported_time']:
-            from datetime import datetime
-            image_data_dict['imported_time'] = datetime.utcnow()
+        # 5. If Photo exists: Add ImageFile to existing Photo
+        if existing_photo:
+            return self._create_image_file_for_existing_photo(image_data, hothash, perceptual_hash)
         
-        image_file = self.image_file_repo.create(image_data_dict)
-        
-        return self._convert_to_response(image_file)
+        # 6. If Photo doesn't exist: Create new Photo + ImageFile (no coldpreview generation)
+        return self._create_new_photo_with_previews(image_data, hothash, perceptual_hash, hotpreview_bytes)
     
     def update_image_file(
         self, 
@@ -528,3 +472,69 @@ class ImageFileService:
             "imported_info": getattr(image_file, 'imported_info', None),
             "imported_time": getattr(image_file, 'imported_time', None)
         }
+    
+    # ===== VANNTETT ARKITEKTUR HJELPEMETODER =====
+    
+    def _simple_photo_exists_check(self, hothash: str) -> Optional[object]:
+        """
+        VANNTETT SJEKK: Simple check if Photo exists by hothash
+        Returns Photo object if exists, None if not
+        """
+        return self.photo_repo.get_by_hash(hothash)
+    
+    def _generate_perceptual_hash_if_missing(self, existing_hash: Optional[str], hotpreview: bytes) -> Optional[str]:
+        """Generate perceptual hash if not provided"""
+        if existing_hash:
+            return existing_hash
+        return self._generate_perceptual_hash_from_hotpreview(hotpreview)
+    
+    def _create_image_file_for_existing_photo(self, image_data: ImageFileCreateRequest, 
+                                             hothash: str, perceptual_hash: Optional[str]) -> ImageFileResponse:
+        """Create ImageFile for existing Photo (duplicate case)"""
+        
+        # Create ImageFile linked to existing Photo
+        image_data_dict = image_data.model_dump()
+        image_data_dict['photo_hothash'] = hothash
+        image_data_dict['perceptual_hash'] = perceptual_hash
+        
+        # Set imported_time automatically if not provided
+        if 'imported_time' not in image_data_dict or not image_data_dict['imported_time']:
+            from datetime import datetime
+            image_data_dict['imported_time'] = datetime.utcnow()
+        
+        image_file = self.image_file_repo.create(image_data_dict)
+        
+        return self._convert_to_response(image_file)
+    
+    def _create_new_photo_with_previews(self, image_data: ImageFileCreateRequest, 
+                                       hothash: str, perceptual_hash: Optional[str], 
+                                       hotpreview_bytes: bytes) -> ImageFileResponse:
+        """
+        Create new Photo + ImageFile (hotpreview only)
+        
+        Flow:
+        1. Create Photo with hothash (hotpreview stored in ImageFile)
+        2. Create ImageFile linked to new Photo
+        
+        Note: coldpreview sent separately via PUT /photos/{hash}/coldpreview
+        """
+        
+        # 1. Create Photo with basic metadata
+        photo_data = self._extract_photo_metadata_from_image(image_data, hothash)
+        photo = self.photo_repo.create(photo_data)
+        
+        # 2. Create ImageFile linked to new Photo
+        # Note: coldpreview will be sent separately via PUT /photos/{hash}/coldpreview
+        image_data_dict = image_data.model_dump()
+        image_data_dict['photo_hothash'] = hothash
+        image_data_dict['perceptual_hash'] = perceptual_hash
+        
+        # Set imported_time automatically if not provided
+        if 'imported_time' not in image_data_dict or not image_data_dict['imported_time']:
+            from datetime import datetime
+            image_data_dict['imported_time'] = datetime.utcnow()
+        
+        image_file = self.image_file_repo.create(image_data_dict)
+        
+        return self._convert_to_response(image_file)
+    

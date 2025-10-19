@@ -146,15 +146,23 @@ class PhotoService:
             import base64
             hotpreview_b64 = base64.b64encode(hotpreview_data).decode('utf-8')
         
+        # Get coldpreview metadata dynamically from file
+        coldpreview_path = getattr(photo, 'coldpreview_path', None)
+        coldpreview_metadata = None
+        if coldpreview_path:
+            from utils.coldpreview_repository import ColdpreviewRepository
+            repository = ColdpreviewRepository()
+            coldpreview_metadata = repository.get_coldpreview_metadata(coldpreview_path)
+        
         return PhotoResponse(
             hothash=getattr(photo, 'hothash'),
             hotpreview=hotpreview_b64,
             width=getattr(photo, 'width', None),
             height=getattr(photo, 'height', None),
-            coldpreview_path=getattr(photo, 'coldpreview_path', None),
-            coldpreview_width=getattr(photo, 'coldpreview_width', None),
-            coldpreview_height=getattr(photo, 'coldpreview_height', None),
-            coldpreview_size=getattr(photo, 'coldpreview_size', None),
+            coldpreview_path=coldpreview_path,
+            coldpreview_width=coldpreview_metadata["width"] if coldpreview_metadata else None,
+            coldpreview_height=coldpreview_metadata["height"] if coldpreview_metadata else None,
+            coldpreview_size=coldpreview_metadata["size"] if coldpreview_metadata else None,
             taken_at=getattr(photo, 'taken_at', None),
             gps_latitude=getattr(photo, 'gps_latitude', None),
             gps_longitude=getattr(photo, 'gps_longitude', None),
@@ -242,11 +250,8 @@ class PhotoService:
             print(f"DEBUG COLDPREVIEW: Error in save_coldpreview: {e}")
             raise
         
-        # Update photo with coldpreview metadata directly
+        # SIMPLIFIED: Only store path, dimensions/size will be read dynamically
         setattr(photo, 'coldpreview_path', relative_path)
-        setattr(photo, 'coldpreview_width', width)
-        setattr(photo, 'coldpreview_height', height)
-        setattr(photo, 'coldpreview_size', file_size)
         
         # Commit changes
         self.db.commit()
