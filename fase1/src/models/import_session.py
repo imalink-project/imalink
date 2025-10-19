@@ -12,7 +12,6 @@ from .mixins import TimestampMixin
 
 if TYPE_CHECKING:
     from .author import Author
-    from .file_storage import FileStorage
 
 
 class ImportSession(Base, TimestampMixin):
@@ -38,15 +37,11 @@ class ImportSession(Base, TimestampMixin):
     title = Column(String(255))                         # "Italy Summer 2024"
     description = Column(Text)                          # User's notes/comments
     
-    # File storage relationship
-    file_storage_id = Column(Integer, ForeignKey('file_storages.id'), nullable=True, index=True)
-    
     # Default photographer for this batch
     default_author_id = Column(Integer, ForeignKey('authors.id'), nullable=True, index=True)
     
     # Relationships
     default_author = relationship("Author", back_populates="imports")
-    file_storage = relationship("FileStorage", back_populates="import_sessions")
     image_files = relationship("ImageFile", back_populates="import_session", cascade="all, delete-orphan")
     
     @property
@@ -55,31 +50,9 @@ class ImportSession(Base, TimestampMixin):
         return len(self.image_files) if self.image_files else 0
     
     @property
-    def has_file_storage(self) -> bool:
-        """Check if this session has a FileStorage assigned"""
-        return self.file_storage_id is not None and self.file_storage is not None
-    
-    @property
-    def storage_accessible(self) -> bool:
-        """Check if assigned FileStorage is accessible"""
-        return self.has_file_storage and self.file_storage.is_accessible
-    
-    @property
-    def storage_directory_name(self) -> Optional[str]:
-        """Get storage directory name if available"""
-        return self.file_storage.directory_name if self.has_file_storage else None
-    
-    @property
     def index_filename(self) -> str:
         """Generate standard index filename for this session"""
         return f"session_{self.id}.json"
-    
-    @property
-    def index_path(self) -> Optional[str]:
-        """Get full path to this session's index file"""
-        if not self.has_file_storage:
-            return None
-        return f"{self.file_storage.full_path}/imports/{self.index_filename}"
     
     def generate_index_data(self) -> dict:
         """Generate complete JSON index data for this import session"""
@@ -91,10 +64,8 @@ class ImportSession(Base, TimestampMixin):
                 "id": self.id,
                 "title": self.title,
                 "description": self.description,
-                "imported_at": self.imported_at.isoformat() if self.imported_at else None,
-                "default_author_id": self.default_author_id,
-                "file_storage_id": self.file_storage_id,
-                "storage_directory": self.storage_directory_name
+                "imported_at": self.imported_at.isoformat() if self.imported_at is not None else None,
+                "default_author_id": self.default_author_id
             },
             "files": {},
             "statistics": {
@@ -125,5 +96,4 @@ class ImportSession(Base, TimestampMixin):
     
     def __repr__(self):
         title_info = f"'{self.title}'" if getattr(self, 'title', None) else "Untitled"
-        storage_info = f", storage={self.storage_directory_name}" if self.has_file_storage else ""
-        return f"<ImportSession(id={self.id}, title={title_info}, images={self.images_count}{storage_info})>"
+        return f"<ImportSession(id={self.id}, title={title_info}, images={self.images_count})>"

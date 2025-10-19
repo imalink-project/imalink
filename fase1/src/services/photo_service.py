@@ -166,6 +166,7 @@ class PhotoService:
             taken_at=getattr(photo, 'taken_at', None),
             gps_latitude=getattr(photo, 'gps_latitude', None),
             gps_longitude=getattr(photo, 'gps_longitude', None),
+            exif_dict=getattr(photo, 'exif_dict', None),  # 🆕 Include EXIF from master ImageFile
             title=getattr(photo, 'title', None),
             description=getattr(photo, 'description', None),
             tags=getattr(photo, 'tags', []) or [],

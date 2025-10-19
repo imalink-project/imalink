@@ -2,6 +2,26 @@
 
 Alle viktige endringer i dette prosjektet dokumenteres i denne filen.
 
+## [Unreleased] - 2025-10-20
+
+### 🔄 API Endring - Frontend Ansvar
+- **Frontend sender nå strukturerte EXIF felter**: `taken_at`, `gps_latitude`, `gps_longitude` må sendes direkte i POST ImageFile
+- ✅ Backend stopper EXIF parsing - frontend ekstraherer og sender strukturerte data
+- ✅ `exif_dict` fortsetter å sendes for komplett EXIF visning
+- ⚠️ **BREAKING**: Frontend må oppdateres for å sende taken_at og GPS som direkte felter
+
+### API Forbedring
+- 🆕 **GET Photo API inkluderer nå EXIF metadata**: `exif_dict` field lagt til PhotoResponse
+- ✅ EXIF data hentes automatisk fra master ImageFile (typisk JPEG for JPEG/RAW-par)
+- ✅ Eliminerer behov for ekstra API-kall for å hente EXIF metadata
+- ✅ Oppdatert API-dokumentasjon med komplette eksempler
+
+### Arkitektur Cleanup
+- 🧹 **FileStorage system fjernet**: Forenklet arkitektur før multi-user implementasjon
+- ✅ ImportSession modell renset for FileStorage-avhengigheter
+- ✅ Fjernet FileStorage API endpoints, services og repositories
+- ✅ Frontend-sentrert tilnærming: All filhåndtering i klient-applikasjoner
+
 ## [2.0.0] - 2025-10-16
 
 ### Arkitektur-endring

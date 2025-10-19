@@ -69,7 +69,12 @@ class ImageFileRepository:
         else:
             image_dict = image_file_data.dict()
         
-        image_file = ImageFile(**image_dict)
+        # Filter out fields that belong to Photo model (not ImageFile)
+        # taken_at, gps_latitude, gps_longitude are used for Photo creation only
+        photo_fields = {'taken_at', 'gps_latitude', 'gps_longitude'}
+        filtered_dict = {k: v for k, v in image_dict.items() if k not in photo_fields}
+        
+        image_file = ImageFile(**filtered_dict)
         self.db.add(image_file)
         self.db.commit()
         self.db.refresh(image_file)

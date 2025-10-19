@@ -102,13 +102,16 @@ class ImageFileCreateRequest(BaseModel):
     # Parsed EXIF metadata (frontend responsibility)
     exif_dict: Optional[Dict[str, Any]] = Field(None, description="Parsed EXIF metadata as JSON structure (extracted by frontend)")
     
+    # Photo metadata (frontend extracted from EXIF) - used for Photo creation
+    taken_at: Optional[datetime] = Field(None, description="When photo was taken (frontend extracted from EXIF)")
+    gps_latitude: Optional[float] = Field(None, ge=-90, le=90, description="GPS latitude (frontend extracted from EXIF)")
+    gps_longitude: Optional[float] = Field(None, ge=-180, le=180, description="GPS longitude (frontend extracted from EXIF)")
+    
     # Import context (NEW EXPANDED FIELDS)
     import_session_id: Optional[int] = Field(None, description="Import session ID")
     imported_info: Optional[Dict[str, Any]] = Field(None, description="Import context and original location")
     local_storage_info: Optional[Dict[str, Any]] = Field(None, description="Local storage info")
     cloud_storage_info: Optional[Dict[str, Any]] = Field(None, description="Cloud storage info")
-    
-    # NOTE: Visual metadata (taken_at, width, height, GPS, author_id) belongs to Photo model
     
     @field_validator('hotpreview')
     @classmethod

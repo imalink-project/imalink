@@ -47,6 +47,7 @@ class PhotoResponse(BaseModel):
     taken_at: Optional[datetime] = Field(None, description="When photo was taken (from EXIF)")
     gps_latitude: Optional[float] = Field(None, description="GPS latitude")
     gps_longitude: Optional[float] = Field(None, description="GPS longitude")
+    exif_dict: Optional[dict] = Field(None, description="EXIF metadata from master image file")
     
     # User metadata
     title: Optional[str] = Field(None, description="User-assigned title")

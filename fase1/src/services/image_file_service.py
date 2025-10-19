@@ -389,43 +389,19 @@ class ImageFileService:
         """
         Extract Photo metadata from ImageFile data
         This creates the Photo record for the first (master) ImageFile
-        NOTE: hotpreview is stored in ImageFile, not Photo
+        NOTE: Frontend now provides taken_at, gps_latitude, gps_longitude directly
         """
-        # Extract EXIF metadata if available
+        # Get metadata directly from frontend (no EXIF extraction needed)
+        taken_at = image_data.taken_at
+        gps_latitude = image_data.gps_latitude
+        gps_longitude = image_data.gps_longitude
+        
+        # Extract image dimensions from EXIF for now (could also be moved to frontend later)
         width = None
         height = None
-        taken_at = None
-        gps_latitude = None
-        gps_longitude = None
-
+        
         if image_data.exif_dict:
-            # Extract metadata from frontend-parsed EXIF JSON
             try:
-                from datetime import datetime
-                
-                # Extract taken_at from date_taken field
-                if "date_taken" in image_data.exif_dict:
-                    date_taken = image_data.exif_dict["date_taken"]
-                    if isinstance(date_taken, str):
-                        # Try multiple datetime formats
-                        for fmt in ['%Y-%m-%d %H:%M:%S', '%Y:%m:%d %H:%M:%S']:
-                            try:
-                                taken_at = datetime.strptime(date_taken, fmt)
-                                break
-                            except ValueError:
-                                continue
-                    elif isinstance(date_taken, datetime):
-                        taken_at = date_taken
-                
-                # Extract GPS coordinates from gps field
-                if "gps" in image_data.exif_dict and image_data.exif_dict["gps"]:
-                    gps_data = image_data.exif_dict["gps"]
-                    if isinstance(gps_data, dict):
-                        if "latitude" in gps_data and gps_data["latitude"] is not None:
-                            gps_latitude = float(gps_data["latitude"])
-                        if "longitude" in gps_data and gps_data["longitude"] is not None:
-                            gps_longitude = float(gps_data["longitude"])
-                
                 # Extract image dimensions from image_info
                 if "image_info" in image_data.exif_dict and image_data.exif_dict["image_info"]:
                     image_info = image_data.exif_dict["image_info"]
@@ -434,12 +410,11 @@ class ImageFileService:
                             width = int(image_info["width"])
                         if "height" in image_info and image_info["height"] is not None:
                             height = int(image_info["height"])
-                            
             except Exception:
                 # Silently fail if EXIF processing fails - fields will remain None
                 pass
         
-        # Create PhotoCreateRequest with extracted data (NO hotpreview)
+        # Create PhotoCreateRequest with frontend-provided data
         return PhotoCreateRequest(
             hothash=hothash,
             width=width,

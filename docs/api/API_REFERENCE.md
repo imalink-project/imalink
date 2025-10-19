@@ -297,6 +297,30 @@ Get a single photo by hothash.
 
 **Response**: `PhotoResponse`
 
+**🆕 October 2025 Update**: Response now includes `exif_dict` field with EXIF metadata from the master ImageFile.
+
+**Example Response:**
+```json
+{
+  "hothash": "a1b2c3d4e5f6789abcdef1234567890abcdef1234567890abcdef1234567890",
+  "title": "Solnedgang over Bergen",
+  "exif_dict": {
+    "camera": "Canon EOS R5",
+    "lens": "RF 24-70mm f/2.8L IS USM",
+    "iso": 400,
+    "aperture": "f/5.6",
+    "shutter_speed": "1/125",
+    "focal_length": "50mm"
+  },
+  "taken_at": "2024-10-19T15:30:45.123Z",
+  "gps_latitude": 60.3913,
+  "gps_longitude": 5.3221,
+  "rating": 5,
+  "has_gps": true,
+  "primary_filename": "IMG_2024.jpg"
+}
+```
+
 ### GET /photos/{hothash}/hotpreview
 Get the photo's thumbnail image (150x150 JPEG).
 
@@ -776,18 +800,49 @@ Clear all data but keep schema.
 #### PhotoResponse
 ```typescript
 {
-  id: number,
-  hothash: string,           // SHA256 of hotpreview
-  title: string | null,
-  description: string | null,
-  author_id: number | null,
-  author: AuthorResponse | null,
-  rating: number | null,     // 1-5
-  location: string | null,
-  tags: string[],
-  image_files: ImageFileResponse[],
-  created_at: string,        // ISO 8601
-  updated_at: string
+  hothash: string,                    // SHA256 hash identifier
+  
+  // Visual presentation data
+  hotpreview: string | null,          // Base64 encoded preview image
+  width: number | null,               // Original image width in pixels
+  height: number | null,              // Original image height in pixels
+  
+  // Coldpreview metadata
+  coldpreview_path: string | null,    // Filesystem path to coldpreview file
+  coldpreview_width: number | null,   // Coldpreview width
+  coldpreview_height: number | null,  // Coldpreview height
+  coldpreview_size: number | null,    // Coldpreview file size
+  
+  // Content metadata
+  taken_at: string | null,            // When photo was taken (ISO 8601)
+  gps_latitude: number | null,        // GPS latitude
+  gps_longitude: number | null,       // GPS longitude
+  exif_dict: object | null,           // 🆕 EXIF metadata from master image file
+  
+  // User metadata
+  title: string | null,               // User-assigned title
+  description: string | null,         // User description/notes
+  tags: string[] | null,              // List of tags
+  rating: number,                     // User rating (0-5 stars)
+  
+  // Timestamps
+  created_at: string,                 // When photo was imported (ISO 8601)
+  updated_at: string,                 // When photo was last updated (ISO 8601)
+  
+  // Relationships
+  author: AuthorSummary | null,       // Photo author/photographer
+  author_id: number | null,           // Author ID
+  
+  // Import information
+  import_sessions: number[],          // All import sessions for this photo's files
+  first_imported: string | null,      // Earliest import time (ISO 8601)
+  last_imported: string | null,       // Latest import time (ISO 8601)
+  
+  // Computed properties
+  has_gps: boolean,                   // Whether photo has GPS coordinates
+  has_raw_companion: boolean,         // Whether photo has both JPEG and RAW files
+  primary_filename: string | null,    // Primary filename for display
+  files: ImageFileSummary[]          // Associated image files
 }
 ```
 
@@ -842,11 +897,23 @@ Clear all data but keep schema.
 ```typescript
 {
   filename: string,
-  file_size: number,
-  file_path: string,
-  hotpreview: string,         // base64 JPEG (150x150)
+  file_size?: number,
+  hotpreview: string,                    // base64 JPEG hotpreview (required)
+  perceptual_hash?: string,              // auto-generated if not provided
+  
+  // EXIF metadata (frontend responsibility)
+  exif_dict?: Record<string, any>,       // Complete EXIF data as JSON
+  
+  // 🆕 Frontend-extracted metadata (replaces backend EXIF parsing)
+  taken_at?: string,                     // ISO 8601 datetime when photo was taken
+  gps_latitude?: number,                 // GPS latitude (-90 to 90)
+  gps_longitude?: number,                // GPS longitude (-180 to 180)
+  
+  // Import context
   import_session_id?: number,
-  exif_data?: Record<string, any>
+  imported_info?: Record<string, any>,
+  local_storage_info?: Record<string, any>,
+  cloud_storage_info?: Record<string, any>
 }
 ```
 

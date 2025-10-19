@@ -91,6 +91,13 @@ class Photo(Base, TimestampMixin):
             return self.image_files[0].hotpreview
         return None
     
+    @property
+    def exif_dict(self) -> Optional[dict]:
+        """Get EXIF metadata from first (master) ImageFile"""
+        if self.image_files and len(self.image_files) > 0:
+            return self.image_files[0].exif_dict
+        return None
+    
     @property  
     def jpeg_file(self) -> Optional["ImageFile"]:
         """Get the JPEG file for this photo (if any)"""
