@@ -25,7 +25,9 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Query
 from fastapi.responses import FileResponse
 
 from core.dependencies import get_image_file_service
+from api.dependencies import get_current_user
 from services.image_file_service import ImageFileService
+from models.user import User
 from schemas.image_file_schemas import (
     ImageFileResponse, ImageFileCreateRequest, ImageFileUpdateRequest, StorageInfoUpdateRequest
 )
@@ -42,13 +44,15 @@ router = APIRouter()
 def list_images(
     offset: int = Query(0, ge=0, description="Number of images to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of images to return"),
-    image_file_service: ImageFileService = Depends(get_image_file_service)
+    image_file_service: ImageFileService = Depends(get_image_file_service),
+    current_user: User = Depends(get_current_user)
 ):
     """Get paginated list of images with metadata"""
     try:
         return image_file_service.get_image_files(
             offset=offset,
-            limit=limit
+            limit=limit,
+            user_id=current_user.id
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve images: {str(e)}")
@@ -57,11 +61,12 @@ def list_images(
 @router.get("/{image_id}", response_model=ImageFileResponse)
 def get_image_details(
     image_id: int,
-    image_file_service: ImageFileService = Depends(get_image_file_service)
+    image_file_service: ImageFileService = Depends(get_image_file_service),
+    current_user: User = Depends(get_current_user)
 ):
     """Get detailed information about a specific image"""
     try:
-        return image_file_service.get_image_file_by_id(image_id)
+        return image_file_service.get_image_file_by_id(image_id, current_user.id)
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -181,7 +186,8 @@ def get_storage_info(
 @router.post("/new-photo", response_model=ImageFileUploadResponse, status_code=201)
 def create_image_with_new_photo(
     image_data: ImageFileNewPhotoRequest,
-    image_file_service: ImageFileService = Depends(get_image_file_service)
+    image_file_service: ImageFileService = Depends(get_image_file_service),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Create new ImageFile that will create a new Photo
@@ -199,7 +205,7 @@ def create_image_with_new_photo(
     5. Return success with Photo and ImageFile details
     """
     try:
-        return image_file_service.create_image_file_new_photo(image_data)
+        return image_file_service.create_image_file_new_photo(image_data, current_user.id)
     except DuplicateImageError as e:
         # This means a Photo with same hotpreview already exists
         raise HTTPException(
@@ -215,7 +221,8 @@ def create_image_with_new_photo(
 @router.post("/add-to-photo", response_model=ImageFileUploadResponse, status_code=201)
 def add_image_to_existing_photo(
     image_data: ImageFileAddToPhotoRequest,
-    image_file_service: ImageFileService = Depends(get_image_file_service)
+    image_file_service: ImageFileService = Depends(get_image_file_service),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Add new ImageFile to an existing Photo
@@ -236,7 +243,7 @@ def add_image_to_existing_photo(
     3. Return success with Photo and ImageFile details
     """
     try:
-        return image_file_service.add_image_file_to_photo(image_data)
+        return image_file_service.add_image_file_to_photo(image_data, current_user.id)
     except NotFoundError as e:
         # Photo with provided hothash doesn't exist
         raise HTTPException(

@@ -18,13 +18,11 @@ class ImageFileRepository:
         self.db = db
     
     def get_by_id(self, image_file_id: int, user_id: Optional[int] = None) -> Optional[ImageFile]:
-        """Get image_file file by ID (optionally user-scoped via Photo relationship)"""
+        """Get image file by ID (user-scoped)"""
         query = self.db.query(ImageFile).filter(ImageFile.id == image_file_id)
         
         if user_id is not None:
-            # Filter through Photo relationship
-            from models import Photo
-            query = query.join(Photo, ImageFile.photo_hothash == Photo.hothash).filter(Photo.user_id == user_id)
+            query = query.filter(ImageFile.user_id == user_id)
         
         return query.first()
     
@@ -39,13 +37,12 @@ class ImageFileRepository:
         search_params: Optional[ImageFileSearchRequest] = None,
         user_id: Optional[int] = None
     ) -> List[ImageFile]:
-        """Get image_file files with optional filtering and pagination (user-scoped via Photo)"""
+        """Get image_file files with optional filtering and pagination (user-scoped)"""
         query = self.db.query(ImageFile)
         
         # Apply user filtering first if needed
         if user_id is not None:
-            from models import Photo
-            query = query.join(Photo, ImageFile.photo_hothash == Photo.hothash).filter(Photo.user_id == user_id)
+            query = query.filter(ImageFile.user_id == user_id)
         
         # Apply filters
         query = self._apply_filters(query, search_params)
@@ -64,21 +61,20 @@ class ImageFileRepository:
         search_params: Optional[ImageFileSearchRequest] = None,
         user_id: Optional[int] = None
     ) -> int:
-        """Count images matching criteria (user-scoped via Photo)"""
+        """Count images matching criteria (user-scoped)"""
         query = self.db.query(ImageFile)
         
         # Apply user filtering first if needed
         if user_id is not None:
-            from models import Photo
-            query = query.join(Photo, ImageFile.photo_hothash == Photo.hothash).filter(Photo.user_id == user_id)
+            query = query.filter(ImageFile.user_id == user_id)
         
         # Apply same filters as get_images
         query = self._apply_filters(query, search_params)
         
         return query.count()
     
-    def create(self, image_file_data: ImageFileCreateRequest | Dict[str, Any]) -> ImageFile:
-        """Create new image_file record"""
+    def create(self, image_file_data: ImageFileCreateRequest | Dict[str, Any], user_id: int) -> ImageFile:
+        """Create new image_file record (user-scoped)"""
         if isinstance(image_file_data, dict):
             image_dict = image_file_data
         else:
@@ -88,6 +84,9 @@ class ImageFileRepository:
         # taken_at, gps_latitude, gps_longitude are used for Photo creation only
         photo_fields = {'taken_at', 'gps_latitude', 'gps_longitude'}
         filtered_dict = {k: v for k, v in image_dict.items() if k not in photo_fields}
+        
+        # Add user_id to the data
+        filtered_dict['user_id'] = user_id
         
         image_file = ImageFile(**filtered_dict)
         self.db.add(image_file)

@@ -37,6 +37,9 @@ class ImageFile(Base, TimestampMixin):
     
     id = Column(Integer, primary_key=True, index=True)
     
+    # User ownership - for multi-user system
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    
     # File-specific information
     filename = Column(String(255), nullable=False)  # Just name + extension, e.g. "IMG_1234.jpg"
     file_size = Column(Integer)  # Size in bytes
@@ -59,6 +62,7 @@ class ImageFile(Base, TimestampMixin):
     cloud_storage_info = Column(JSON, nullable=True)   # Current cloud storage details
     
     # Relationships
+    user = relationship("User", back_populates="image_files")
     photo = relationship("Photo", back_populates="image_files", foreign_keys=[photo_hothash])
     import_session = relationship("ImportSession", back_populates="image_files")
     

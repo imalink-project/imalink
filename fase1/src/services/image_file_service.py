@@ -39,13 +39,14 @@ class ImageFileService:
         self, 
         offset: int = 0, 
         limit: int = 100,
-        search_params: Optional[ImageFileSearchRequest] = None
+        search_params: Optional[ImageFileSearchRequest] = None,
+        user_id: Optional[int] = None
     ) -> PaginatedResponse[ImageFileResponse]:
         """Get paginated list of images with optional filtering"""
         
         # Get images and total count
-        images = self.image_file_repo.get_image_files(offset, limit, search_params)
-        total = self.image_file_repo.count_images(search_params)
+        images = self.image_file_repo.get_image_files(offset, limit, search_params, user_id)
+        total = self.image_file_repo.count_images(search_params, user_id)
         
         # Convert to response models with business logic
         image_responses = []
@@ -60,9 +61,9 @@ class ImageFileService:
             limit=limit
         )
     
-    def get_image_file_by_id(self, image_id: int) -> ImageFileResponse:
-        """Get specific image_file by ID"""
-        image_file = self.image_file_repo.get_by_id(image_id)
+    def get_image_file_by_id(self, image_id: int, user_id: Optional[int] = None) -> ImageFileResponse:
+        """Get specific image_file by ID (user-scoped)"""
+        image_file = self.image_file_repo.get_by_id(image_id, user_id)
         if not image_file:
             raise NotFoundError("ImageFile", image_id)
         
@@ -121,7 +122,7 @@ class ImageFileService:
         # 6. If Photo doesn't exist: Create new Photo + ImageFile (no coldpreview generation)
         return self._create_new_photo_with_previews(image_data, hothash, perceptual_hash, hotpreview_bytes)
     
-    def create_image_file_new_photo(self, image_data: ImageFileNewPhotoRequest) -> ImageFileUploadResponse:
+    def create_image_file_new_photo(self, image_data: ImageFileNewPhotoRequest, user_id: int) -> ImageFileUploadResponse:
         """
         Create ImageFile that will create a new Photo
         
@@ -163,7 +164,7 @@ class ImageFileService:
         )
         
         # 6. Create new Photo + ImageFile
-        image_file = self._create_new_photo_with_previews_v2(image_data, hothash, perceptual_hash, hotpreview_bytes)
+        image_file = self._create_new_photo_with_previews_v2(image_data, hothash, perceptual_hash, hotpreview_bytes, user_id)
         
         # 7. Return success response
         return ImageFileUploadResponse(
@@ -176,7 +177,7 @@ class ImageFileService:
             message="New photo created successfully"
         )
     
-    def add_image_file_to_photo(self, image_data: ImageFileAddToPhotoRequest) -> ImageFileUploadResponse:
+    def add_image_file_to_photo(self, image_data: ImageFileAddToPhotoRequest, user_id: int) -> ImageFileUploadResponse:
         """
         Add new ImageFile to an existing Photo
         
@@ -194,13 +195,13 @@ class ImageFileService:
         2. Create ImageFile linked to existing Photo
         3. Return success response
         """
-        # 1. Validate that Photo exists
-        existing_photo = self.photo_repo.get_by_hash(image_data.photo_hothash)
+        # 1. Validate that Photo exists and belongs to user
+        existing_photo = self.photo_repo.get_by_hash(image_data.photo_hothash, user_id)
         if not existing_photo:
             raise NotFoundError("Photo", image_data.photo_hothash)
         
         # 2. Create ImageFile for existing Photo (no hotpreview/perceptual_hash processing)
-        image_file = self._create_image_file_for_existing_photo_v2(image_data, image_data.photo_hothash)
+        image_file = self._create_image_file_for_existing_photo_v2(image_data, image_data.photo_hothash, user_id)
         
         # 3. Return success response
         return ImageFileUploadResponse(
@@ -622,17 +623,17 @@ class ImageFileService:
     
     def _create_new_photo_with_previews_v2(self, image_data: ImageFileNewPhotoRequest, 
                                           hothash: str, perceptual_hash: Optional[str], 
-                                          hotpreview_bytes: bytes) -> ImageFile:
+                                          hotpreview_bytes: bytes, user_id: int) -> ImageFile:
         """
         Create new Photo + ImageFile for new upload endpoint
         
         Returns the created ImageFile (not the response model)
         """
         
-        # 1. Create Photo with basic metadata (TODO: add user_id parameter)
+        # 1. Create Photo with basic metadata
         photo_data_dict = self._extract_photo_metadata_from_new_photo_request(image_data, hothash)
         photo_data = PhotoCreateRequest(**photo_data_dict)
-        photo = self.photo_repo.create(photo_data, user_id=1)  # TODO: get actual user_id
+        photo = self.photo_repo.create(photo_data, user_id=user_id)
         
         # 2. Create ImageFile linked to new Photo
         image_data_dict = image_data.model_dump()
@@ -644,12 +645,12 @@ class ImageFileService:
             from datetime import datetime
             image_data_dict['imported_time'] = datetime.utcnow()
         
-        image_file = self.image_file_repo.create(image_data_dict)
+        image_file = self.image_file_repo.create(image_data_dict, user_id)
         
         return image_file
     
     def _create_image_file_for_existing_photo_v2(self, image_data: ImageFileAddToPhotoRequest, 
-                                                hothash: str, perceptual_hash: Optional[str] = None) -> ImageFile:
+                                                hothash: str, user_id: int, perceptual_hash: Optional[str] = None) -> ImageFile:
         """
         Create ImageFile for existing Photo for add-to-photo endpoint
         
@@ -666,7 +667,7 @@ class ImageFileService:
             from datetime import datetime
             image_data_dict['imported_time'] = datetime.utcnow()
         
-        image_file = self.image_file_repo.create(image_data_dict)
+        image_file = self.image_file_repo.create(image_data_dict, user_id)
         
         return image_file
     
