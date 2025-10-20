@@ -67,7 +67,7 @@ Desktop client gir:
 ## [1.0.0] - 2025-10-01
 
 ### Lagt til
-- ✅ Komplett import-system med bakgrunnsprosessering
+- ✅ Komplett import-system med frontend-styrt prosessering
 - ✅ EXIF-orientering og automatisk hotpreview-rotasjon  
 - ✅ RAW+JPEG smart håndtering og deteksjon
 - ✅ Fotograf-administrasjon med navn, email og bio

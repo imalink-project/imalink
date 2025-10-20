@@ -2,7 +2,7 @@
 
 ## ✅ Oppnådde mål
 Ferdigstilt fungerende versjon av ImaLink med:
-- ✅ Import av store bildegallerie med sanntids fremgang
+- ✅ Import av store bildegallerie via frontend-styrt API
 - ✅ EXIF-metadata uttrekk og automatisk orientering  
 - ✅ Perceptuell hash for duplikatdeteksjon
 - ✅ Moderne web-basert galleri med responsive design
@@ -10,7 +10,7 @@ Ferdigstilt fungerende versjon av ImaLink med:
 - ✅ RAW+JPEG smart håndtering
 - ✅ Fotograf-administrasjon med CRUD
 - ✅ CSS-organisert arkitektur
-- ✅ Bakgrunnsprosessering av imports
+- ✅ Frontend-styrt import prosessering
 - ✅ **NYTT:** Multi-user autentisering med JWT
 - ✅ **NYTT:** User-scoped data isolasjon
 - ✅ **NYTT:** Krystallklare ImageFile upload endepunkter
@@ -30,7 +30,7 @@ Fase 1 implementerer ImaLinks unike designfilosofi:
    - Galleri fungerer selv uten tilgang til kildebilder
 
 3. **🔑 Hash som Universell Identitet**
-   - Hash-verdien ER bildeidentiteten
+   - Hothash (SHA256 av hotpreview) ER bildeidentiteten
    - Robust mot filflytting, omdøping og kopiering
    - Fremtidssikker for distribuerte systemer
 
@@ -96,7 +96,7 @@ fase1/
 ## ✅ Ferdigstilt
 1. ✅ Requirements.txt med alle avhengigheter
 2. ✅ Database-modeller (ImageFile, Photo, Author, ImportSession)
-3. ✅ Import-tjeneste med bakgrunnsprosessering
+3. ✅ Import-tjeneste med frontend-styrt prosessering
 4. ✅ Komplette API-endpoints (image-files, photos, authors, import)
 5. ✅ Desktop client proof-of-concept (Flet)
 6. ✅ EXIF-rotasjonshåndtering

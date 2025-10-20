@@ -2,7 +2,12 @@
 
 Et enkelt og intuitivt verktøy for organisering av store bildematerialer.
 
-## 🎯 Status
+## 💡 Konsepter og Terminologi
+
+### Hothash vs Perceptual Hash
+- **Hothash** (SHA256 av hotpreview): Unik identifikator for bildeidentitet
+- **Perceptual hash**: Brukes for similarity search og duplikatdeteksjon
+- **Viktig**: Hothash = bildeidentitet, perceptual hash = similarity-matching
 
 **Fase 1 MVP + Multi-User System er ferdig!** ✅
 
@@ -11,7 +16,7 @@ Et enkelt og intuitivt verktøy for organisering av store bildematerialer.
 - **🔒 User Data Isolation**: Komplett dataseparasjon - brukere ser kun egne bilder
 - **🖼️ Crystal Clear Upload API**: Separate endepunkter for nye bilder vs companion-filer
 - **Desktop Client**: Python/Flet desktop application med direkte database-tilgang
-- **Import System**: Bakgrunnsprosessering med sanntids fremgang
+- **Import System**: Frontend-styrt import med API-baserte operasjoner
 - **EXIF-rotasjon**: Automatisk orientering av bilder som i File Explorer
 - **RAW+JPEG håndtering**: Smart deteksjon og håndtering av RAW-filer
 - **Duplikatdeteksjon**: Perceptuell hash for å unngå duplikater
@@ -40,11 +45,12 @@ ImaLink følger noen unike prinsipper som skiller den fra andre fotoarkiveringsp
 - **Fordel**: Perfekt for arkivering på portable medier eller cloud-lagring
 
 ### 3. Hash som Universell Nøkkel
-- **Perceptuell hash = bildeidentitet**: Hash-verdien ER bildet, uavhengig av filnavn eller lokasjon
-- **Universell referanse**: Samme hash refererer til samme bilde på tvers av alle systemer
+- **Hothash = bildeidentitet**: SHA256-hash av hotpreview ER bildeidentiteten, uavhengig av filnavn eller lokasjon
+- **Universell referanse**: Samme hothash refererer til samme bilde på tvers av alle systemer
 - **Filnavn-uavhengig**: Bilder kan flyttes, omdøpes eller kopieres uten å miste identitet
 - **Fremtidssikring**: Hash-basert system kan utvides til distribuerte løsninger
 - **Fordel**: Robust identifikasjon som aldri går i stykker ved filoperasjoner
+- **Perceptual hash**: Brukes separat for similarity search og duplikatdeteksjon
 
 Denne filosofien gjør ImaLink spesielt egnet for fotografer med store arkiver som må håndtere bilder på tvers av forskjellige lagringsmedier og systemer.
 
