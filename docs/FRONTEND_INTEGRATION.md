@@ -517,7 +517,6 @@ Photo stacks organize photos into collections. Each photo can belong to at most 
 // PhotoStack TypeScript interfaces
 interface PhotoStackSummary {
   id: number;
-  description?: string;
   stack_type?: string;
   cover_photo_hothash?: string;
   photo_count: number;
@@ -530,7 +529,6 @@ interface PhotoStackDetail extends PhotoStackSummary {
 }
 
 interface PhotoStackCreateRequest {
-  description?: string;
   stack_type?: string;
   cover_photo_hothash?: string;
 }
@@ -700,7 +698,7 @@ const StackSelector: React.FC<{
       <option value="">No Stack</option>
       {stacks.map(stack => (
         <option key={stack.id} value={stack.id}>
-          {stack.description || `Stack ${stack.id}`} ({stack.photo_count} photos)
+          {stack.stack_type || `Stack ${stack.id}`} ({stack.photo_count} photos)
         </option>
       ))}
     </select>
@@ -720,13 +718,12 @@ const StackGrid: React.FC = () => {
           {stack.cover_photo_hothash && (
             <img 
               src={`/api/v1/photos/${stack.cover_photo_hothash}/hotpreview`}
-              alt={stack.description || `Stack ${stack.id}`}
+              alt={stack.stack_type || `Stack ${stack.id}`}
             />
           )}
           <div className="stack-info">
-            <h3>{stack.description || `Stack ${stack.id}`}</h3>
+            <h3>{stack.stack_type || `Stack ${stack.id}`}</h3>
             <p>{stack.photo_count} photos</p>
-            {stack.stack_type && <span className="stack-type">{stack.stack_type}</span>}
           </div>
         </div>
       ))}
