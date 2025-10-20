@@ -23,7 +23,7 @@ class ImaLinkTester:
     def test_connection(self):
         """Test API connection"""
         try:
-            response = requests.get(f"{self.api_base}/import_sessions/test")
+            response = requests.get(f"{self.api_base}/import-sessions/test")
             if response.ok:
                 print("✅ API Connection OK!")
                 return True
@@ -37,7 +37,7 @@ class ImaLinkTester:
     def storage_info(self, subfolder=None):
         """Get storage information"""
         try:
-            url = f"{self.api_base}/import_sessions/storage-info"
+            url = f"{self.api_base}/import-sessions/storage-info"
             if subfolder:
                 url += f"?subfolder={subfolder}"
             
@@ -78,7 +78,7 @@ class ImaLinkTester:
             print(f"  Copy files: {copy_files}")
             
             response = requests.post(
-                f"{self.api_base}/import_sessions/",
+                f"{self.api_base}/import-sessions/",
                 json=payload
             )
             
@@ -107,7 +107,7 @@ class ImaLinkTester:
             return None
         
         try:
-            response = requests.get(f"{self.api_base}/import_sessions/status/{session_id}")
+            response = requests.get(f"{self.api_base}/import-sessions/status/{session_id}")
             
             if response.ok:
                 data = response.json()
@@ -165,7 +165,7 @@ class ImaLinkTester:
     def list_imports(self, limit=10):
         """List recent import sessions"""
         try:
-            response = requests.get(f"{self.api_base}/import_sessions/")
+            response = requests.get(f"{self.api_base}/import-sessions/")
             
             if response.ok:
                 data = response.json()

@@ -48,7 +48,7 @@ app.add_middleware(
 app.include_router(auth_router, prefix="/api/v1")  # Authentication endpoints
 app.include_router(users_router, prefix="/api/v1")  # User management endpoints
 app.include_router(image_files_router, prefix="/api/v1/image-files", tags=["image-files"])
-app.include_router(import_sessions_router, prefix="/api/v1/import_sessions", tags=["import_sessions"])
+app.include_router(import_sessions_router, prefix="/api/v1/import-sessions", tags=["import-sessions"])
 app.include_router(authors_router, prefix="/api/v1/authors", tags=["authors"])
 app.include_router(debug_router, prefix="/api/v1/debug", tags=["debug"])
 app.include_router(photos_router, prefix="/api/v1/photos", tags=["photos"])

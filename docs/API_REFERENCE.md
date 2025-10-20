@@ -463,7 +463,7 @@ Group photos for UI organization (panoramas, bursts, HDR brackets, etc.). Each p
 
 ### List PhotoStacks
 ```http
-GET /api/photo-stacks?offset=0&limit=50
+GET /api/v1/photo-stacks?offset=0&limit=50
 Authorization: Bearer <token>
 ```
 
@@ -492,7 +492,7 @@ Authorization: Bearer <token>
 
 ### Get PhotoStack Details
 ```http
-GET /api/photo-stacks/{stack_id}
+GET /api/v1/photo-stacks/{stack_id}
 Authorization: Bearer <token>
 ```
 
@@ -511,7 +511,7 @@ Authorization: Bearer <token>
 
 ### Create PhotoStack
 ```http
-POST /api/photo-stacks
+POST /api/v1/photo-stacks
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -540,7 +540,7 @@ Content-Type: application/json
 
 ### Update PhotoStack
 ```http
-PUT /api/photo-stacks/{stack_id}
+PUT /api/v1/photo-stacks/{stack_id}
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -552,7 +552,7 @@ Content-Type: application/json
 
 ### Delete PhotoStack
 ```http
-DELETE /api/photo-stacks/{stack_id}
+DELETE /api/v1/photo-stacks/{stack_id}
 Authorization: Bearer <token>
 ```
 
@@ -560,7 +560,7 @@ Authorization: Bearer <token>
 
 ### Add Photo to Stack
 ```http
-POST /api/photo-stacks/{stack_id}/photo
+POST /api/v1/photo-stacks/{stack_id}/photo
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -584,7 +584,7 @@ Content-Type: application/json
 
 ### Remove Photo from Stack
 ```http
-DELETE /api/photo-stacks/{stack_id}/photo/{photo_hothash}
+DELETE /api/v1/photo-stacks/{stack_id}/photo/{photo_hothash}
 Authorization: Bearer <token>
 ```
 

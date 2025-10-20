@@ -228,7 +228,6 @@ class TestPhotoStackRepository:
         updated = photo_stack_repo.update(stack.id, update_data, user1.id)
         
         assert updated is not None
-        assert updated.stack_type == "Updated stack_type"
         assert updated.stack_type == "burst"
         assert updated.cover_photo_hothash == "new_cover"
         assert updated.user_id == user1.id

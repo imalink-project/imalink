@@ -88,7 +88,7 @@ def wait_for_import_completion(base_url, import_id, max_wait_seconds=30):
     while time.time() - start_time < max_wait_seconds:
         try:
             check_count += 1
-            status_response = requests.get(f"{base_url}/api/v1/import_sessions/status/{import_id}")
+            status_response = requests.get(f"{base_url}/api/v1/import-sessions/status/{import_id}")
             if status_response.ok:
                 status_data = status_response.json()
                 status = status_data.get("status", "unknown")
@@ -117,7 +117,7 @@ def wait_for_import_completion(base_url, import_id, max_wait_seconds=30):
     
     print(f"\n⚠️  Timeout after {max_wait_seconds} seconds ({check_count} checks)")
     print("Import might still be running in background. Check manually with:")
-    print(f"   GET /api/v1/import_sessions/status/{import_id}")
+    print(f"   GET /api/v1/import-sessions/status/{import_id}")
     return None
 
 
@@ -135,7 +135,7 @@ def start_import_session(base_url, import_request):
     print(f"Starting import with request:")
     print(json.dumps(import_request, indent=2))
     
-    start_response = requests.post(f"{base_url}/api/v1/import_sessions/start", json=import_request)
+    start_response = requests.post(f"{base_url}/api/v1/import-sessions/start", json=import_request)
     import_data = print_response(start_response)
     
     if not import_data or isinstance(import_data, str):
@@ -153,7 +153,7 @@ def start_import_session(base_url, import_request):
 
 def list_import_sessions(base_url):
     """List all import sessions"""
-    list_response = requests.get(f"{base_url}/api/v1/import_sessions")
+    list_response = requests.get(f"{base_url}/api/v1/import-sessions")
     return print_response(list_response)
 
 
