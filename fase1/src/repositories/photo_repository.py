@@ -17,17 +17,21 @@ class PhotoRepository:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_by_hash(self, hothash: str) -> Optional[Photo]:
-        """Get photo by hash with relationships loaded"""
-        return (
+    def get_by_hash(self, hothash: str, user_id: Optional[int] = None) -> Optional[Photo]:
+        """Get photo by hash with relationships loaded (optionally user-scoped)"""
+        query = (
             self.db.query(Photo)
             .options(
                 joinedload(Photo.author),
                 joinedload(Photo.image_files)
             )
             .filter(Photo.hothash == hothash)
-            .first()
         )
+        
+        if user_id is not None:
+            query = query.filter(Photo.user_id == user_id)
+        
+        return query.first()
     
     def exists_by_hash(self, hothash: str) -> bool:
         """Check if photo with hash already exists"""
@@ -42,16 +46,17 @@ class PhotoRepository:
         offset: int = 0, 
         limit: int = 100,
         author_id: Optional[int] = None,
-        search_params: Optional[PhotoSearchRequest] = None
+        search_params: Optional[PhotoSearchRequest] = None,
+        user_id: Optional[int] = None
     ) -> List[Photo]:
-        """Get photos with optional filtering and pagination"""
+        """Get photos with optional filtering and pagination (user-scoped)"""
         query = self.db.query(Photo).options(
             joinedload(Photo.author),
             joinedload(Photo.image_files)
         )
         
         # Apply filters
-        query = self._apply_filters(query, author_id, search_params)
+        query = self._apply_filters(query, author_id, search_params, user_id)
         
         # Apply sorting
         if search_params:
@@ -65,18 +70,19 @@ class PhotoRepository:
     def count_photos(
         self, 
         author_id: Optional[int] = None,
-        search_params: Optional[PhotoSearchRequest] = None
+        search_params: Optional[PhotoSearchRequest] = None,
+        user_id: Optional[int] = None
     ) -> int:
-        """Count photos matching criteria"""
+        """Count photos matching criteria (user-scoped)"""
         query = self.db.query(Photo)
         
         # Apply same filters as get_photos
-        query = self._apply_filters(query, author_id, search_params)
+        query = self._apply_filters(query, author_id, search_params, user_id)
         
         return query.count()
     
-    def create(self, photo_data: PhotoCreateRequest) -> Photo:
-        """Create new photo"""
+    def create(self, photo_data: PhotoCreateRequest, user_id: int) -> Photo:
+        """Create new photo (user-scoped)"""
         # Convert tags list to JSON if provided
         tags_json = photo_data.tags if photo_data.tags else []
         
@@ -85,6 +91,7 @@ class PhotoRepository:
         
         photo = Photo(
             hothash=photo_data.hothash,
+            user_id=user_id,
             width=photo_data.width,
             height=photo_data.height,
             taken_at=photo_data.taken_at,
@@ -103,9 +110,9 @@ class PhotoRepository:
         self.db.refresh(photo)
         return photo
     
-    def update(self, hothash: str, photo_data: PhotoUpdateRequest) -> Optional[Photo]:
-        """Update existing photo"""
-        photo = self.get_by_hash(hothash)
+    def update(self, hothash: str, photo_data: PhotoUpdateRequest, user_id: int) -> Optional[Photo]:
+        """Update existing photo (user-scoped)"""
+        photo = self.get_by_hash(hothash, user_id)
         if not photo:
             return None
         
@@ -124,9 +131,9 @@ class PhotoRepository:
         self.db.flush()
         return photo
     
-    def delete(self, hothash: str) -> bool:
-        """Delete photo and associated files"""
-        photo = self.get_by_hash(hothash)
+    def delete(self, hothash: str, user_id: int) -> bool:
+        """Delete photo and associated files (user-scoped)"""
+        photo = self.get_by_hash(hothash, user_id)
         if not photo:
             return False
         
@@ -148,9 +155,14 @@ class PhotoRepository:
         self, 
         query, 
         author_id: Optional[int] = None,
-        search_params: Optional[PhotoSearchRequest] = None
+        search_params: Optional[PhotoSearchRequest] = None,
+        user_id: Optional[int] = None
     ):
         """Apply filters to photo query"""
+        
+        # Filter by user (data isolation)
+        if user_id:
+            query = query.filter(Photo.user_id == user_id)
         
         # Filter by author
         if author_id:

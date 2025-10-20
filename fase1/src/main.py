@@ -17,6 +17,8 @@ from api.v1.import_sessions import router as import_sessions_router
 from api.v1.authors import router as authors_router
 from api.v1.debug import router as debug_router
 from api.v1.photos import router as photos_router
+from api.auth import router as auth_router
+from api.users import router as users_router
 from core.exceptions import APIException
 
 # Ensure directories exist
@@ -42,6 +44,8 @@ app.add_middleware(
 )
 
 # Include API routers with v1 prefix for versioning
+app.include_router(auth_router, prefix="/api/v1")  # Authentication endpoints
+app.include_router(users_router, prefix="/api/v1")  # User management endpoints
 app.include_router(image_files_router, prefix="/api/v1/image-files", tags=["image-files"])
 app.include_router(import_sessions_router, prefix="/api/v1/import_sessions", tags=["import_sessions"])
 app.include_router(authors_router, prefix="/api/v1/authors", tags=["authors"])

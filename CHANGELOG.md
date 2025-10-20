@@ -4,7 +4,27 @@ Alle viktige endringer i dette prosjektet dokumenteres i denne filen.
 
 ## [Unreleased] - 2025-10-20
 
-### 🔄 API Endring - Frontend Ansvar
+### � MAJOR: Multi-User Authentication System
+- **🆕 JWT Authentication**: Complete JWT-based authentication with user registration/login
+- **🆕 User Model**: Users table with username, email, password hashing (SHA256-crypt)
+- **🆕 User Isolation**: Complete data separation - users can only see their own data
+- **🆕 Auth Endpoints**: `/auth/register`, `/auth/login`, `/users/me`, password change
+- **🆕 Protected APIs**: All endpoints now require authentication (photos, authors, import_sessions)
+- **✅ Data Migration**: All existing tables updated with user_id foreign keys
+- **✅ Repository Updates**: User-scoped filtering in PhotoRepository, AuthorRepository, ImportSessionRepository
+- **✅ Security**: Cross-user access prevention at repository level
+- **✅ Testing**: Complete user isolation test suite validates multi-user security
+
+### 🖼️ MAJOR: ImageFile Upload Architecture Overhaul
+- **🆕 Crystal Clear Upload Logic**: Split upload into two distinct endpoints
+  - `POST /image-files/new-photo` - Upload completely new, unique photos (requires hotpreview)
+  - `POST /image-files/add-to-photo` - Add companion files to existing photos (no hotpreview/perceptual_hash)
+- **🆕 Dedicated Schemas**: `ImageFileNewPhotoRequest`, `ImageFileAddToPhotoRequest`, `ImageFileUploadResponse`
+- **🆕 Clear Error Handling**: Specific error messages for wrong endpoint usage
+- **✅ Maintained Legacy**: Old `POST /image-files/` marked as deprecated but functional
+- **✅ API Documentation**: Complete examples for both upload paths
+
+### �🔄 API Endring - Frontend Ansvar  
 - **Frontend sender nå strukturerte EXIF felter**: `taken_at`, `gps_latitude`, `gps_longitude` må sendes direkte i POST ImageFile
 - ✅ Backend stopper EXIF parsing - frontend ekstraherer og sender strukturerte data
 - ✅ `exif_dict` fortsetter å sendes for komplett EXIF visning
@@ -21,6 +41,12 @@ Alle viktige endringer i dette prosjektet dokumenteres i denne filen.
 - ✅ ImportSession modell renset for FileStorage-avhengigheter
 - ✅ Fjernet FileStorage API endpoints, services og repositories
 - ✅ Frontend-sentrert tilnærming: All filhåndtering i klient-applikasjoner
+
+### 📚 Dokumentasjon
+- **🆕 Complete API Reference v2.0**: Updated with authentication and new upload endpoints
+- **🆕 Frontend Integration Guide v2.0**: TypeScript examples for authentication and upload flows
+- **🆕 Architecture Guide v2.0**: Multi-user system architecture documentation
+- **✅ Updated README**: Reflects new authentication system and upload endpoints
 
 ## [2.0.0] - 2025-10-16
 

@@ -12,6 +12,7 @@ from .mixins import TimestampMixin
 
 if TYPE_CHECKING:
     from .author import Author
+    from .user import User
 
 
 class ImportSession(Base, TimestampMixin):
@@ -30,6 +31,9 @@ class ImportSession(Base, TimestampMixin):
     
     id = Column(Integer, primary_key=True, index=True)
     
+    # Data ownership - each import session belongs to a user
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    
     # When the import happened
     imported_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
@@ -41,6 +45,7 @@ class ImportSession(Base, TimestampMixin):
     default_author_id = Column(Integer, ForeignKey('authors.id'), nullable=True, index=True)
     
     # Relationships
+    user = relationship("User", back_populates="import_sessions")
     default_author = relationship("Author", back_populates="imports")
     image_files = relationship("ImageFile", back_populates="import_session", cascade="all, delete-orphan")
     

@@ -15,41 +15,57 @@ class AuthorRepository:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_by_id(self, author_id: int) -> Optional[Author]:
-        """Get author by ID with photos"""
-        return (
+    def get_by_id(self, author_id: int, user_id: Optional[int] = None) -> Optional[Author]:
+        """Get author by ID with photos (optionally user-scoped)"""
+        query = (
             self.db.query(Author)
             .options(joinedload(Author.photos))
             .filter(Author.id == author_id)
-            .first()
         )
+        
+        if user_id is not None:
+            query = query.filter(Author.user_id == user_id)
+        
+        return query.first()
     
-    def get_by_name(self, name: str) -> Optional[Author]:
-        """Get author by name (case-insensitive)"""
-        return (
+    def get_by_name(self, name: str, user_id: Optional[int] = None) -> Optional[Author]:
+        """Get author by name (case-insensitive, optionally user-scoped)"""
+        query = (
             self.db.query(Author)
             .filter(func.lower(Author.name) == name.lower())
-            .first()
         )
+        
+        if user_id is not None:
+            query = query.filter(Author.user_id == user_id)
+        
+        return query.first()
     
-    def get_all(self, offset: int = 0, limit: int = 100) -> List[Author]:
-        """Get all authors with pagination"""
-        return (
+    def get_all(self, offset: int = 0, limit: int = 100, user_id: Optional[int] = None) -> List[Author]:
+        """Get all authors with pagination (optionally user-scoped)"""
+        query = (
             self.db.query(Author)
             .options(joinedload(Author.photos))
             .order_by(Author.name)
-            .offset(offset)
-            .limit(limit)
-            .all()
         )
+        
+        if user_id is not None:
+            query = query.filter(Author.user_id == user_id)
+        
+        return query.offset(offset).limit(limit).all()
     
-    def count_all(self) -> int:
-        """Count total authors"""
-        return self.db.query(Author).count()
+    def count_all(self, user_id: Optional[int] = None) -> int:
+        """Count total authors (optionally user-scoped)"""
+        query = self.db.query(Author)
+        
+        if user_id is not None:
+            query = query.filter(Author.user_id == user_id)
+        
+        return query.count()
     
-    def create(self, author_data: AuthorCreateRequest) -> Author:
-        """Create new author"""
+    def create(self, author_data: AuthorCreateRequest, user_id: int) -> Author:
+        """Create new author (user-scoped)"""
         author = Author(
+            user_id=user_id,
             name=author_data.name.strip(),
             email=author_data.email.strip() if author_data.email else None,
             bio=author_data.bio.strip() if author_data.bio else None
@@ -59,9 +75,9 @@ class AuthorRepository:
         self.db.refresh(author)
         return author
     
-    def update(self, author_id: int, update_data: Dict[str, Any]) -> Optional[Author]:
-        """Update existing author"""
-        author = self.get_by_id(author_id)
+    def update(self, author_id: int, update_data: Dict[str, Any], user_id: int) -> Optional[Author]:
+        """Update existing author (user-scoped)"""
+        author = self.get_by_id(author_id, user_id)
         if not author:
             return None
         
@@ -76,18 +92,22 @@ class AuthorRepository:
         self.db.refresh(author)
         return author
     
-    def delete(self, author_id: int) -> bool:
-        """Delete author by ID"""
-        author = self.get_by_id(author_id)
+    def delete(self, author_id: int, user_id: int) -> bool:
+        """Delete author by ID (user-scoped)"""
+        author = self.get_by_id(author_id, user_id)
         if author:
             self.db.delete(author)
             self.db.commit()
             return True
         return False
     
-    def exists_by_name(self, name: str, exclude_id: Optional[int] = None) -> bool:
-        """Check if author with name already exists"""
-        query = self.db.query(Author).filter(func.lower(Author.name) == name.lower())
+    def exists_by_name(self, name: str, user_id: int, exclude_id: Optional[int] = None) -> bool:
+        """Check if author with name already exists (user-scoped)"""
+        query = (
+            self.db.query(Author)
+            .filter(func.lower(Author.name) == name.lower())
+            .filter(Author.user_id == user_id)
+        )
         if exclude_id:
             query = query.filter(Author.id != exclude_id)
         return query.first() is not None

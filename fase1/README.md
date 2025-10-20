@@ -1,4 +1,4 @@
-# Fase 1 - ImaLink MVP ✅ FERDIG
+# Fase 1 - ImaLink MVP ✅ FERDIG + Multi-User System
 
 ## ✅ Oppnådde mål
 Ferdigstilt fungerende versjon av ImaLink med:
@@ -11,6 +11,9 @@ Ferdigstilt fungerende versjon av ImaLink med:
 - ✅ Fotograf-administrasjon med CRUD
 - ✅ CSS-organisert arkitektur
 - ✅ Bakgrunnsprosessering av imports
+- ✅ **NYTT:** Multi-user autentisering med JWT
+- ✅ **NYTT:** User-scoped data isolasjon
+- ✅ **NYTT:** Krystallklare ImageFile upload endepunkter
 
 ## 🧠 Kjerneprinsippene
 
@@ -35,7 +38,8 @@ Se [hovedprosjektets README](../README.md) for utdypende forklaring.
 
 ## Teknologi-stack
 - **Backend:** Python 3.11+ med FastAPI
-- **Database:** SQLite med SQLAlchemy
+- **Database:** SQLite med SQLAlchemy  
+- **Autentisering:** JWT tokens med SHA256-crypt
 - **Bildeprosessering:** Pillow, piexif, imagehash
 - **Demo/Testing:** Python scripts, CLI tools  
 - **Testing:** pytest, Custom Python test suite
@@ -116,8 +120,12 @@ uv run python author_crud_demo.py
 ### API og Testing:
 - **Health**: `http://localhost:8000/health` - Server status
 - **API Docs**: `http://localhost:8000/docs` - Interaktiv API dokumentasjon
+- **Auth**: `http://localhost:8000/api/v1/auth/` - User registration/login
+- **Users**: `http://localhost:8000/api/v1/users/` - User profile management
 - **Authors API**: `http://localhost:8000/api/v1/authors/` - CRUD for fotografer
 - **ImageFiles API**: `http://localhost:8000/api/v1/image-files/` - Fildata og metadata
+  - **NEW**: `POST /image-files/new-photo` - Upload new unique photo
+  - **NEW**: `POST /image-files/add-to-photo` - Add companion file to existing photo
 - **Photos API**: `http://localhost:8000/api/v1/photos/` - Fotovisning og metadata
 
 ### Demo Suite:

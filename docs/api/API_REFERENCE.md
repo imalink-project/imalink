@@ -1,53 +1,342 @@
-# ImaLink API Reference
+# ImaLink API Reference v2.0
 
 **Base URL**: `http://localhost:8000/api/v1`  
 **For WSL → Windows**: `http://172.x.x.x:8000/api/v1` (use `hostname -I` in WSL to find IP)
 
-## Authentication
-Currently no authentication required (development phase).
+## 🔐 Authentication
 
-## Storage Structure
-ImaLink uses a well-organized file structure for data and media storage:
+ImaLink now uses JWT-based authentication with user isolation:
 
+### Register User
+```http
+POST /auth/register
+Content-Type: application/json
+
+{
+  "username": "johndoe",
+  "email": "john@example.com", 
+  "password": "securepass123",
+  "display_name": "John Doe"
+}
 ```
-{DATA_DIRECTORY}/                    # /mnt/c/temp/00imalink_data/
-├── imalink.db                       # SQLite database
-└── coldpreviews/                    # Medium-size preview images
-    ├── ab/                    ### DELETE /file-storage/{storage_uuid}
-Delete a FileStorage (permanent).
 
-**Path Parameters:**
-- `storage_uuid` (string): The storage's UUID
+### Login
+```http
+POST /auth/login
+Content-Type: application/json
 
-**Response**: 204 No Content
+{
+  "username": "johndoe",
+  "password": "securepass123"
+}
+```
+
+**Response:**
+```json
+{
+  "access_token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "token_type": "bearer",
+  "user": {
+    "id": 1,
+    "username": "johndoe",
+    "email": "john@example.com",
+    "display_name": "John Doe"
+  }
+}
+```
+
+### Authenticated Requests
+Include JWT token in Authorization header:
+```http
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...
+```
+
+## 🖼️ ImageFile Upload - New Architecture
+
+### Upload New Photo
+Upload a completely new, unique photo:
+
+```http
+POST /image-files/new-photo
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "filename": "IMG_001.jpg",
+  "hotpreview": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD...",
+  "file_size": 2048576,
+  "exif_dict": {
+    "DateTime": "2023:10:15 14:30:00",
+    "Make": "Canon",
+    "Model": "EOS R5"
+  },
+  "taken_at": "2023-10-15T14:30:00Z",
+  "gps_latitude": 59.9139,
+  "gps_longitude": 10.7522
+}
+```
+
+**Response:**
+```json
+{
+  "image_file_id": 123,
+  "filename": "IMG_001.jpg", 
+  "file_size": 2048576,
+  "photo_hothash": "abc123def456...",
+  "photo_created": true,
+  "success": true,
+  "message": "New photo created successfully"
+}
+```
+
+### Add Companion File
+Add RAW/different format to existing photo:
+
+```http
+POST /image-files/add-to-photo
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "filename": "IMG_001.CR3",
+  "photo_hothash": "abc123def456...",
+  "file_size": 45678901,
+  "exif_dict": {
+    "DateTime": "2023:10:15 14:30:00",
+    "Make": "Canon",
+    "Model": "EOS R5"
+  }
+}
+```
+
+**Response:**
+```json
+{
+  "image_file_id": 124,
+  "filename": "IMG_001.CR3",
+  "file_size": 45678901, 
+  "photo_hothash": "abc123def456...",
+  "photo_created": false,
+  "success": true,
+  "message": "Image file added to existing photo successfully"
+}
+```
+
+## 📸 Photos API
+
+### List User Photos
+```http
+GET /photos?offset=0&limit=50
+Authorization: Bearer <token>
+```
+
+### Get Photo Details
+```http
+GET /photos/{hothash}
+Authorization: Bearer <token>
+```
+
+### Update Photo Metadata
+```http
+PUT /photos/{hothash}
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "title": "Sunset in Oslo",
+  "description": "Beautiful sunset over the fjord",
+  "tags": ["sunset", "oslo", "landscape"],
+  "rating": 5,
+  "author_id": 2
+}
+```
+
+### Delete Photo (and all ImageFiles)
+```http
+DELETE /photos/{hothash}
+Authorization: Bearer <token>
+```
+
+## 👤 Authors API
+
+### List Authors
+```http
+GET /authors
+Authorization: Bearer <token>
+```
+
+### Create Author
+```http
+POST /authors
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "John Photographer",
+  "email": "john@photo.com",
+  "bio": "Professional landscape photographer"
+}
+```
+
+### Update Author
+```http
+PUT /authors/{author_id}
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "John P. Photographer",
+  "bio": "Award-winning landscape photographer"
+}
+```
+
+## 📁 Import Sessions API
+
+### List Import Sessions
+```http
+GET /import_sessions
+Authorization: Bearer <token>
+```
+
+### Create Import Session
+```http
+POST /import_sessions
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "name": "Europe Trip 2023",
+  "source_path": "/external/photos/europe-2023",
+  "description": "Photos from summer vacation"
+}
+```
+
+## 👥 User Management
+
+### Get Current User Profile
+```http
+GET /users/me
+Authorization: Bearer <token>
+```
+
+### Change Password
+```http
+PUT /users/me/password
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "current_password": "oldpass123",
+  "new_password": "newpass456"
+}
+```
+
+## 🔒 Data Isolation
+
+Each user has complete data isolation:
+- Users can only see their own photos, authors, and import sessions
+- ImageFiles are accessible only through user's photos
+- Cross-user access is prevented at repository level
+
+## 📝 Error Responses
+
+### Authentication Errors
+```json
+{
+  "detail": "Could not validate credentials",
+  "status_code": 401
+}
+```
+
+### Not Found
+```json
+{
+  "detail": "Photo not found",
+  "status_code": 404
+}
+```
+
+### Duplicate Photo
+```json
+{
+  "detail": "Photo with this image already exists. Use /add-to-photo endpoint instead.",
+  "status_code": 409
+}
+```
+
+## 📋 TypeScript Interfaces
+
+### User
+```typescript
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  display_name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+```
+
+### Photo
+```typescript
+interface Photo {
+  hothash: string;
+  title?: string;
+  description?: string;
+  tags: string[];
+  rating?: number;
+  taken_at?: string;
+  gps_latitude?: number;
+  gps_longitude?: number;
+  author_id?: number;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+}
+```
+
+### ImageFile
+```typescript
+interface ImageFile {
+  id: number;
+  photo_hothash: string;
+  filename: string;
+  file_size?: number;
+  has_hotpreview: boolean;
+  perceptual_hash?: string;
+  exif_dict?: Record<string, any>;
+  import_session_id?: number;
+  imported_time?: string;
+  created_at: string;
+}
+```
+
+### Author
+```typescript
+interface Author {
+  id: number;
+  name: string;
+  email?: string;
+  bio?: string;
+  user_id: number;
+  created_at: string;
+  updated_at: string;
+}
+```
 
 ---
 
-## 🧪 FileStorage Testing Examples
+## 🔗 Interactive Documentation
 
-### cURL Examples
+When server is running, access:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+- **OpenAPI JSON**: http://localhost:8000/openapi.json
 
-**Create FileStorage:**
-```bash
-curl -X POST http://localhost:8000/api/v1/file-storage/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "base_path": "/external/photos",
-    "- `files` (array): Associated ImageFile objects
-- `created_at` (datetime): When photo was imported
-- `updated_at` (datetime): When photo was last updated
-
-### FileStorageResponse
-
-Complete FileStorage object with metadata and computed paths.
-
-**TypeScript Interface:**
-```typescript
-interface FileStorageResponse {
-  id: number;
-  storage_uuid: string;
-  directory_name: string;      // Auto-generated: imalink_YYYYMMDD_HHMMSS_uuid8
-  base_path: string;
+These provide interactive API testing and complete schema definitions.
+```
   full_path: string;           // Computed: {base_path}/{directory_name}
   display_name?: string;
   description?: string;

@@ -26,6 +26,8 @@ from schemas.photo_schemas import (
 )
 from schemas.common import PaginatedResponse, create_success_response
 from core.exceptions import NotFoundError, ValidationError
+from api.dependencies import get_current_active_user
+from models.user import User
 
 router = APIRouter()
 
@@ -35,14 +37,16 @@ def list_photos(
     offset: int = Query(0, ge=0, description="Number of photos to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of photos to return"),
     author_id: Optional[int] = Query(None, description="Filter by author ID"),
+    current_user: User = Depends(get_current_active_user),
     photo_service: PhotoService = Depends(get_photo_service)
 ):
-    """Get paginated list of photos with metadata"""
+    """Get paginated list of photos with metadata (user-scoped)"""
     try:
         return photo_service.get_photos(
             offset=offset,
             limit=limit,
-            author_id=author_id
+            author_id=author_id,
+            user_id=getattr(current_user, 'id')
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve photos: {str(e)}")
@@ -51,11 +55,12 @@ def list_photos(
 @router.post("/search", response_model=PaginatedResponse[PhotoResponse])
 def search_photos(
     search_request: PhotoSearchRequest,
+    current_user: User = Depends(get_current_active_user),
     photo_service: PhotoService = Depends(get_photo_service)
 ):
-    """Search photos with advanced filtering"""
+    """Search photos with advanced filtering (user-scoped)"""
     try:
-        return photo_service.search_photos(search_request)
+        return photo_service.search_photos(search_request, getattr(current_user, 'id'))
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -65,11 +70,12 @@ def search_photos(
 @router.get("/{hothash}", response_model=PhotoResponse)
 def get_photo(
     hothash: str,
+    current_user: User = Depends(get_current_active_user),
     photo_service: PhotoService = Depends(get_photo_service)
 ):
-    """Get single photo by hash"""
+    """Get single photo by hash (user-scoped)"""
     try:
-        return photo_service.get_photo_by_hash(hothash)
+        return photo_service.get_photo_by_hash(hothash, getattr(current_user, 'id'))
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -80,11 +86,12 @@ def get_photo(
 def update_photo(
     hothash: str,
     photo_data: PhotoUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
     photo_service: PhotoService = Depends(get_photo_service)
 ):
-    """Update existing photo"""
+    """Update existing photo (user-scoped)"""
     try:
-        return photo_service.update_photo(hothash, photo_data)
+        return photo_service.update_photo(hothash, photo_data, getattr(current_user, 'id'))
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except ValidationError as e:
@@ -96,11 +103,12 @@ def update_photo(
 @router.delete("/{hothash}")
 def delete_photo(
     hothash: str,
+    current_user: User = Depends(get_current_active_user),
     photo_service: PhotoService = Depends(get_photo_service)
 ):
-    """Delete photo and all associated image files"""
+    """Delete photo and all associated image files (user-scoped)"""
     try:
-        photo_service.delete_photo(hothash)
+        photo_service.delete_photo(hothash, getattr(current_user, 'id'))
         return create_success_response(message="Photo deleted successfully")
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

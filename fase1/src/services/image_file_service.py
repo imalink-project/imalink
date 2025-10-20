@@ -15,6 +15,9 @@ from schemas.image_file_schemas import (
     ImageFileResponse, ImageFileCreateRequest, ImageFileUpdateRequest, 
     ImageFileSearchRequest, StorageInfoUpdateRequest
 )
+from schemas.image_file_upload_schemas import (
+    ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
+)
 from schemas.photo_schemas import PhotoCreateRequest
 from schemas.common import PaginatedResponse, create_paginated_response
 from core.exceptions import NotFoundError, DuplicateImageError, ValidationError
@@ -117,6 +120,98 @@ class ImageFileService:
         
         # 6. If Photo doesn't exist: Create new Photo + ImageFile (no coldpreview generation)
         return self._create_new_photo_with_previews(image_data, hothash, perceptual_hash, hotpreview_bytes)
+    
+    def create_image_file_new_photo(self, image_data: ImageFileNewPhotoRequest) -> ImageFileUploadResponse:
+        """
+        Create ImageFile that will create a new Photo
+        
+        USE CASE: Uploading a completely new, unique photo
+        - Hotpreview is REQUIRED and will generate the Photo's hothash
+        - A new Photo will always be created
+        - This ImageFile becomes the master file for the new Photo
+        
+        WORKFLOW:
+        1. Validate hotpreview data
+        2. Generate photo_hothash from hotpreview (SHA256)
+        3. Check if Photo already exists (if yes, raise DuplicateImageError)
+        4. Create new Photo with generated hothash
+        5. Create ImageFile linked to new Photo
+        6. Return success response
+        """
+        # 1. Validate hotpreview is provided
+        if not image_data.hotpreview:
+            raise ValidationError("hotpreview is required when creating new photo")
+        
+        # 2. Cast hotpreview to bytes
+        if isinstance(image_data.hotpreview, str):
+            hotpreview_bytes = image_data.hotpreview.encode('utf-8')
+        else:
+            hotpreview_bytes = image_data.hotpreview
+        
+        # 3. Generate hothash from hotpreview (SHA256)
+        hothash = self._generate_hothash_from_hotpreview(hotpreview_bytes)
+        
+        # 4. Check if Photo already exists - if yes, this is an error for this endpoint
+        existing_photo = self._simple_photo_exists_check(hothash)
+        if existing_photo:
+            raise DuplicateImageError(f"Photo with this image already exists (hothash: {hothash[:8]}...)")
+        
+        # 5. Generate perceptual hash
+        perceptual_hash = self._generate_perceptual_hash_if_missing(
+            image_data.perceptual_hash, 
+            hotpreview_bytes
+        )
+        
+        # 6. Create new Photo + ImageFile
+        image_file = self._create_new_photo_with_previews_v2(image_data, hothash, perceptual_hash, hotpreview_bytes)
+        
+        # 7. Return success response
+        return ImageFileUploadResponse(
+            image_file_id=getattr(image_file, 'id'),
+            filename=getattr(image_file, 'filename'),
+            file_size=getattr(image_file, 'file_size', None),
+            photo_hothash=hothash,
+            photo_created=True,
+            success=True,
+            message="New photo created successfully"
+        )
+    
+    def add_image_file_to_photo(self, image_data: ImageFileAddToPhotoRequest) -> ImageFileUploadResponse:
+        """
+        Add new ImageFile to an existing Photo
+        
+        USE CASE: Adding companion files to existing photos
+        - RAW file for existing JPEG photo
+        - Different format/resolution of same photo
+        - Additional file versions
+        
+        REQUIREMENTS:
+        - photo_hothash must reference an existing Photo
+        - No hotpreview or perceptual_hash needed (Photo already exists)
+        
+        WORKFLOW:
+        1. Validate that Photo with photo_hothash exists
+        2. Create ImageFile linked to existing Photo
+        3. Return success response
+        """
+        # 1. Validate that Photo exists
+        existing_photo = self.photo_repo.get_by_hash(image_data.photo_hothash)
+        if not existing_photo:
+            raise NotFoundError("Photo", image_data.photo_hothash)
+        
+        # 2. Create ImageFile for existing Photo (no hotpreview/perceptual_hash processing)
+        image_file = self._create_image_file_for_existing_photo_v2(image_data, image_data.photo_hothash)
+        
+        # 3. Return success response
+        return ImageFileUploadResponse(
+            image_file_id=getattr(image_file, 'id'),
+            filename=getattr(image_file, 'filename'),
+            file_size=getattr(image_file, 'file_size', None),
+            photo_hothash=image_data.photo_hothash,
+            photo_created=False,
+            success=True,
+            message="Image file added to existing photo successfully"
+        )
     
     def update_image_file(
         self, 
@@ -525,5 +620,67 @@ class ImageFileService:
         
         return self._convert_to_response(image_file)
     
+    def _create_new_photo_with_previews_v2(self, image_data: ImageFileNewPhotoRequest, 
+                                          hothash: str, perceptual_hash: Optional[str], 
+                                          hotpreview_bytes: bytes) -> ImageFile:
+        """
+        Create new Photo + ImageFile for new upload endpoint
+        
+        Returns the created ImageFile (not the response model)
+        """
+        
+        # 1. Create Photo with basic metadata (TODO: add user_id parameter)
+        photo_data_dict = self._extract_photo_metadata_from_new_photo_request(image_data, hothash)
+        photo_data = PhotoCreateRequest(**photo_data_dict)
+        photo = self.photo_repo.create(photo_data, user_id=1)  # TODO: get actual user_id
+        
+        # 2. Create ImageFile linked to new Photo
+        image_data_dict = image_data.model_dump()
+        image_data_dict['photo_hothash'] = hothash
+        image_data_dict['perceptual_hash'] = perceptual_hash
+        
+        # Set imported_time automatically if not provided
+        if 'imported_time' not in image_data_dict or not image_data_dict['imported_time']:
+            from datetime import datetime
+            image_data_dict['imported_time'] = datetime.utcnow()
+        
+        image_file = self.image_file_repo.create(image_data_dict)
+        
+        return image_file
+    
+    def _create_image_file_for_existing_photo_v2(self, image_data: ImageFileAddToPhotoRequest, 
+                                                hothash: str, perceptual_hash: Optional[str] = None) -> ImageFile:
+        """
+        Create ImageFile for existing Photo for add-to-photo endpoint
+        
+        Returns the created ImageFile (not the response model)
+        """
+        
+        # Create ImageFile linked to existing Photo
+        image_data_dict = image_data.model_dump()
+        image_data_dict['photo_hothash'] = hothash
+        image_data_dict['perceptual_hash'] = perceptual_hash
+        
+        # Set imported_time automatically if not provided
+        if 'imported_time' not in image_data_dict or not image_data_dict['imported_time']:
+            from datetime import datetime
+            image_data_dict['imported_time'] = datetime.utcnow()
+        
+        image_file = self.image_file_repo.create(image_data_dict)
+        
+        return image_file
+    
+    def _extract_photo_metadata_from_new_photo_request(self, image_data: ImageFileNewPhotoRequest, hothash: str) -> Dict[str, Any]:
+        """
+        Extract Photo metadata from ImageFileNewPhotoRequest
+        """
+        return {
+            'hothash': hothash,
+            'taken_at': image_data.taken_at,
+            'gps_latitude': image_data.gps_latitude,
+            'gps_longitude': image_data.gps_longitude,
+            'title': None,  # Will be set later via Photo API
+            'description': None,  # Will be set later via Photo API
+        }
 
     

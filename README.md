@@ -4,9 +4,12 @@ Et enkelt og intuitivt verktøy for organisering av store bildematerialer.
 
 ## 🎯 Status
 
-**Fase 1 MVP er ferdig!** ✅
+**Fase 1 MVP + Multi-User System er ferdig!** ✅
 
 ### ✅ Implementerte funksjoner:
+- **🔐 Multi-User Authentication**: JWT-basert autentisering med brukerregistrering og innlogging
+- **🔒 User Data Isolation**: Komplett dataseparasjon - brukere ser kun egne bilder
+- **🖼️ Crystal Clear Upload API**: Separate endepunkter for nye bilder vs companion-filer
 - **Desktop Client**: Python/Flet desktop application med direkte database-tilgang
 - **Import System**: Bakgrunnsprosessering med sanntids fremgang
 - **EXIF-rotasjon**: Automatisk orientering av bilder som i File Explorer
@@ -16,8 +19,8 @@ Et enkelt og intuitivt verktøy for organisering av store bildematerialer.
   - Hotpreview (150x150) lagret i database for rask tilgang
   - Coldpreview (800-1200px) lagret på disk for detaljvisning
 - **Similarity Search**: Find lignende bilder basert på perceptual hash
-- **Fotograf-admin**: Fullstendig CRUD med email og bio
-- **Modern arkitektur**: FastAPI + SQLite + Qt frontend support
+- **Fotograf-admin**: Fullstendig CRUD med email og bio (bruker-scoped)
+- **Modern arkitektur**: FastAPI + SQLite + JWT + Multi-user support
 
 ## 🧠 Designfilosofi
 

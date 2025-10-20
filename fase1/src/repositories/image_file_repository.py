@@ -17,13 +17,16 @@ class ImageFileRepository:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_by_id(self, image_file_id: int) -> Optional[ImageFile]:
-        """Get image_file file by ID"""
-        return (
-            self.db.query(ImageFile)
-            .filter(ImageFile.id == image_file_id)
-            .first()
-        )
+    def get_by_id(self, image_file_id: int, user_id: Optional[int] = None) -> Optional[ImageFile]:
+        """Get image_file file by ID (optionally user-scoped via Photo relationship)"""
+        query = self.db.query(ImageFile).filter(ImageFile.id == image_file_id)
+        
+        if user_id is not None:
+            # Filter through Photo relationship
+            from models import Photo
+            query = query.join(Photo, ImageFile.photo_hothash == Photo.hothash).filter(Photo.user_id == user_id)
+        
+        return query.first()
     
     # NOTE: get_by_hash and exists_by_hash removed - ImageFile no longer has hothash field
     # ImageFiles are linked to Photos via photo_hothash instead
@@ -33,10 +36,16 @@ class ImageFileRepository:
         self, 
         offset: int = 0, 
         limit: int = 100,
-        search_params: Optional[ImageFileSearchRequest] = None
+        search_params: Optional[ImageFileSearchRequest] = None,
+        user_id: Optional[int] = None
     ) -> List[ImageFile]:
-        """Get image_file files with optional filtering and pagination"""
+        """Get image_file files with optional filtering and pagination (user-scoped via Photo)"""
         query = self.db.query(ImageFile)
+        
+        # Apply user filtering first if needed
+        if user_id is not None:
+            from models import Photo
+            query = query.join(Photo, ImageFile.photo_hothash == Photo.hothash).filter(Photo.user_id == user_id)
         
         # Apply filters
         query = self._apply_filters(query, search_params)
@@ -52,10 +61,16 @@ class ImageFileRepository:
     
     def count_images(
         self, 
-        search_params: Optional[ImageFileSearchRequest] = None
+        search_params: Optional[ImageFileSearchRequest] = None,
+        user_id: Optional[int] = None
     ) -> int:
-        """Count images matching criteria"""
+        """Count images matching criteria (user-scoped via Photo)"""
         query = self.db.query(ImageFile)
+        
+        # Apply user filtering first if needed
+        if user_id is not None:
+            from models import Photo
+            query = query.join(Photo, ImageFile.photo_hothash == Photo.hothash).filter(Photo.user_id == user_id)
         
         # Apply same filters as get_images
         query = self._apply_filters(query, search_params)
@@ -80,9 +95,9 @@ class ImageFileRepository:
         self.db.refresh(image_file)
         return image_file
     
-    def update(self, image_id: int, update_data: Dict[str, Any]) -> Optional[ImageFile]:
-        """Update existing image_file"""
-        image_file = self.get_by_id(image_id)
+    def update(self, image_id: int, update_data: Dict[str, Any], user_id: int) -> Optional[ImageFile]:
+        """Update existing image_file (user-scoped)"""
+        image_file = self.get_by_id(image_id, user_id)
         if not image_file:
             return None
         
@@ -95,9 +110,9 @@ class ImageFileRepository:
         self.db.refresh(image_file)
         return image_file
     
-    def delete(self, image_id: int) -> bool:
-        """Delete image_file by ID"""
-        image_file = self.get_by_id(image_id)
+    def delete(self, image_id: int, user_id: int) -> bool:
+        """Delete image_file by ID (user-scoped)"""
+        image_file = self.get_by_id(image_id, user_id)
         if image_file:
             self.db.delete(image_file)
             self.db.commit()

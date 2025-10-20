@@ -31,22 +31,25 @@ class PhotoService:
         offset: int = 0,
         limit: int = 100,
         author_id: Optional[int] = None,
-        search_params: Optional[PhotoSearchRequest] = None
+        search_params: Optional[PhotoSearchRequest] = None,
+        user_id: Optional[int] = None
     ) -> PaginatedResponse[PhotoResponse]:
-        """Get paginated list of photos"""
+        """Get paginated list of photos (user-scoped)"""
         
         # Get photos from repository
         photos = self.photo_repo.get_photos(
             offset=offset,
             limit=limit,
             author_id=author_id,
-            search_params=search_params
+            search_params=search_params,
+            user_id=user_id
         )
         
         # Count total photos
         total = self.photo_repo.count_photos(
             author_id=author_id,
-            search_params=search_params
+            search_params=search_params,
+            user_id=user_id
         )
         
         # Convert to response models
@@ -59,9 +62,9 @@ class PhotoService:
             limit=limit
         )
     
-    def get_photo_by_hash(self, hothash: str) -> PhotoResponse:
-        """Get single photo by hash"""
-        photo = self.photo_repo.get_by_hash(hothash)
+    def get_photo_by_hash(self, hothash: str, user_id: int) -> PhotoResponse:
+        """Get single photo by hash (user-scoped)"""
+        photo = self.photo_repo.get_by_hash(hothash, user_id)
         if not photo:
             raise NotFoundError("Photo", hothash)
         
@@ -71,24 +74,24 @@ class PhotoService:
     # When an ImageFile is created without hothash, a new Photo is auto-generated
     # This architecture change makes ImageFile the entry point for photo management
     
-    def update_photo(self, hothash: str, photo_data: PhotoUpdateRequest) -> PhotoResponse:
-        """Update existing photo"""
+    def update_photo(self, hothash: str, photo_data: PhotoUpdateRequest, user_id: int) -> PhotoResponse:
+        """Update existing photo (user-scoped)"""
         
         # Validate tags if provided
         if photo_data.tags:
             self._validate_tags(photo_data.tags)
         
         # Update photo
-        photo = self.photo_repo.update(hothash, photo_data)
+        photo = self.photo_repo.update(hothash, photo_data, user_id)
         if not photo:
             raise NotFoundError("Photo", hothash)
         
         self.db.commit()
         return self._convert_to_response(photo)
     
-    def delete_photo(self, hothash: str) -> bool:
-        """Delete photo"""
-        success = self.photo_repo.delete(hothash)
+    def delete_photo(self, hothash: str, user_id: int) -> bool:
+        """Delete photo (user-scoped)"""
+        success = self.photo_repo.delete(hothash, user_id)
         if not success:
             raise NotFoundError("Photo", hothash)
         
@@ -103,12 +106,13 @@ class PhotoService:
         
         return hotpreview_data
     
-    def search_photos(self, search_params: PhotoSearchRequest) -> PaginatedResponse[PhotoResponse]:
-        """Search photos with advanced filtering"""
+    def search_photos(self, search_params: PhotoSearchRequest, user_id: int) -> PaginatedResponse[PhotoResponse]:
+        """Search photos with advanced filtering (user-scoped)"""
         return self.get_photos(
             offset=search_params.offset,
             limit=search_params.limit,
-            search_params=search_params
+            search_params=search_params,
+            user_id=user_id
         )
     
     def _convert_to_response(self, photo: Photo) -> PhotoResponse:

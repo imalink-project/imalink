@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from .author import Author
     from .image_file import ImageFile
     from .import_session import ImportSession
+    from .user import User
 
 
 class Photo(Base, TimestampMixin):
@@ -46,6 +47,9 @@ class Photo(Base, TimestampMixin):
     # Hash is generated from ImageFile.hotpreview (first ImageFile = master)
     hothash = Column(String(64), primary_key=True, index=True)
     
+    # Data ownership - each photo belongs to a user
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    
     # Visual presentation data (critical for galleries)
     # NOTE: hotpreview removed - stored in ImageFile model instead
     # Access via photo.image_files[0].hotpreview (first ImageFile = master)
@@ -71,6 +75,7 @@ class Photo(Base, TimestampMixin):
     coldpreview_path = Column(String(255), nullable=True)  # Filesystem path to coldpreview file
     
     # Relationships
+    user = relationship("User", back_populates="photos")
     image_files = relationship("ImageFile", back_populates="photo", cascade="all, delete-orphan", 
                         foreign_keys="[ImageFile.photo_hothash]")
     author = relationship("Author", back_populates="photos")
