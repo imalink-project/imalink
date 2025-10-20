@@ -26,12 +26,14 @@ class ImportSessionService:
     
     def create_simple_session(
         self,
+        user_id: int,
         title: Optional[str] = None,
         description: Optional[str] = None,
         default_author_id: Optional[int] = None
     ):
         """Create a simple ImportSession (user metadata only)"""
         session = self.import_repo.create_simple(
+            user_id=user_id,
             title=title,
             description=description,
             default_author_id=default_author_id
@@ -41,18 +43,18 @@ class ImportSessionService:
         response.images_count = 0  # No images yet
         return response
     
-    def get_session_by_id(self, session_id: int):
-        """Get ImportSession by ID"""
-        session = self.import_repo.get_import_by_id(session_id)
+    def get_session_by_id(self, session_id: int, user_id: int):
+        """Get ImportSession by ID (user-scoped)"""
+        session = self.import_repo.get_import_by_id(session_id, user_id)
         if not session:
             raise NotFoundError("Import session", session_id)
         
         return ImportSessionResponse.model_validate(session)
     
-    def list_simple_sessions(self, limit: int = 100, offset: int = 0):
-        """List all ImportSessions with pagination"""
-        sessions = self.import_repo.get_all_imports(limit=limit, offset=offset)
-        total = self.import_repo.count_imports()
+    def list_simple_sessions(self, user_id: int, limit: int = 100, offset: int = 0):
+        """List all ImportSessions with pagination (user-scoped)"""
+        sessions = self.import_repo.get_all_imports(limit=limit, offset=offset, user_id=user_id)
+        total = self.import_repo.count_imports(user_id=user_id)
         
         session_responses = [ImportSessionResponse.model_validate(s) for s in sessions]
         
@@ -64,6 +66,7 @@ class ImportSessionService:
     def update_simple_session(
         self,
         session_id: int,
+        user_id: int,
         title: Optional[str] = None,
         description: Optional[str] = None,
         default_author_id: Optional[int] = None
@@ -71,6 +74,7 @@ class ImportSessionService:
         """Update ImportSession metadata"""
         session = self.import_repo.update_simple(
             session_id=session_id,
+            user_id=user_id,
             title=title,
             description=description,
             default_author_id=default_author_id
@@ -81,9 +85,9 @@ class ImportSessionService:
         
         return ImportSessionResponse.model_validate(session)
     
-    def delete_session(self, session_id: int) -> bool:
+    def delete_session(self, session_id: int, user_id: int) -> bool:
         """Delete ImportSession"""
-        success = self.import_repo.delete(session_id)
+        success = self.import_repo.delete(session_id, user_id)
         if not success:
             raise NotFoundError("Import session", session_id)
         return success

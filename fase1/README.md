@@ -19,10 +19,10 @@ Ferdigstilt fungerende versjon av ImaLink med:
 
 Fase 1 implementerer ImaLinks unike designfilosofi:
 
-1. **🔥 Hot preview + Rotasjonsuavhengig Hash**
+1. **🔥 Hot preview + EXIF-Orientering**
    - Miniaturbilder lagres binært i database for umiddelbar tilgang
-   - Perceptuell hash beregnes fra bildeinnhold, ikke EXIF-orientering
-   - Samme bilde = samme hash, uavhengig av rotasjon
+   - Hotpreview genereres etter korrekt EXIF-orientering
+   - Konsistent visning uavhengig av filens rotasjonsmarkering
 
 2. **🔌 Server/Kildefil Separasjon** 
    - Alle metadata og hotpreviews lagres i database

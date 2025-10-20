@@ -31,11 +31,11 @@ Et enkelt og intuitivt verktøy for organisering av store bildematerialer.
 
 ImaLink følger noen unike prinsipper som skiller den fra andre fotoarkiveringsprogrammer:
 
-### 1. "Hot Hotpreview med Rotasjonsuavhengig Hash"
+### 1. "Hot Hotpreview med EXIF-Orientering"
 - **Hot hotpreview**: Miniaturbilder lagres som binærdata direkte i databasen for umiddelbar tilgang
-- **Rotasjonsuavhengig hash**: Perceptuell hash beregnes fra bildeinnholdet, ikke fildata
-- **Resultat**: Samme bilde får samme hash uavhengig av rotasjon eller EXIF-orientering
-- **Fordel**: Perfekt duplikatdeteksjon selv når bilder er rotert eller re-eksportert
+- **EXIF-orientering håndtert**: Hotpreview genereres etter korrekt orientering fra EXIF-data
+- **Resultat**: Hotpreview vises alltid riktig orientert, uavhengig av EXIF-orientering
+- **Fordel**: Konsistent visning av bilder selv når fildata har rotasjonsmarkering
 
 ### 2. Hundre Prosent Skille Mellom Kildefil og Server
 - **Kildefiler kan være offline**: Original-filer kan ligge på USB-disker, NAS eller cloud-lagring

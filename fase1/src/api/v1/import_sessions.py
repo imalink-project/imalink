@@ -14,7 +14,9 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from core.dependencies import get_import_session_service
+from api.dependencies import get_current_user
 from services.import_session_service import ImportSessionService
+from models.user import User
 from schemas.requests.import_session_requests import (
     ImportSessionCreateRequest, 
     ImportSessionUpdateRequest
@@ -33,7 +35,8 @@ router = APIRouter()
 @router.post("/", response_model=ImportSessionResponse, status_code=201)
 def create_import_session(
     request: ImportSessionCreateRequest,
-    service: ImportSessionService = Depends(get_import_session_service)
+    service: ImportSessionService = Depends(get_import_session_service),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Create a new import session (user's reference metadata).
@@ -42,6 +45,7 @@ def create_import_session(
     """
     try:
         response = service.create_simple_session(
+            user_id=current_user.id,
             title=request.title,
             description=request.description,
             default_author_id=request.default_author_id
@@ -60,11 +64,12 @@ def create_import_session(
 @router.get("/{import_id}", response_model=ImportSessionResponse)
 def get_import_session(
     import_id: int,
-    service: ImportSessionService = Depends(get_import_session_service)
+    service: ImportSessionService = Depends(get_import_session_service),
+    current_user: User = Depends(get_current_user)
 ):
     """Get a specific import session by ID"""
     try:
-        return service.get_session_by_id(import_id)
+        return service.get_session_by_id(import_id, current_user.id)
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
@@ -76,11 +81,12 @@ def get_import_session(
 def list_import_sessions(
     limit: int = Query(100, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    service: ImportSessionService = Depends(get_import_session_service)
+    service: ImportSessionService = Depends(get_import_session_service),
+    current_user: User = Depends(get_current_user)
 ):
     """List all import sessions with pagination"""
     try:
-        return service.list_simple_sessions(limit=limit, offset=offset)
+        return service.list_simple_sessions(user_id=current_user.id, limit=limit, offset=offset)
     except Exception as e:
         logger.error(f"Error listing import sessions: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to list import sessions: {str(e)}")
@@ -90,12 +96,14 @@ def list_import_sessions(
 def update_import_session(
     import_id: int,
     request: ImportSessionUpdateRequest,
-    service: ImportSessionService = Depends(get_import_session_service)
+    service: ImportSessionService = Depends(get_import_session_service),
+    current_user: User = Depends(get_current_user)
 ):
     """Update import session metadata"""
     try:
         response = service.update_simple_session(
             session_id=import_id,
+            user_id=current_user.id,
             title=request.title,
             description=request.description,
             default_author_id=request.default_author_id
@@ -116,7 +124,8 @@ def update_import_session(
 @router.delete("/{import_id}")
 def delete_import_session(
     import_id: int,
-    service: ImportSessionService = Depends(get_import_session_service)
+    service: ImportSessionService = Depends(get_import_session_service),
+    current_user: User = Depends(get_current_user)
 ):
     """
     Delete an import session.
@@ -125,7 +134,7 @@ def delete_import_session(
     due to cascade delete. Use with caution.
     """
     try:
-        service.delete_session(import_id)
+        service.delete_session(import_id, current_user.id)
         logger.info(f"Deleted import session {import_id}")
         return create_success_response(message="Import session deleted successfully")
         

@@ -4,6 +4,7 @@ Provides clean dependency management for controllers
 """
 from sqlalchemy.orm import Session
 from fastapi import Depends
+from fastapi.security import OAuth2PasswordBearer
 
 # Database dependency (reuse existing)
 from database.connection import get_db
@@ -47,10 +48,27 @@ def get_photo_service(db: Session = Depends(get_db)) -> PhotoService:
 
 
 # Utility dependencies
-def get_current_user():
-    """Get current authenticated user (placeholder for future auth)"""
-    # TODO: Implement when authentication is added
-    return {"id": 1, "name": "Anonymous User"}
+def get_current_user(
+    token: str = Depends(OAuth2PasswordBearer(tokenUrl="auth/login")),
+    db: Session = Depends(get_db)
+):
+    """Get current authenticated user from JWT token"""
+    from utils.security import get_user_id_from_token
+    from repositories.user_repository import UserRepository
+    from core.exceptions import AuthenticationError
+    
+    # Extract user ID from token
+    user_id = get_user_id_from_token(token)
+    if not user_id:
+        raise AuthenticationError("Invalid or expired token")
+    
+    # Fetch user from database
+    user_repo = UserRepository(db)
+    user = user_repo.get_by_id(user_id)
+    if not user:
+        raise AuthenticationError("User not found")
+    
+    return user
 
 
 def get_pagination_params(
