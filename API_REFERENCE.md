@@ -143,9 +143,6 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "title": "Sunset in Oslo",
-  "description": "Beautiful sunset over the fjord",
-  "tags": ["sunset", "oslo", "landscape"],
   "rating": 5,
   "author_id": 2
 }
@@ -157,7 +154,177 @@ DELETE /photos/{hothash}
 Authorization: Bearer <token>
 ```
 
-## 👤 Authors API
+## � Photo Stacks API
+
+Photo stacks organize photos into collections for UI purposes. Each photo can belong to at most one stack.
+
+### List Photo Stacks
+```http
+GET /photo-stacks?offset=0&limit=50
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "stack_type": "album",
+      "cover_photo_hothash": "abc123def456...",
+      "photo_count": 15,
+      "created_at": "2024-01-15T10:30:00",
+      "updated_at": "2024-01-16T14:20:00"
+    }
+  ],
+  "meta": {
+    "total": 1,
+    "offset": 0,
+    "limit": 50
+  }
+}
+```
+
+### Get Stack Details
+```http
+GET /photo-stacks/{stack_id}
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "id": 1,
+  "stack_type": "album",
+  "cover_photo_hothash": "abc123def456...",
+  "photo_hothashes": [
+    "abc123def456...",
+    "def456ghi789...",
+    "ghi789jkl012..."
+  ],
+  "created_at": "2024-01-15T10:30:00",
+  "updated_at": "2024-01-16T14:20:00"
+}
+```
+
+### Create Photo Stack
+```http
+POST /photo-stacks
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "stack_type": "album",
+  "cover_photo_hothash": "abc123def456..."
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Photo stack created successfully",
+  "stack": {
+    "id": 1,
+    "stack_type": "album", 
+    "cover_photo_hothash": "abc123def456...",
+    "photo_hothashes": [],
+    "created_at": "2024-01-15T10:30:00",
+    "updated_at": "2024-01-15T10:30:00"
+  }
+}
+```
+
+### Update Photo Stack
+```http
+PUT /photo-stacks/{stack_id}
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "stack_type": "panorama",
+  "cover_photo_hothash": "new_cover_hash..."
+}
+```
+
+### Delete Photo Stack
+```http
+DELETE /photo-stacks/{stack_id}
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Photo stack deleted successfully",
+  "stack": null
+}
+```
+
+### Add Photo to Stack
+```http
+POST /photo-stacks/{stack_id}/photo
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "photo_hothash": "abc123def456..."
+}
+```
+
+**Note:** If the photo is already in another stack, it will be moved to this stack.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Photo added to stack successfully",
+  "stack": {
+    "id": 1,
+    "photo_count": 3
+  }
+}
+```
+
+### Remove Photo from Stack
+```http
+DELETE /photo-stacks/{stack_id}/photo/{photo_hothash}
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Photo removed from stack successfully",
+  "stack": {
+    "id": 1,
+    "photo_count": 2
+  }
+}
+```
+
+### Get Photo Stack
+```http
+GET /photos/{photo_hothash}/stack
+Authorization: Bearer <token>
+```
+
+**Response:** Returns the stack containing the photo, or null if photo is not in any stack.
+
+```json
+{
+  "id": 1,
+  "stack_type": "album",
+  "cover_photo_hothash": "abc123def456",
+  "photo_count": 24,
+  "created_at": "2024-01-15T10:30:00",
+  "updated_at": "2024-01-16T14:20:00"
+}
+```
+
+## �👤 Authors API
 
 ### List Authors
 ```http
@@ -231,12 +398,22 @@ Content-Type: application/json
 }
 ```
 
-## 🔒 Data Isolation
+## 🔒 Data Isolation & Multi-User Architecture
 
-Each user has complete data isolation:
-- Users can only see their own photos, authors, and import sessions
-- ImageFiles are accessible only through user's photos
-- Cross-user access is prevented at repository level
+### Symmetric User Ownership
+All major data models have consistent user ownership:
+```typescript
+User.id ← Photo.user_id
+User.id ← Author.user_id  
+User.id ← ImportSession.user_id
+User.id ← ImageFile.user_id
+```
+
+### Complete Data Isolation
+- Users can only see their own photos, authors, import sessions, and image files
+- Cross-user access is prevented at repository level with `user_id` filtering
+- All API endpoints require authentication
+- User statistics include counts for all owned resources
 
 ## 📝 Error Responses
 
@@ -276,6 +453,12 @@ interface User {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  
+  // Statistics
+  photos_count: number;
+  import_sessions_count: number;
+  authors_count: number;
+  image_files_count: number;
 }
 ```
 
@@ -283,9 +466,6 @@ interface User {
 ```typescript
 interface Photo {
   hothash: string;
-  title?: string;
-  description?: string;
-  tags: string[];
   rating?: number;
   taken_at?: string;
   gps_latitude?: number;
@@ -301,6 +481,7 @@ interface Photo {
 ```typescript
 interface ImageFile {
   id: number;
+  user_id: number;              // NEW: User ownership
   photo_hothash: string;
   filename: string;
   file_size?: number;
@@ -310,6 +491,54 @@ interface ImageFile {
   import_session_id?: number;
   imported_time?: string;
   created_at: string;
+}
+```
+
+### PhotoStack
+```typescript
+interface PhotoStackSummary {
+  id: number;
+  stack_type?: string;
+  cover_photo_hothash?: string;
+  photo_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+interface PhotoStackDetail {
+  id: number;
+  stack_type?: string;
+  cover_photo_hothash?: string;
+  photo_hothashes: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+// API Request/Response Types
+interface PhotoStackCreateRequest {
+  stack_type?: string;
+  cover_photo_hothash?: string;
+}
+
+interface PhotoStackUpdateRequest {
+  stack_type?: string;
+  cover_photo_hothash?: string;
+}
+
+interface PhotoStackAddPhotoRequest {
+  photo_hothash: string;
+}
+
+interface PhotoStackOperationResponse {
+  success: boolean;
+  message: string;
+  stack?: PhotoStackDetail;
+}
+
+interface PhotoStackPhotoResponse {
+  success: boolean;
+  message: string;
+  stack?: PhotoStackDetail;
 }
 ```
 
@@ -336,169 +565,44 @@ When server is running, access:
 - **OpenAPI JSON**: http://localhost:8000/openapi.json
 
 These provide interactive API testing and complete schema definitions.
-```
-  full_path: string;           // Computed: {base_path}/{directory_name}
-  display_name?: string;
-  description?: string;
-  created_at: string;         // ISO 8601
-  updated_at: string;         // ISO 8601
-}
-```
-
-### FileStorageCreateRequest
-
-Request body for creating new FileStorage.
-
-**TypeScript Interface:**
-```typescript
-interface FileStorageCreateRequest {
-  base_path: string;           // Required: Base filesystem path
-  display_name?: string;       // Optional: User-friendly display name
-  description?: string;        // Optional: User description
-}
-```
-
-### FileStorageUpdateRequest
-
-Request body for updating existing FileStorage.
-
-**TypeScript Interface:**
-```typescript
-interface FileStorageUpdateRequest {
-  display_name?: string;       // Optional: User-friendly display name
-  description?: string;        // Optional: User description
-}
-```
-
-**Note**: Only metadata fields can be updated. Physical paths and UUIDs are immutable.
 
 ---
 
-## �🔗 Interactive Documentation_name": "External Drive Photos",
-    "description": "Main photo storage on external SSD"
-  }'
-```
-
-**Get All FileStorages:**
-```bash
-curl -X GET http://localhost:8000/api/v1/file-storage/
-```
-
-**Get Specific FileStorage:**
-```bash
-curl -X GET http://localhost:8000/api/v1/file-storage/abc123-def456-ghi789
-```
-
-**Update FileStorage:**
-```bash
-curl -X PUT http://localhost:8000/api/v1/file-storage/abc123-def456-ghi789 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "display_name": "Updated Display Name",
-    "description": "Updated description"
-  }'
-```
-
-**Delete FileStorage:**
-```bash
-curl -X DELETE http://localhost:8000/api/v1/file-storage/abc123-def456-ghi789
-```
-
-### Python Examples
-
-```python
-import requests
-
-BASE_URL = "http://localhost:8000/api/v1"
-
-# Create FileStorage
-storage_data = {
-    "base_path": "/external/photos",
-    "display_name": "External Drive Photos",
-    "description": "Main photo storage on external SSD"
-}
-response = requests.post(f"{BASE_URL}/file-storage/", 
-                        json=storage_data)
-storage = response.json()["data"]
-
-# Get all FileStorages
-response = requests.get(f"{BASE_URL}/file-storage/")
-storages = response.json()
-
-# Get specific FileStorage
-uuid = storage["storage_uuid"]
-response = requests.get(f"{BASE_URL}/file-storage/{uuid}")
-specific_storage = response.json()
-
-# Update FileStorage
-update_data = {
-    "display_name": "Updated Name",
-    "description": "Updated description"
-}
-response = requests.put(f"{BASE_URL}/file-storage/{uuid}",
-                       json=update_data)
-updated_storage = response.json()
-
-# Delete FileStorage
-response = requests.delete(f"{BASE_URL}/file-storage/{uuid}")
-# Returns 204 No Content
-```
-
----
-
-## �🔧 Debug Endpoints
+## 🔧 Debug Endpoints
 
 **⚠️ Development only - will be removed in production**
 
-### GET /debug/status chars of hothash
-    │   └── cd/                      # Next 2 chars of hothash  
-    │       └── abcd1234...jpg       # Coldpreview file
-    └── ef/
-        └── gh/
-            └── efgh5678...jpg
+### GET /debug/status
+Get API status and version info.
+
+**Response**:
+```json
+{
+  "status": "ok",
+  "version": "1.0.0",
+  "database": "connected"
+}
 ```
 
-**Storage Details:**
-- **Database**: All metadata, hotpreview- `created_at` (datetime): When photo was imported
-- `updated_at` (datetime): When photo was last updated
+### GET /debug/database-stats
+Get database statistics.
 
-### FileStorageResponse
-
-Complete FileStorage object with metadata and computed paths.
-
-**Fields:**
-- `id` (int): Internal database ID
-- `storage_uuid` (string): Unique UUID identifier  
-- `directory_name` (string): Auto-generated directory name (imalink_YYYYMMDD_HHMMSS_uuid8)
-- `base_path` (string): Base filesystem path where storage is located
-- `full_path` (string): Complete path (base_path + directory_name) - computed
-- `display_name` (string, optional): User-friendly display name
-- `description` (string, optional): User description of the storage
-- `created_at` (datetime): When storage was created
-- `updated_at` (datetime): When storage was last updated
-
-### FileStorageCreateRequest
-
-Request body for creating new FileStorage.
-
-**Fields:**
-- `base_path` (string): Base filesystem path (required)
-- `display_name` (string, optional): User-friendly display name
-- `description` (string, optional): User description
-
-### FileStorageUpdateRequest
-
-Request body for updating existing FileStorage.
-
-**Fields:**
-- `display_name` (string, optional): User-friendly display name
-- `description` (string, optional): User description
-
-**Note**: Only metadata fields can be updated. Physical paths and UUIDs are immutable.
+**Response**:
+```json
+{
+  "photos": 150,
+  "image_files": 200,
+  "authors": 10,
+  "import_sessions": 20
+}
+```
 
 ---
 
-## 🔗 Interactive Documentationnails (150x150) stored in SQLite
+## 💾 Storage Architecture
+
+The hybrid storage architecture combines:
+- **Hotpreview**: Thumbnails (150x150) stored in SQLite
 - **Coldpreview**: Medium-size images (800-1200px) stored on filesystem
 - **Directory Structure**: 2-level hash-based directories for performance
 - **File Format**: JPEG with 85% quality for optimal size/quality balance
@@ -522,8 +626,6 @@ List all photos with pagination.
   "items": [
     {
       "hothash": "9e183676fb52ebe03ffa615080a99d3e3756751be7bc43bc3d275870d4ebe220",
-      "title": "Sunset",
-      "description": "Beautiful sunset",
       "width": 4000,
       "height": 3000,
       "hotpreview": "base64-encoded-thumbnail...",
@@ -540,7 +642,6 @@ List all photos with pagination.
         "name": "John Doe"
       },
       "rating": 5,
-      "tags": ["sunset", "nature", "oslo"],
       "has_gps": true,
       "has_raw_companion": false,
       "primary_filename": "IMG_001.jpg",
@@ -568,9 +669,7 @@ Search photos with filters.
 **Request Body**: `PhotoSearchRequest`
 ```json
 {
-  "title": "sunset",
   "author_id": 1,
-  "tags": ["nature"],
   "rating_min": 3,
   "rating_max": 5
 }
@@ -592,7 +691,6 @@ Get a single photo by hothash.
 ```json
 {
   "hothash": "a1b2c3d4e5f6789abcdef1234567890abcdef1234567890abcdef1234567890",
-  "title": "Solnedgang over Bergen",
   "exif_dict": {
     "camera": "Canon EOS R5",
     "lens": "RF 24-70mm f/2.8L IS USM",
@@ -627,12 +725,8 @@ Update a photo's metadata.
 **Request Body**: `PhotoUpdateRequest`
 ```json
 {
-  "title": "New Title",
-  "description": "Updated description",
   "author_id": 2,
-  "rating": 4,
-  "location": "Bergen",
-  "tags": ["mountain", "snow"]
+  "rating": 4
 }
 ```
 
@@ -935,100 +1029,6 @@ Get a single import session by ID.
 
 ---
 
-## � FileStorage
-
-FileStorage manages physical storage locations for image files in the hybrid storage architecture.
-
-### POST /file-storage/
-Create a new FileStorage location.
-
-**Request Body**: `FileStorageCreateRequest`
-```json
-{
-  "base_path": "/external/photos",
-  "display_name": "External Drive Photos",
-  "description": "Main photo storage on external SSD"
-}
-```
-
-**Response**: `FileStorageResponse` (201 Created)
-```json
-{
-  "success": true,
-  "data": {
-    "id": 5,
-    "storage_uuid": "abc123-def456-ghi789",
-    "directory_name": "imalink_20241018_143052_a1b2c3d4",
-    "base_path": "/external/photos",
-    "full_path": "/external/photos/imalink_20241018_143052_a1b2c3d4",
-    "display_name": "External Drive Photos",
-    "description": "Main photo storage on external SSD",
-    "created_at": "2024-10-18T14:30:52Z"
-  }
-}
-```
-
-### GET /file-storage/
-List all FileStorage locations.
-
-**Query Parameters:**
-- `skip` (int, optional): Default 0
-- `limit` (int, optional): Default 100
-
-**Response**:
-```json
-{
-  "success": true,
-  "data": {
-    "storages": [
-      {
-        "id": 5,
-        "storage_uuid": "abc123-def456-ghi789",
-        "directory_name": "imalink_20241018_143052_a1b2c3d4",
-        "display_name": "External Drive Photos",
-        "base_path": "/external/photos",
-        "full_path": "/external/photos/imalink_20241018_143052_a1b2c3d4"
-      }
-    ],
-    "total_count": 1
-  }
-}
-```
-
-### GET /file-storage/{storage_uuid}
-Get a specific FileStorage by UUID.
-
-**Path Parameters:**
-- `storage_uuid` (string): The storage's UUID
-
-**Response**: `FileStorageResponse`
-
-### PUT /file-storage/{storage_uuid}
-Update a FileStorage.
-
-**Path Parameters:**
-- `storage_uuid` (string): The storage's UUID
-
-**Request Body**: `FileStorageUpdateRequest`
-```json
-{
-  "display_name": "Updated Display Name",
-  "description": "Updated description"
-}
-```
-
-**Response**: `FileStorageResponse`
-
-### DELETE /file-storage/{storage_uuid}
-Delete a FileStorage (permanent).
-
-**Path Parameters:**
-- `storage_uuid` (string): The storage's UUID
-
-**Response**: 204 No Content
-
----
-
 ## �🔧 Debug Endpoints
 
 **⚠️ Development only - will be removed in production**
@@ -1109,9 +1109,6 @@ Clear all data but keep schema.
   exif_dict: object | null,           // 🆕 EXIF metadata from master image file
   
   // User metadata
-  title: string | null,               // User-assigned title
-  description: string | null,         // User description/notes
-  tags: string[] | null,              // List of tags
   rating: number,                     // User rating (0-5 stars)
   
   // Timestamps
@@ -1138,9 +1135,7 @@ Clear all data but keep schema.
 #### PhotoSearchRequest
 ```typescript
 {
-  title?: string,
   author_id?: number,
-  tags?: string[],
   rating_min?: number,
   rating_max?: number
 }
@@ -1149,12 +1144,8 @@ Clear all data but keep schema.
 #### PhotoUpdateRequest
 ```typescript
 {
-  title?: string,
-  description?: string,
   author_id?: number,
-  rating?: number,
-  location?: string,
-  tags?: string[]
+  rating?: number
 }
 ```
 
@@ -1203,6 +1194,57 @@ Clear all data but keep schema.
   imported_info?: Record<string, any>,
   local_storage_info?: Record<string, any>,
   cloud_storage_info?: Record<string, any>
+}
+```
+
+### PhotoStack Models
+
+#### PhotoStackSummary
+```typescript
+{
+  id: number,
+  stack_type: string | null,          // "album", "panorama", "burst", "animation", etc.
+  cover_photo_hothash: string | null, // Hash of cover photo
+  photo_count: number,                // Number of photos in stack
+  created_at: string,                 // ISO 8601
+  updated_at: string                  // ISO 8601
+}
+```
+
+#### PhotoStackDetail
+```typescript
+{
+  id: number,
+  stack_type: string | null,
+  cover_photo_hothash: string | null,
+  photo_hothashes: string[],          // Array of photo hashes in stack
+  created_at: string,
+  updated_at: string
+}
+```
+
+#### PhotoStackCreateRequest
+```typescript
+{
+  stack_type?: string,                // Max 50 characters
+  cover_photo_hothash?: string        // Must exist and belong to user
+}
+```
+
+#### PhotoStackUpdateRequest
+```typescript
+{
+  stack_type?: string,
+  cover_photo_hothash?: string
+}
+```
+
+#### PhotoStackOperationResponse
+```typescript
+{
+  success: boolean,
+  message: string,
+  stack?: PhotoStackDetail            // Present for create/update operations
 }
 ```
 
@@ -1322,10 +1364,50 @@ Clear all data but keep schema.
 ```
 POST /photos/search
 {
-  "tags": ["nature"],
   "rating_min": 4,
   "author_id": 1
 }
+```
+
+### Organize Photos into Stacks
+
+**Create a new photo stack:**
+```
+POST /photo-stacks/
+{
+  "stack_type": "album",
+  "cover_photo_hothash": "abc123def456..."
+}
+```
+
+**Add photos to stack (one at a time):**
+```
+POST /photo-stacks/1/photo
+{
+  "photo_hothash": "abc123def456..."
+}
+```
+
+**Note:** If photo is already in another stack, it will be moved to this stack.
+
+**List all stacks:**
+```
+GET /photo-stacks/?limit=20
+```
+
+**Get stack details with all photos:**
+```
+GET /photo-stacks/1
+```
+
+**Remove photo from stack:**
+```
+DELETE /photo-stacks/1/photo/abc123def456...
+```
+
+**Find which stack contains a photo:**
+```
+GET /photo-stacks/photo/abc123def456.../stacks
 ```
 
 ---
@@ -1369,9 +1451,6 @@ Complete photo object with all metadata and preview information.
 - `taken_at` (datetime, optional): When photo was taken (from EXIF)
 - `gps_latitude` (float, optional): GPS latitude coordinate
 - `gps_longitude` (float, optional): GPS longitude coordinate
-- `title` (string, optional): User-assigned title
-- `description` (string, optional): User description/notes
-- `tags` (array[string], optional): List of tags
 - `rating` (int): User rating (0-5 stars)
 - `author_id` (int, optional): Author/photographer ID
 - `author` (object, optional): Author details with id and name

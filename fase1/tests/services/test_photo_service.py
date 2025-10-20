@@ -40,7 +40,7 @@ class TestPhotoService:
         mock_photo_repo.get_photos.return_value = []
         mock_photo_repo.count_photos.return_value = 0
         
-        result = photo_service.get_photos(offset=0, limit=20)
+        result = photo_service.get_photos(user_id=1, offset=0, limit=20)
         
         # Should call repository methods
         mock_photo_repo.get_photos.assert_called_once()
@@ -55,31 +55,18 @@ class TestPhotoService:
         mock_photo_repo.get_by_hash.return_value = None
         
         with pytest.raises(NotFoundError) as exc_info:
-            photo_service.get_photo_by_hash("nonexistenthash")
+            photo_service.get_photo_by_hash("nonexistenthash", user_id=1)
         
         assert "Photo" in str(exc_info.value)
     
-    def test_update_photo_validates_tags(self, photo_service, mock_photo_repo):
-        """update_photo should validate tags format"""
-        # Mock existing photo
-        mock_photo = Mock()
-        mock_photo_repo.get_by_hash.return_value = mock_photo
-        
-        # Invalid tags should raise ValidationError
-        invalid_tags = ["tag1", "tag with spaces that is way too long" * 10]
-        
-        with pytest.raises(ValidationError):
-            photo_service.update_photo(
-                "somehash",
-                PhotoUpdateRequest(tags=invalid_tags)
-            )
+
     
     def test_delete_photo_not_found_raises_exception(self, photo_service, mock_photo_repo):
         """delete_photo should raise NotFoundError when photo doesn't exist"""
         mock_photo_repo.delete.return_value = False  # Photo not found
         
         with pytest.raises(NotFoundError):
-            photo_service.delete_photo("nonexistenthash")
+            photo_service.delete_photo("nonexistenthash", user_id=1)
     
     def test_search_photos_returns_paginated_response(self, photo_service, mock_photo_repo):
         """search_photos should return PaginatedResponse"""
@@ -87,9 +74,9 @@ class TestPhotoService:
         mock_photo_repo.count_photos.return_value = 0
         
         from schemas.photo_schemas import PhotoSearchRequest
-        search_params = PhotoSearchRequest(tags=["test"])
+        search_params = PhotoSearchRequest(rating_min=1)
         
-        result = photo_service.search_photos(search_params)
+        result = photo_service.search_photos(search_params, user_id=1)
         
         # Should return PaginatedResponse structure
         assert hasattr(result, 'data')

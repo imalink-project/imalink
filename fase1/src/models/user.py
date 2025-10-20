@@ -44,6 +44,7 @@ class User(Base, TimestampMixin):
     import_sessions = relationship("ImportSession", back_populates="user", cascade="all, delete-orphan")
     authors = relationship("Author", back_populates="user", cascade="all, delete-orphan")
     image_files = relationship("ImageFile", back_populates="user", cascade="all, delete-orphan")
+    photo_stacks = relationship("PhotoStack", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', email='{self.email}', active={self.is_active})>"

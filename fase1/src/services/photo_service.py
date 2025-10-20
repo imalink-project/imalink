@@ -77,10 +77,6 @@ class PhotoService:
     def update_photo(self, hothash: str, photo_data: PhotoUpdateRequest, user_id: int) -> PhotoResponse:
         """Update existing photo (user-scoped)"""
         
-        # Validate tags if provided
-        if photo_data.tags:
-            self._validate_tags(photo_data.tags)
-        
         # Update photo
         photo = self.photo_repo.update(hothash, photo_data, user_id)
         if not photo:
@@ -171,9 +167,6 @@ class PhotoService:
             gps_latitude=getattr(photo, 'gps_latitude', None),
             gps_longitude=getattr(photo, 'gps_longitude', None),
             exif_dict=getattr(photo, 'exif_dict', None),  # 🆕 Include EXIF from master ImageFile
-            title=getattr(photo, 'title', None),
-            description=getattr(photo, 'description', None),
-            tags=getattr(photo, 'tags', []) or [],
             rating=getattr(photo, 'rating', 0),
             created_at=getattr(photo, 'created_at'),
             updated_at=getattr(photo, 'updated_at'),
@@ -188,18 +181,7 @@ class PhotoService:
             files=files
         )
     
-    def _validate_tags(self, tags: List[str]) -> None:
-        """Validate tag format and constraints"""
-        if len(tags) > 20:  # Max 20 tags
-            raise ValidationError("Maximum 20 tags allowed per photo")
-        
-        for tag in tags:
-            if not tag or len(tag.strip()) == 0:
-                raise ValidationError("Empty tags are not allowed")
-            if len(tag) > 50:  # Max 50 chars per tag
-                raise ValidationError(f"Tag '{tag}' is too long (max 50 characters)")
-            if not tag.replace(" ", "").replace("-", "").replace("_", "").isalnum():
-                raise ValidationError(f"Tag '{tag}' contains invalid characters")
+
     
     def _get_file_format(self, filename: str) -> str:
         """Determine file format from filename"""

@@ -50,9 +50,6 @@ class PhotoResponse(BaseModel):
     exif_dict: Optional[dict] = Field(None, description="EXIF metadata from master image file")
     
     # User metadata
-    title: Optional[str] = Field(None, description="User-assigned title")
-    description: Optional[str] = Field(None, description="User description/notes") 
-    tags: Optional[List[str]] = Field(None, description="List of tags")
     rating: int = Field(0, ge=0, le=5, description="User rating (0-5 stars)")
     
     # Timestamps
@@ -99,6 +96,8 @@ class PhotoListResponse(BaseModel):
 
 class PhotoCreateRequest(BaseModel):
     """Request model for creating new photos"""
+    model_config = ConfigDict(extra='forbid')
+    
     hothash: str = Field(..., min_length=1, max_length=64, description="Content-based hash identifier")
     
     # Visual data
@@ -112,9 +111,6 @@ class PhotoCreateRequest(BaseModel):
     gps_longitude: Optional[float] = Field(None, ge=-180, le=180, description="GPS longitude")
     
     # User metadata
-    title: Optional[str] = Field(None, max_length=255, description="Photo title")
-    description: Optional[str] = Field(None, description="Photo description")
-    tags: Optional[List[str]] = Field(None, description="List of tags")
     rating: Optional[int] = Field(0, ge=0, le=5, description="User rating")
     
     # Relationships
@@ -124,19 +120,18 @@ class PhotoCreateRequest(BaseModel):
 
 class PhotoUpdateRequest(BaseModel):
     """Request model for updating existing photos"""
+    model_config = ConfigDict(extra='forbid')
+    
     # User editable fields only
-    title: Optional[str] = Field(None, max_length=255, description="Photo title")
-    description: Optional[str] = Field(None, description="Photo description")
-    tags: Optional[List[str]] = Field(None, description="List of tags")
     rating: Optional[int] = Field(None, ge=0, le=5, description="User rating")
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
 
 
 class PhotoSearchRequest(BaseModel):
     """Request model for photo search"""
-    q: Optional[str] = Field(None, description="Search query (title, description, tags)")
+    model_config = ConfigDict(extra='forbid')
+    
     author_id: Optional[int] = Field(None, description="Filter by author ID")
-    tags: Optional[List[str]] = Field(None, description="Filter by tags (AND logic)")
     rating_min: Optional[int] = Field(None, ge=0, le=5, description="Minimum rating")
     rating_max: Optional[int] = Field(None, ge=0, le=5, description="Maximum rating")
     taken_after: Optional[datetime] = Field(None, description="Taken after date")
@@ -149,5 +144,5 @@ class PhotoSearchRequest(BaseModel):
     limit: int = Field(100, ge=1, le=1000, description="Maximum number of items to return")
     
     # Sorting
-    sort_by: str = Field("taken_at", description="Sort field (taken_at, created_at, rating, title)")
+    sort_by: str = Field("taken_at", description="Sort field (taken_at, created_at, rating)")
     sort_order: str = Field("desc", pattern="^(asc|desc)$", description="Sort order")

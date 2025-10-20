@@ -62,13 +62,13 @@ class Photo(Base, TimestampMixin):
     gps_longitude = Column(Float)
     
     # User metadata (editable by users)
-    title = Column(String(255))       # User-assigned title
-    description = Column(Text)        # User description/notes
-    tags = Column(JSON)               # List of tags ["nature", "landscape"]
     rating = Column(Integer, default=0)  # 1-5 star rating
     
     # Authorship (import tracking moved to ImageFile level)
     author_id = Column(Integer, ForeignKey('authors.id'), nullable=True, index=True)
+    
+    # PhotoStack relationship - each photo can belong to ONE stack (optional)
+    stack_id = Column(Integer, ForeignKey('photo_stacks.id'), nullable=True, index=True)
     
     # Coldpreview - medium-size preview for detail views (800-1200px)
     # SIMPLIFIED: Only store path, metadata is read dynamically from file
@@ -79,10 +79,11 @@ class Photo(Base, TimestampMixin):
     image_files = relationship("ImageFile", back_populates="photo", cascade="all, delete-orphan", 
                         foreign_keys="[ImageFile.photo_hothash]")
     author = relationship("Author", back_populates="photos")
+    stack = relationship("PhotoStack", back_populates="photos")
     # Note: No back_populates to ImportSession - access photos via ImportSession.image_files[].photo
     
     def __repr__(self):
-        return f"<Photo(hash={self.hothash[:8]}..., title='{self.title or 'Untitled'}', files={len(self.image_files) if self.image_files else 0})>"
+        return f"<Photo(hash={self.hothash[:8]}..., rating={self.rating}, files={len(self.image_files) if self.image_files else 0})>"
     
     @property
     def has_gps(self) -> bool:

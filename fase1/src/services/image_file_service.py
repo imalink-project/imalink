@@ -292,10 +292,7 @@ class ImageFileService:
         
         # NOTE: author removed - author is a Photo-level concern, not ImageFile-level
         
-        # ImageFile model doesn't have tags - they're in Photo model
-        tags = []
-        if image_file.photo and image_file.photo.tags:
-            tags = image_file.photo.tags if isinstance(image_file.photo.tags, list) else []
+        # NOTE: tags field removed from Photo model
         
         # Compute derived values from filename
         filename = getattr(image_file, 'filename', '')
@@ -330,7 +327,7 @@ class ImageFileService:
             gps_latitude=None,  # GPS is in Photo model, not ImageFile
             gps_longitude=None,
             has_gps=False,  # GPS is in Photo model
-            # NOTE: title, description, tags, rating, user_rotation, author in Photo model
+            # NOTE: rating, user_rotation, author in Photo model
             # import_source available via import_session relationship if needed
             has_raw_companion=computed_format in ['cr2', 'nef', 'arw', 'dng', 'orf', 'rw2', 'raw'] if computed_format else False
         )
@@ -518,9 +515,6 @@ class ImageFileService:
             taken_at=taken_at,
             gps_latitude=gps_latitude,
             gps_longitude=gps_longitude,
-            title=None,
-            description=None,
-            tags=[],
             rating=0,
             author_id=None
         )
@@ -679,9 +673,7 @@ class ImageFileService:
             'hothash': hothash,
             'taken_at': image_data.taken_at,
             'gps_latitude': image_data.gps_latitude,
-            'gps_longitude': image_data.gps_longitude,
-            'title': None,  # Will be set later via Photo API
-            'description': None,  # Will be set later via Photo API
+            'gps_longitude': image_data.gps_longitude
         }
 
     

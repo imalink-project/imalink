@@ -18,13 +18,15 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Query, File, Up
 from fastapi.responses import StreamingResponse
 import io
 
-from core.dependencies import get_photo_service
+from core.dependencies import get_photo_service, get_photo_stack_service
 from services.photo_service import PhotoService
+from services.photo_stack_service import PhotoStackService
 from schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, 
     PhotoSearchRequest
 )
 from schemas.common import PaginatedResponse, create_success_response
+from schemas.responses.photo_stack_responses import PhotoStackSummary
 from core.exceptions import NotFoundError, ValidationError
 from api.dependencies import get_current_active_user
 from models.user import User
@@ -230,3 +232,28 @@ def delete_coldpreview(
 
 
 # Additional utility endpoints
+
+@router.get("/{hothash}/stack", response_model=Optional[PhotoStackSummary])
+def get_photo_stack(
+    hothash: str,
+    current_user: User = Depends(get_current_active_user),
+    photo_stack_service: PhotoStackService = Depends(get_photo_stack_service)
+):
+    """
+    Get the stack containing this photo.
+    
+    Returns the stack if photo belongs to one, null otherwise.
+    With one-to-many relationship, each photo can belong to at most one stack.
+    """
+    try:
+        stack = photo_stack_service.get_photo_stack(
+            photo_hothash=hothash,
+            user_id=getattr(current_user, 'id')
+        )
+        
+        return stack
+        
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch stack for photo: {str(e)}")

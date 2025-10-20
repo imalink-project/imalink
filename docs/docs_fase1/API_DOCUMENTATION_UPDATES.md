@@ -1,7 +1,7 @@
-# API Documentation Updates - FileStorage Simplification
+# API Documentation Updates - PhotoStack & FileStorage
 
 ## Overview
-Updated API reference documentation to reflect the recent FileStorage model simplifications and standardized CRUD endpoints.
+Updated API reference documentation to include new PhotoStack functionality and reflect FileStorage model simplifications and standardized CRUD endpoints.
 
 ## Files Updated
 
@@ -127,3 +127,93 @@ Updated API reference documentation to reflect the recent FileStorage model simp
 5. **Clear Expectations**: Standard HTTP methods and status codes reduce ambiguity
 
 The documentation now accurately reflects the simplified, production-ready FileStorage API that focuses on essential functionality while maintaining the hybrid storage architecture requirements.
+
+## PhotoStack API Documentation - New Feature
+
+### 3. PhotoStack Integration
+**Added Complete PhotoStack Documentation:**
+
+**New API Section in `/docs/api/API_REFERENCE.md`:**
+- **📚 Photo Stacks API**: Complete endpoint documentation for photo organization
+- **8 REST Endpoints**: Full CRUD plus photo management operations
+  - `GET /photo-stacks/` - List stacks with pagination
+  - `GET /photo-stacks/{id}` - Get stack details with photo list
+  - `POST /photo-stacks/` - Create new stack
+  - `PUT /photo-stacks/{id}` - Update stack metadata
+  - `DELETE /photo-stacks/{id}` - Delete stack
+  - `POST /photo-stacks/{id}/photo` - Add single photo to stack
+  - `DELETE /photo-stacks/{id}/photo/{hash}` - Remove photo from stack
+  - `GET /photos/{hash}/stack` - Get photo's stack (single result)
+
+**TypeScript Interfaces Added:**
+- `PhotoStackSummary` - List view with photo count
+- `PhotoStackDetail` - Detail view with photo hashes
+- `PhotoStackCreateRequest` - Create request schema
+- `PhotoStackUpdateRequest` - Update request schema
+- `PhotoStackOperationResponse` - CRUD operation response
+- `PhotoStackPhotoResponse` - Photo add/remove response
+
+**Data Models Section:**
+- Complete schema definitions for PhotoStack entities
+- Request/response structure documentation
+- Field descriptions and validation rules
+
+**Workflow Examples:**
+- Complete PhotoStack management workflow
+- Creating stacks and organizing photos
+- Moving photos between stacks
+- Finding photos in stacks
+
+### 4. Frontend Integration Guide (`/docs/FRONTEND_INTEGRATION.md`)
+**Added PhotoStack Section:**
+- **📚 Photo Stack Management**: Complete frontend implementation guide
+- **TypeScript Integration**: Service layer and React hooks
+- **Custom React Hooks**: `usePhotoStacks`, `usePhotoStack`, `usePhotoStack`
+- **UI Component Examples**: StackGrid, StackCard, PhotoStackSelector
+- **API Service Layer**: Complete service class with error handling
+
+### 5. New Dedicated Guide (`/docs/PHOTOSTACK_FRONTEND_GUIDE.md`)
+**Comprehensive Implementation Guide:**
+- **Architecture Overview**: One-to-many relationship explanation
+- **Complete Service Layer**: TypeScript API service with all endpoints
+- **React Integration**: Custom hooks and component patterns
+- **UI Components**: Ready-to-use React components
+- **CSS Styling**: Complete styling for stack UI
+- **State Management**: React Context and Redux Toolkit examples
+- **Testing Strategies**: Unit and integration test examples
+- **Best Practices**: Development guidelines and recommendations
+
+## PhotoStack Key Features Documented
+
+### Core Functionality
+- **One-to-Many Relationship**: Each photo can belong to at most one stack
+- **Automatic Moving**: Adding photo to stack removes it from previous stack
+- **User Isolation**: Complete user data separation
+- **Optional Metadata**: Descriptions, types, and cover photos
+- **Stack Types**: album, panorama, burst, animation, hdr support
+
+### API Characteristics
+- **RESTful Design**: Standard HTTP methods and status codes
+- **Consistent Responses**: All operations return success/message/data format
+- **Error Handling**: Proper HTTP status codes and error messages
+- **Authentication**: JWT token-based user isolation
+- **Pagination**: Standard offset/limit pagination for lists
+
+### Frontend Integration
+- **Type Safety**: Complete TypeScript definitions
+- **React Hooks**: Custom hooks for state management
+- **UI Components**: Reusable React components
+- **Error Handling**: Graceful error handling patterns
+- **Loading States**: Proper loading state management
+- **Caching**: Efficient data caching strategies
+
+## Developer Benefits - PhotoStack
+
+1. **Simple Architecture**: One-to-many relationship eliminates complex junction table logic
+2. **Clear API**: RESTful endpoints with predictable behavior
+3. **Type Safety**: Complete TypeScript support for frontend development  
+4. **Ready Components**: Copy-paste React components and hooks
+5. **Tested Patterns**: Production-ready code patterns and error handling
+6. **Comprehensive Examples**: Complete workflow examples and testing strategies
+
+The PhotoStack documentation provides everything needed for frontend teams to implement photo organization features efficiently and consistently.

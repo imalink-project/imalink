@@ -83,9 +83,6 @@ class PhotoRepository:
     
     def create(self, photo_data: PhotoCreateRequest, user_id: int) -> Photo:
         """Create new photo (user-scoped)"""
-        # Convert tags list to JSON if provided
-        tags_json = photo_data.tags if photo_data.tags else []
-        
         # NOTE: hotpreview removed - stored in ImageFile model instead
         # Access via photo.image_files[0].hotpreview (first ImageFile = master)
         
@@ -97,9 +94,6 @@ class PhotoRepository:
             taken_at=photo_data.taken_at,
             gps_latitude=photo_data.gps_latitude,
             gps_longitude=photo_data.gps_longitude,
-            title=photo_data.title,
-            description=photo_data.description,
-            tags=tags_json,
             rating=photo_data.rating or 0,
             author_id=photo_data.author_id
             # import_session_id removed - now tracked at ImageFile level
@@ -117,12 +111,6 @@ class PhotoRepository:
             return None
         
         # Update only provided fields
-        if photo_data.title is not None:
-            setattr(photo, 'title', photo_data.title)
-        if photo_data.description is not None:
-            setattr(photo, 'description', photo_data.description)
-        if photo_data.tags is not None:
-            setattr(photo, 'tags', photo_data.tags)
         if photo_data.rating is not None:
             setattr(photo, 'rating', photo_data.rating)
         if photo_data.author_id is not None:
@@ -171,27 +159,9 @@ class PhotoRepository:
         if not search_params:
             return query
         
-        # Text search in title, description
-        if search_params.q:
-            search_term = f"%{search_params.q}%"
-            query = query.filter(
-                or_(
-                    Photo.title.ilike(search_term),
-                    Photo.description.ilike(search_term),
-                    # Search in tags (JSON array) - cast to string for text search
-                    func.cast(Photo.tags, String).ilike(search_term)
-                )
-            )
-        
         # Filter by author_id from search params
         if search_params.author_id:
             query = query.filter(Photo.author_id == search_params.author_id)
-        
-        # Filter by tags (AND logic - photo must have all specified tags)
-        if search_params.tags:
-            for tag in search_params.tags:
-                # Use JSON contains operator for tags
-                query = query.filter(func.cast(Photo.tags, String).ilike(f"%{tag}%"))
         
         # Filter by rating range
         if search_params.rating_min is not None:
@@ -248,7 +218,6 @@ class PhotoRepository:
         sort_field_map = {
             "taken_at": Photo.taken_at,
             "created_at": Photo.created_at,
-            "title": Photo.title,
             "rating": Photo.rating,
             "updated_at": Photo.updated_at
         }

@@ -57,7 +57,7 @@ class ImageFileResponse(BaseModel):
     has_gps: bool = Field(False, description="Whether image has GPS coordinates")
     
     # NOTE: User metadata moved to separate ImageMetadata table
-    # title, description, tags, rating will be handled by ImageMetadataService
+    # rating will be handled by ImageMetadataService
     # These fields removed from ImageFile model to support multiple files per motif (JPEG/RAW)
     
     # NOTE: user_rotation removed - rotation is a Photo-level concern, not ImageFile-level

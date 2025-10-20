@@ -20,6 +20,9 @@ from fastapi.testclient import TestClient
 from main import app
 from database.connection import get_db
 from models import Base
+from models.user import User
+from services.auth_service import AuthService
+from utils.security import create_access_token
 
 
 @pytest.fixture(scope="function")
@@ -86,3 +89,49 @@ def test_client(test_db_session):
     
     # Cleanup
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(scope="function")
+def test_user(test_db_session):
+    """
+    Create a test user for authentication tests
+    """
+    user = User(
+        username="testuser",
+        email="test@example.com",
+        password_hash="$2b$12$test_hash_for_testing",  # Pre-hashed test password
+        display_name="Test User",
+        is_active=True
+    )
+    test_db_session.add(user)
+    test_db_session.commit()
+    test_db_session.refresh(user)
+    
+    return user
+
+
+@pytest.fixture(scope="function")
+def auth_token(test_user):
+    """
+    Create a valid JWT token for the test user
+    """
+    return create_access_token(data={"sub": str(test_user.id)})
+
+
+@pytest.fixture(scope="function")
+def auth_headers(auth_token):
+    """
+    Create authorization headers with valid JWT token
+    """
+    return {"Authorization": f"Bearer {auth_token}"}
+
+
+@pytest.fixture(scope="function")
+def authenticated_client(test_client, test_db_session, auth_headers):
+    """
+    Test client with authentication headers pre-configured
+    """
+    # Store the headers and user for easy access in tests
+    test_client.auth_headers = auth_headers
+    
+    return test_client

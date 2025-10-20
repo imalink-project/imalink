@@ -41,11 +41,11 @@ class TestAuthorService:
         mock_author_repo.get_all.return_value = []
         mock_author_repo.count_all.return_value = 0
         
-        result = author_service.get_authors(offset=0, limit=10)
+        result = author_service.get_authors(user_id=1, offset=0, limit=10)
         
         # Should call repository methods
-        mock_author_repo.get_all.assert_called_once_with(0, 10)
-        mock_author_repo.count_all.assert_called_once()
+        mock_author_repo.get_all.assert_called_once_with(1, 0, 10)
+        mock_author_repo.count_all.assert_called_once_with(1)
         
         # Should return PaginatedResponse structure
         assert hasattr(result, 'data')
@@ -56,7 +56,7 @@ class TestAuthorService:
         mock_author_repo.get_by_id.return_value = None
         
         with pytest.raises(NotFoundError) as exc_info:
-            author_service.get_author_by_id(999)
+            author_service.get_author_by_id(999, user_id=1)
         
         assert "Author" in str(exc_info.value)
         assert "999" in str(exc_info.value)
@@ -85,7 +85,8 @@ class TestAuthorService:
         
         with pytest.raises(ValidationError) as exc_info:
             author_service.create_author(
-                AuthorCreateRequest(name="Test Author", email="invalid-email")
+                AuthorCreateRequest(name="Test", email="invalid-email"),
+                user_id=1
             )
         
         assert "email" in str(exc_info.value).lower()
@@ -95,7 +96,7 @@ class TestAuthorService:
         mock_author_repo.exists_by_name.return_value = True
         
         with pytest.raises(ValidationError) as exc_info:
-            author_service.create_author(AuthorCreateRequest(name="Duplicate Name"))
+            author_service.create_author(AuthorCreateRequest(name="Duplicate Name"), user_id=1)
         
         assert "already exists" in str(exc_info.value)
     
@@ -105,8 +106,9 @@ class TestAuthorService:
         
         with pytest.raises(NotFoundError):
             author_service.update_author(
-                999,
-                AuthorUpdateRequest(name="New Name")
+                999, 
+                AuthorUpdateRequest(name="Updated"),
+                user_id=1
             )
     
     def test_delete_author_not_found_raises_exception(self, author_service, mock_author_repo):
@@ -114,7 +116,7 @@ class TestAuthorService:
         mock_author_repo.get_by_id.return_value = None  # Author not found
         
         with pytest.raises(NotFoundError):
-            author_service.delete_author(999)
+            author_service.delete_author(999, user_id=1)
 
 
 class TestAuthorServiceSync:

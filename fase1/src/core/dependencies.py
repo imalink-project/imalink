@@ -14,6 +14,7 @@ from services.image_file_service import ImageFileService
 from services.author_service import AuthorService
 from services.import_session_service import ImportSessionService
 from services.photo_service import PhotoService
+from services.photo_stack_service import PhotoStackService
 
 
 # ImageFile Service Dependencies
@@ -42,6 +43,12 @@ def get_import_session_service(db: Session = Depends(get_db)) -> ImportSessionSe
 def get_photo_service(db: Session = Depends(get_db)) -> PhotoService:
     """Get PhotoService instance with database dependency"""
     return PhotoService(db)
+
+
+# PhotoStack Service Dependencies
+def get_photo_stack_service(db: Session = Depends(get_db)) -> PhotoStackService:
+    """Get PhotoStackService instance with database dependency"""
+    return PhotoStackService(db)
 
 
 # Import Once functionality has been integrated into ImportSessionService
