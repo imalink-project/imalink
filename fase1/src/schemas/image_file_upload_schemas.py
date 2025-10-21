@@ -79,8 +79,9 @@ class ImageFileAddToPhotoRequest(BaseModel):
     or additional format of the same photo. The photo_hothash must be provided
     to specify which existing Photo to add this ImageFile to.
     
-    NOTE: hotpreview and perceptual_hash are NOT included since the Photo already exists
-    and has its visual representation. This is purely for adding file variants.
+    NOTE: hotpreview, perceptual_hash, and exif_dict are NOT included since the Photo 
+    already exists with its visual representation and metadata. This is purely for 
+    adding file variants.
     """
     # Required file data
     filename: str = Field(..., min_length=1, max_length=255, description="Filename with extension")
@@ -88,9 +89,6 @@ class ImageFileAddToPhotoRequest(BaseModel):
     
     # Optional file metadata
     file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")
-    
-    # Parsed EXIF metadata (frontend responsibility)
-    exif_dict: Optional[Dict[str, Any]] = Field(None, description="Parsed EXIF metadata as JSON structure (extracted by frontend)")
     
     # Import context
     import_session_id: Optional[int] = Field(None, description="Import session ID")
