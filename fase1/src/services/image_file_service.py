@@ -243,6 +243,6 @@ class ImageFileService:
             img = PILImage.open(io.BytesIO(hotpreview_bytes))
             phash = imagehash.phash(img)
             return str(phash)
-        except Exception as e:
-            print(f"Warning: Could not generate perceptual hash: {e}")
+        except Exception:
+            # Silently ignore perceptual hash generation errors
             return None

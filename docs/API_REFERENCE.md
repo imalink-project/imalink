@@ -135,12 +135,12 @@ const loginResponse = await fetch('http://localhost:8000/api/v1/auth/login', {
 });
 const { access_token } = await loginResponse.json();
 
-// 2. Create 300x300px thumbnail (hotpreview) from your image
+// 2. Create 150x150px thumbnail (hotpreview) from your image
 const canvas = document.createElement('canvas');
-canvas.width = 300;
-canvas.height = 300;
+canvas.width = 150;
+canvas.height = 150;
 const ctx = canvas.getContext('2d');
-ctx.drawImage(yourImage, 0, 0, 300, 300);
+ctx.drawImage(yourImage, 0, 0, 150, 150);
 const hotpreview = canvas.toDataURL('image/jpeg', 0.85); // Includes data URL prefix
 
 // 3. Upload the photo
@@ -282,7 +282,7 @@ GET /api/v1/photos/{hothash}/hotpreview
 Authorization: Bearer <token>
 ```
 
-**Returns:** JPEG image (64x64 thumbnail) as binary data
+**Returns:** JPEG image (150x150px thumbnail) as binary data
 
 **Response Headers:**
 ```
@@ -402,7 +402,7 @@ Content-Type: application/json
 
 **Required Fields:**
 - `filename` (string): Original filename with extension
-- `hotpreview` (string): Base64-encoded JPEG thumbnail (300x300px recommended)
+- `hotpreview` (string): Base64-encoded JPEG thumbnail (150x150px recommended)
   - Can be with data URL prefix: `"data:image/jpeg;base64,<data>"`
   - Or just the Base64 data: `"<base64_data>"`
   - Used to generate the Photo's unique `hothash` (SHA256)
@@ -1018,7 +1018,7 @@ As of v2.1, the API is 100% photo-centric:
 - Common stack types: `panorama`, `burst`, `hdr`, `focus_stack`, `time_lapse`
 
 ### Hotpreview
-- 300x300px JPEG thumbnail
+- 150x150px JPEG thumbnail
 - Auto-rotated based on EXIF orientation
 - Stored as binary blob in database
 - Used for fast gallery display and generating Photo hothash (SHA256)

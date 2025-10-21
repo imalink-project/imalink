@@ -166,30 +166,30 @@ const generateHotpreview = async (file: File): Promise<string> => {
     const img = new Image();
     
     img.onload = () => {
-      // Set canvas to 64x64
-      canvas.width = 64;
-      canvas.height = 64;
+      // Set canvas to 150x150
+      canvas.width = 150;
+      canvas.height = 150;
       
       // Calculate aspect ratio
       const aspectRatio = img.width / img.height;
-      let drawWidth = 64;
-      let drawHeight = 64;
+      let drawWidth = 150;
+      let drawHeight = 150;
       let offsetX = 0;
       let offsetY = 0;
       
       if (aspectRatio > 1) {
         // Landscape
-        drawHeight = 64 / aspectRatio;
-        offsetY = (64 - drawHeight) / 2;
+        drawHeight = 150 / aspectRatio;
+        offsetY = (150 - drawHeight) / 2;
       } else {
         // Portrait
-        drawWidth = 64 * aspectRatio;
-        offsetX = (64 - drawWidth) / 2;
+        drawWidth = 150 * aspectRatio;
+        offsetX = (150 - drawWidth) / 2;
       }
       
       // Fill background
       ctx!.fillStyle = '#f0f0f0';
-      ctx!.fillRect(0, 0, 64, 64);
+      ctx!.fillRect(0, 0, 150, 150);
       
       // Draw image
       ctx!.drawImage(img, offsetX, offsetY, drawWidth, drawHeight);

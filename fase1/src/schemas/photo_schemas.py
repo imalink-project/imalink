@@ -99,8 +99,11 @@ class PhotoCreateRequest(BaseModel):
     
     hothash: str = Field(..., min_length=1, max_length=64, description="Content-based hash identifier")
     
-    # Visual data
-    # NOTE: hotpreview removed - stored in Image model instead
+    # Visual presentation data
+    hotpreview: bytes = Field(..., description="150x150px thumbnail from master file")
+    exif_dict: Optional[dict] = Field(None, description="EXIF metadata from master file")
+    
+    # Image dimensions
     width: Optional[int] = Field(None, ge=1, description="Image width in pixels")
     height: Optional[int] = Field(None, ge=1, description="Image height in pixels")
     

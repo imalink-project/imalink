@@ -85,46 +85,43 @@ class PhotoService:
         """
         Create new Photo with initial ImageFile
         
-        USE CASE: Uploading a completely new, unique photo
-        - Hotpreview, exif_dict, perceptual_hash stored in Photo
-        - ImageFile stores only file metadata
+        ARCHITECTURE:
+        - Photo stores VISUAL data: hotpreview (150x150px thumbnail), exif_dict, dimensions, GPS
+        - ImageFile stores FILE metadata: filename, size, storage locations
+        - Photo is content-based (same visual content = same hothash, shared by JPEG/RAW)
+        - ImageFile is file-based (each physical file = unique ImageFile entry)
         
         WORKFLOW:
-        1. Validate hotpreview data
-        2. Generate photo_hothash from hotpreview (SHA256)
-        3. Check if Photo already exists (if yes, raise DuplicateImageError)
-        4. Create new Photo with hotpreview, exif_dict, perceptual_hash
-        5. Create ImageFile with only file metadata
-        6. Return success response
+        1. Pydantic validator has already converted Base64 hotpreview → bytes
+        2. Generate SHA256 hothash from hotpreview bytes (content-based identifier)
+        3. Check for duplicates - return 409 if Photo with same visual content exists
+        4. Create Photo with visual/metadata (hotpreview, exif_dict, GPS, dimensions)
+        5. Create ImageFile with file info (filename, size, storage locations)
+        6. Return success response with photo_created=True
         """
-        # 1. Validate hotpreview is provided
-        if not image_data.hotpreview:
-            raise ValidationError("hotpreview is required when creating new photo")
+        # 1. Pydantic validator guarantees hotpreview is bytes after Base64 decoding
+        # Type annotation for mypy (type system sees Union[bytes, str] but validator ensures bytes)
+        hotpreview_bytes: bytes = image_data.hotpreview  # type: ignore[assignment]
         
-        # 2. Cast hotpreview to bytes
-        if isinstance(image_data.hotpreview, str):
-            hotpreview_bytes = image_data.hotpreview.encode('utf-8')
-        else:
-            hotpreview_bytes = image_data.hotpreview
-        
-        # 3. Generate hothash from hotpreview (SHA256)
+        # 2. Generate content-based hash from hotpreview (SHA256)
         hothash = self._generate_hothash_from_hotpreview(hotpreview_bytes)
         
-        # 4. Check if Photo already exists - if yes, this is an error for this endpoint
+        # 3. Check if Photo with same visual content already exists
+        # If duplicate found, client should use POST /photos/{hothash}/files instead
         existing_photo = self.photo_repo.get_by_hash(hothash)
         if existing_photo:
             raise DuplicateImageError(f"Photo with this image already exists (hothash: {hothash[:8]}...)")
         
-        # 5. Create new Photo + ImageFile
+        # 4. Create new Photo with visual data + ImageFile with file metadata
         image_file = self._create_new_photo_with_image_file(
             image_data, hothash, hotpreview_bytes, user_id
         )
         
-        # 6. Commit transaction
+        # 5. Commit transaction
         self.db.commit()
         self.db.refresh(image_file)
         
-        # 8. Return success response
+        # 6. Return success response
         return ImageFileUploadResponse(
             image_file_id=getattr(image_file, 'id'),
             filename=getattr(image_file, 'filename'),
@@ -308,29 +305,17 @@ class PhotoService:
     
     def upload_coldpreview(self, hothash: str, file_content: bytes) -> Dict[str, Any]:
         """Upload or update coldpreview for a photo"""
-        print(f"DEBUG COLDPREVIEW: Starting coldpreview upload for hothash: {hothash}")
-        print(f"DEBUG COLDPREVIEW: File content size: {len(file_content)} bytes")
-        print(f"DEBUG COLDPREVIEW: This is the COLDPREVIEW service - no perceptual hash should be generated here")
-        
         # Get photo to ensure it exists
         photo = self.photo_repo.get_by_hash(hothash)
         if not photo:
             raise NotFoundError("Photo", hothash)
         
-        print(f"DEBUG COLDPREVIEW: Photo found: {photo.hothash}")
-        
         # Use coldpreview repository utility
         from utils.coldpreview_repository import ColdpreviewRepository
         repository = ColdpreviewRepository()
         
-        try:
-            # Save coldpreview and get metadata (returns tuple)
-            print("DEBUG COLDPREVIEW: Calling repository.save_coldpreview...")
-            relative_path, width, height, file_size = repository.save_coldpreview(hothash, file_content)
-            print(f"DEBUG COLDPREVIEW: Coldpreview saved successfully: {width}x{height}, {file_size} bytes")
-        except Exception as e:
-            print(f"DEBUG COLDPREVIEW: Error in save_coldpreview: {e}")
-            raise
+        # Save coldpreview and get metadata (returns tuple)
+        relative_path, width, height, file_size = repository.save_coldpreview(hothash, file_content)
         
         # SIMPLIFIED: Only store path, dimensions/size will be read dynamically
         setattr(photo, 'coldpreview_path', relative_path)
@@ -338,9 +323,6 @@ class PhotoService:
         # Commit changes
         self.db.commit()
         self.db.refresh(photo)
-        
-        print("DEBUG COLDPREVIEW: Database updated successfully")
-        print("DEBUG COLDPREVIEW: Coldpreview upload completed - NO PERCEPTUAL HASH INVOLVED")
         
         return {
             'hothash': hothash,
@@ -419,8 +401,15 @@ class PhotoService:
     ) -> ImageFile:
         """
         Create new Photo with visual data + ImageFile with file metadata
+        
+        DATA SEPARATION ARCHITECTURE:
+        - Photo gets: hotpreview (visual), exif_dict, GPS, dimensions, rating, author
+        - ImageFile gets: filename, file_size, import info, storage locations
+        
+        WHY: Photo is about CONTENT (what you see), ImageFile is about FILES (where it is)
+        This allows JPEG/RAW pairs to share same Photo (same content, different files)
         """
-        # 1. Create Photo with visual data
+        # 1. Create Photo with visual and content metadata
         photo_data_dict = {
             'hothash': hothash,
             'hotpreview': hotpreview_bytes,
@@ -428,9 +417,12 @@ class PhotoService:
             'taken_at': image_data.taken_at,
             'gps_latitude': image_data.gps_latitude,
             'gps_longitude': image_data.gps_longitude,
-            # Extract width/height from EXIF if available
-            'width': image_data.exif_dict.get('ImageWidth') if image_data.exif_dict else None,
-            'height': image_data.exif_dict.get('ImageHeight') if image_data.exif_dict else None,
+            # Try to extract dimensions from EXIF metadata
+            # Common EXIF fields: ImageWidth, ImageHeight, ExifImageWidth, ExifImageHeight
+            'width': (image_data.exif_dict.get('ImageWidth') or 
+                     image_data.exif_dict.get('ExifImageWidth')) if image_data.exif_dict else None,
+            'height': (image_data.exif_dict.get('ImageHeight') or 
+                      image_data.exif_dict.get('ExifImageHeight')) if image_data.exif_dict else None,
         }
         photo_data = PhotoCreateRequest(**photo_data_dict)
         photo = self.photo_repo.create(photo_data, user_id=user_id)

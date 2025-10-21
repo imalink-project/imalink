@@ -48,6 +48,7 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+
 def get_db_sync() -> Session:
     """
     Get a database session for synchronous operations
@@ -60,7 +61,5 @@ def init_database():
     """Initialize database with all tables"""
     try:
         create_tables()
-        print("Database initialized successfully")
     except Exception as e:
-        print(f"Error initializing database: {e}")
         raise

@@ -52,7 +52,7 @@ class Photo(Base, TimestampMixin):
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
     
     # Visual presentation data from master ImageFile (immutable after creation)
-    hotpreview = Column(LargeBinary, nullable=False)  # 64x64 thumbnail from master file
+    hotpreview = Column(LargeBinary, nullable=False)  # 150x150px thumbnail from master file
     exif_dict = Column(JSON, nullable=True)           # EXIF metadata from master file
     
     # Image dimensions (extracted from EXIF or provided by client)

@@ -17,7 +17,7 @@ Major arkitektur-refaktoring som flytter visual data (hotpreview, exif_dict, per
 **Commit**: `36256f4`
 
 **Photo model** - Lagt til 3 kolonner:
-- `hotpreview` (LargeBinary, NOT NULL) - 64x64 thumbnail fra master file
+- `hotpreview` (LargeBinary, NOT NULL) - 150x150px thumbnail fra master file
 - `exif_dict` (JSON, nullable) - EXIF metadata fra master file
 - `perceptual_hash` (VARCHAR(16), nullable, indexed) - pHash for similarity search
 

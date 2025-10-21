@@ -82,13 +82,20 @@ class PhotoRepository:
         return query.count()
     
     def create(self, photo_data: PhotoCreateRequest, user_id: int) -> Photo:
-        """Create new photo (user-scoped)"""
-        # NOTE: hotpreview removed - stored in ImageFile model instead
-        # Access via photo.image_files[0].hotpreview (first ImageFile = master)
+        """
+        Create new photo (user-scoped)
         
+        Photo stores visual representation and content metadata:
+        - hotpreview: 150x150px thumbnail (visual identity)
+        - exif_dict: Full EXIF metadata from master file
+        - GPS, dimensions, taken_at: Extracted metadata for fast queries
+        - rating, author: User-editable metadata
+        """
         photo = Photo(
             hothash=photo_data.hothash,
             user_id=user_id,
+            hotpreview=photo_data.hotpreview,
+            exif_dict=photo_data.exif_dict,
             width=photo_data.width,
             height=photo_data.height,
             taken_at=photo_data.taken_at,
@@ -96,7 +103,6 @@ class PhotoRepository:
             gps_longitude=photo_data.gps_longitude,
             rating=photo_data.rating or 0,
             author_id=photo_data.author_id
-            # import_session_id removed - now tracked at ImageFile level
         )
         
         self.db.add(photo)
@@ -131,12 +137,13 @@ class PhotoRepository:
     
     def get_hotpreview(self, hothash: str) -> Optional[bytes]:
         """
-        Get hotpreview data for photo
-        NOTE: hotpreview is now stored in ImageFile model (first ImageFile = master)
+        Get hotpreview thumbnail data for photo (150x150px JPEG)
+        
+        Hotpreview is stored directly in Photo model as binary data.
+        Used for gallery thumbnails and duplicate detection.
         """
         photo = self.db.query(Photo).filter(Photo.hothash == hothash).first()
-        if photo and photo.image_files and len(photo.image_files) > 0:
-            return photo.image_files[0].hotpreview
+        return photo.hotpreview if photo else None  # type: ignore[return-value]
         return None
     
     def _apply_filters(
