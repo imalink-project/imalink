@@ -22,37 +22,41 @@ class Photo(Base, TimestampMixin):
     Primary photo model - aggregated view for galleries and browsing
     
     CREATION FLOW:
-    Photos are NEVER created manually. They are auto-generated when creating ImageFiles:
-    1. Client uploads image file → POST /image-files with hotpreview
+    Photos are created when uploading the first (master) ImageFile:
+    1. Client uploads image file → POST /image-files/new-photo with hotpreview, exif_dict, perceptual_hash
     2. System generates hothash from hotpreview (SHA256)
-    3. If Photo with hothash exists → ImageFile links to existing Photo
-    4. If Photo doesn't exist → New Photo is auto-created, ImageFile links to it
-    5. First ImageFile becomes "master" for the Photo
+    3. Photo is created with hotpreview, exif_dict, perceptual_hash from request
+    4. ImageFile is created and linked to Photo (without hotpreview/exif - stored only in Photo)
+    5. Additional ImageFiles (RAW, etc.) can be added via POST /image-files/add-to-photo
     
     This ensures:
-    - No orphaned Photos without files
+    - Photo has single source of visual representation (from master file)
+    - No duplication of hotpreview/exif data across multiple ImageFiles
     - JPEG/RAW pairs naturally share same Photo (same visual content = same hash)
     - Photo metadata can be edited independently of ImageFile files
     
     Key design principles:
     - hothash as primary key (content-based, shared between JPEG/RAW)
-    - Contains all user-facing metadata (title, tags, rating)
-    - Contains visual presentation data (dimensions, GPS)
+    - Contains all user-facing metadata (rating, author, GPS)
+    - Contains visual data (hotpreview, coldpreview, dimensions)
+    - Contains EXIF metadata from master file (immutable after creation)
     - Optimized for gallery queries and photo browsing
-    - hotpreview accessed via photo.image_files[0].hotpreview (master ImageFile)
     """
     __tablename__ = "photos"
     
     # Primary key = content-based hash (same for JPEG/RAW pairs)
-    # Hash is generated from ImageFile.hotpreview (first ImageFile = master)
+    # Hash is generated from hotpreview (provided by first ImageFile = master)
     hothash = Column(String(64), primary_key=True, index=True)
     
     # Data ownership - each photo belongs to a user
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
     
-    # Visual presentation data (critical for galleries)
-    # NOTE: hotpreview removed - stored in ImageFile model instead
-    # Access via photo.image_files[0].hotpreview (first ImageFile = master)
+    # Visual presentation data from master ImageFile (immutable after creation)
+    hotpreview = Column(LargeBinary, nullable=False)  # 64x64 thumbnail from master file
+    exif_dict = Column(JSON, nullable=True)           # EXIF metadata from master file
+    perceptual_hash = Column(String(16), nullable=True, index=True)  # pHash for similarity search
+    
+    # Image dimensions (extracted from EXIF or provided by client)
     width = Column(Integer)           # Original image dimensions
     height = Column(Integer)
     
@@ -89,20 +93,6 @@ class Photo(Base, TimestampMixin):
     def has_gps(self) -> bool:
         """Check if photo has GPS coordinates"""
         return self.gps_latitude is not None and self.gps_longitude is not None
-    
-    @property
-    def hotpreview(self) -> Optional[bytes]:
-        """Get hotpreview from first (master) ImageFile"""
-        if self.image_files and len(self.image_files) > 0:
-            return self.image_files[0].hotpreview
-        return None
-    
-    @property
-    def exif_dict(self) -> Optional[dict]:
-        """Get EXIF metadata from first (master) ImageFile"""
-        if self.image_files and len(self.image_files) > 0:
-            return self.image_files[0].exif_dict
-        return None
     
     @property  
     def jpeg_file(self) -> Optional["ImageFile"]:
