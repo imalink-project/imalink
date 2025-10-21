@@ -61,6 +61,9 @@ def test_photos(db_session, test_users):
     """Create test photos"""
     user1, user2 = test_users
     
+    # Create dummy hotpreview (required field after refactoring)
+    dummy_hotpreview = b"fake_hotpreview_data"
+    
     photos = []
     for i in range(5):
         photo = Photo(
@@ -68,7 +71,8 @@ def test_photos(db_session, test_users):
             width=1920,
             height=1080,
             user_id=user1.id,
-            rating=i % 5 + 1
+            rating=i % 5 + 1,
+            hotpreview=dummy_hotpreview  # NOW REQUIRED
         )
         photos.append(photo)
     
@@ -77,7 +81,8 @@ def test_photos(db_session, test_users):
         hothash="hash_user2",
         width=1920,
         height=1080,
-        user_id=user2.id
+        user_id=user2.id,
+        hotpreview=dummy_hotpreview  # NOW REQUIRED
     )
     photos.append(photo_user2)
     
