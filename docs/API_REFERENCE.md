@@ -1,7 +1,9 @@
-# ImaLink API Reference v2.1
+# ImaLink API Reference v2.1 (Photo-Centric)
 
 **Base URL**: `http://localhost:8000/api/v1`  
 **Authentication**: JWT Bearer tokens required for all endpoints except auth/register and auth/login
+
+**Important Change in v2.1:** The ImageFiles API has been removed. All ImageFile operations are now performed through the Photos API for a cleaner, more intuitive interface. See the [ImageFiles section](#️-imagefiles) for migration details.
 
 ---
 
@@ -323,69 +325,9 @@ Authorization: Bearer <token>
 }
 ```
 
----
-
-## 🗂️ ImageFiles
-
-ImageFiles represent physical image files. Multiple ImageFiles (e.g., RAW + JPEG) can belong to one Photo.
-
-### List ImageFiles
+### Create Photo with ImageFile
 ```http
-GET /api/v1/image-files?offset=0&limit=100
-Authorization: Bearer <token>
-```
-
-**Query Parameters:**
-- `offset` (int): Skip N files
-- `limit` (int, max=1000): Number of files to return
-- `photo_hothash` (string, optional): Filter by specific photo
-
-### Get ImageFile Details
-```http
-GET /api/v1/image-files/{image_id}
-Authorization: Bearer <token>
-```
-
-**Response:**
-```json
-{
-  "id": 123,
-  "filename": "IMG_001.jpg",
-  "file_size": 2048576,
-  "file_type": "jpeg",
-  "width": 4000,
-  "height": 3000,
-  "photo_hothash": "abc123def456...",
-  "exif_dict": {
-    "Make": "Canon",
-    "Model": "EOS R5",
-    "DateTime": "2025:10:15 14:30:00"
-  },
-  "taken_at": "2025-10-15T14:30:00Z",
-  "gps_latitude": 59.9139,
-  "gps_longitude": 10.7522,
-  "created_at": "2025-10-20T10:00:00Z",
-  "updated_at": "2025-10-20T10:00:00Z"
-}
-```
-
-### Get Hotpreview Image
-```http
-GET /api/v1/image-files/{image_id}/hotpreview
-Authorization: Bearer <token>
-```
-
-**Returns:** Binary image data (JPEG, 64x64px thumbnail)
-
-**Response Headers:**
-```
-Content-Type: image/jpeg
-Cache-Control: public, max-age=3600
-```
-
-### Create ImageFile with New Photo
-```http
-POST /api/v1/image-files/new-photo
+POST /api/v1/photos/new-photo
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -399,7 +341,8 @@ Content-Type: application/json
   "perceptual_hash": "a1b2c3d4e5f6g7h8",
   "exif_dict": {
     "Make": "Canon",
-    "Model": "EOS R5"
+    "Model": "EOS R5",
+    "DateTime": "2025:10:15 14:30:00"
   },
   "taken_at": "2025-10-15T14:30:00Z",
   "gps_latitude": 59.9139,
@@ -408,7 +351,18 @@ Content-Type: application/json
 }
 ```
 
-**Description:** Upload a completely new, unique photo. Creates both ImageFile and Photo.
+**Description:** Create a new Photo with its first ImageFile. This is the primary way to add new photos to the system.
+
+**Required Fields:**
+- `filename`: Original filename
+- `hotpreview`: Base64-encoded 300x300px JPEG thumbnail (used to generate hothash)
+
+**Optional Fields:**
+- `perceptual_hash`: If not provided, will be generated from hotpreview
+- `file_size`, `file_type`, `width`, `height`: File metadata
+- `exif_dict`: EXIF metadata dictionary
+- `taken_at`, `gps_latitude`, `gps_longitude`: Photo metadata
+- `import_session_id`: Link to import session
 
 **Response** (`201 Created`):
 ```json
@@ -420,14 +374,18 @@ Content-Type: application/json
 }
 ```
 
+**Error Responses:**
+- `409 Conflict` - Photo with this hotpreview already exists (duplicate)
+- `400 Bad Request` - Missing required fields or invalid data
+- `422 Unprocessable Entity` - Validation error
+
 ### Add ImageFile to Existing Photo
 ```http
-POST /api/v1/image-files/add-to-photo
+POST /api/v1/photos/{hothash}/files
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "photo_hothash": "abc123def456...",
   "filename": "IMG_001.CR2",
   "file_size": 25000000,
   "file_type": "raw",
@@ -442,7 +400,12 @@ Content-Type: application/json
 }
 ```
 
-**Description:** Add companion file (e.g., RAW) to existing photo. NO hotpreview needed.
+**Description:** Add a companion ImageFile (e.g., RAW, different resolution) to an existing Photo. No hotpreview needed since the Photo already exists.
+
+**Use Cases:**
+- Adding RAW file when JPEG already imported
+- Adding different resolution of same photo
+- Adding edited version to original
 
 **Response** (`201 Created`):
 ```json
@@ -454,115 +417,77 @@ Content-Type: application/json
 }
 ```
 
-### Update ImageFile Storage Info
-```http
-PUT /api/v1/image-files/{image_file_id}/storage-info
-Authorization: Bearer <token>
-Content-Type: application/json
+**Error Responses:**
+- `404 Not Found` - Photo with this hothash doesn't exist
+- `422 Unprocessable Entity` - Validation error
 
-{
-  "storage_path": "/mnt/photos/2025/10/IMG_001.jpg",
-  "storage_type": "local",
-  "checksum": "sha256:abc123..."
-}
+---
+
+## 🗂️ ImageFiles
+
+**⚠️ IMPORTANT:** As of API v2.1, the ImageFiles API has been removed. All ImageFile operations are now performed through the Photos API.
+
+### Migration Guide
+
+**Old (Removed):**
+```http
+POST /api/v1/image-files/new-photo       ❌ REMOVED
+POST /api/v1/image-files/add-to-photo    ❌ REMOVED
+GET /api/v1/image-files/{id}             ❌ REMOVED
 ```
 
-**Response:**
+**New (Current):**
+```http
+POST /api/v1/photos/new-photo            ✅ Use this for new photos
+POST /api/v1/photos/{hothash}/files      ✅ Use this to add files
+GET /api/v1/photos/{hothash}             ✅ ImageFiles included in response
+```
+
+### Accessing ImageFiles
+
+ImageFiles are now accessed exclusively through their parent Photo:
+
+```http
+GET /api/v1/photos/{hothash}
+```
+
+**Response includes ImageFiles:**
 ```json
 {
-  "status": "success",
-  "message": "Storage info updated",
-  "data": {
-    "id": 123,
-    "storage_path": "/mnt/photos/2025/10/IMG_001.jpg",
-    "storage_type": "local",
-    "checksum": "sha256:abc123..."
-  }
-}
-```
-
-### Get ImageFile Storage Info
-```http
-GET /api/v1/image-files/{image_file_id}/storage-info
-Authorization: Bearer <token>
-```
-
-**Response:**
-```json
-{
-  "id": 123,
-  "storage_path": "/mnt/photos/2025/10/IMG_001.jpg",
-  "storage_type": "local",
-  "checksum": "sha256:abc123...",
-  "last_verified": "2025-10-20T10:00:00Z"
-}
-```
-
-### Upload New ImageFile (LEGACY - DEPRECATED)
-```http
-POST /api/v1/image-files
-Authorization: Bearer <token>
-Content-Type: application/json
-
-{
-  "filename": "IMG_001.jpg",
-  "file_size": 2048576,
-  "file_type": "jpeg",
+  "hothash": "abc123def456...",
   "width": 4000,
   "height": 3000,
-  "hotpreview": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
-  "exif_dict": {
-    "Make": "Canon",
-    "Model": "EOS R5"
-  },
-  "taken_at": "2025-10-15T14:30:00Z",
-  "gps_latitude": 59.9139,
-  "gps_longitude": 10.7522
+  "image_files": [
+    {
+      "id": 123,
+      "filename": "IMG_001.jpg",
+      "file_size": 2048576,
+      "file_type": "jpeg"
+    },
+    {
+      "id": 124,
+      "filename": "IMG_001.CR2",
+      "file_size": 25000000,
+      "file_type": "raw"
+    }
+  ]
 }
 ```
 
-**⚠️ DEPRECATED:** Use `/new-photo` or `/add-to-photo` instead for clearer intent.
+### Legacy Endpoints (Removed in v2.1)
 
-**Response** (`201 Created`):
-```json
-{
-  "id": 123,
-  "filename": "IMG_001.jpg",
-  "photo_hothash": "abc123def456...",
-  "photo_created": true,
-  "message": "ImageFile and Photo created successfully"
-}
-```
+The following endpoints were removed in API v2.1. All functionality has been moved to the Photos API.
 
-### Find Similar Images
-```http
-GET /api/v1/image-files/similar/{image_id}?threshold=5&limit=10
-Authorization: Bearer <token>
-```
+**Removed Endpoints:**
+- ❌ `GET /api/v1/image-files` - List ImageFiles
+- ❌ `GET /api/v1/image-files/{id}` - Get ImageFile details
+- ❌ `POST /api/v1/image-files` - Upload ImageFile (deprecated)
+- ❌ `POST /api/v1/image-files/new-photo` - **Moved to** `POST /api/v1/photos/new-photo`
+- ❌ `POST /api/v1/image-files/add-to-photo` - **Moved to** `POST /api/v1/photos/{hothash}/files`
+- ❌ `GET /api/v1/image-files/{id}/hotpreview` - Use Photo hotpreview instead
+- ❌ `GET /api/v1/image-files/similar/{id}` - Similar image search (to be reimplemented)
 
-**Query Parameters:**
-- `threshold` (int, 0-16, default=5): Hamming distance threshold (lower = more similar)
-- `limit` (int, 1-100, default=10): Maximum number of results
-
-**Description:** Find visually similar images using perceptual hash comparison.
-
-**Response:**
-```json
-[
-  {
-    "id": 125,
-    "filename": "IMG_002.jpg",
-    "photo_hothash": "def456abc123...",
-    "hamming_distance": 2
-  },
-  {
-    "id": 127,
-    "filename": "IMG_003.jpg",
-    "photo_hothash": "ghi789jkl012...",
-    "hamming_distance": 4
-  }
-]
-```
+**Rationale:** ImageFiles are now treated as internal data structures that belong to Photos. All user-facing operations are performed through the Photos API, which provides a cleaner, more intuitive interface.
 
 ---
 
@@ -923,9 +848,18 @@ API accepts requests from:
 ### User Isolation
 All data operations are automatically scoped to the authenticated user. Users cannot access or modify other users' data.
 
-### Photo vs ImageFile
-- **Photo**: Logical representation of an image with visual hash (hothash)
-- **ImageFile**: Physical file (can have multiple per Photo, e.g., RAW + JPEG)
+### Photo vs ImageFile (Updated in v2.1)
+- **Photo**: Logical representation of an image with visual data (hothash, dimensions, EXIF metadata, hotpreview, etc.)
+- **ImageFile**: Physical file metadata (filename, file_size, file_type, storage info)
+- **Relationship**: One Photo can have multiple ImageFiles (e.g., RAW + JPEG of the same shot)
+- **API Access**: Photos are the primary user-facing resource. ImageFiles are accessed through Photos API only.
+
+### 100% Photo-Centric API (v2.1)
+As of v2.1, the API is 100% photo-centric:
+- All ImageFile creation is done through Photos endpoints (`POST /photos/new-photo` and `POST /photos/{hothash}/files`)
+- ImageFiles API has been removed
+- ImageFiles are accessible only via Photo relationships (included in Photo responses)
+- This provides a clearer, more intuitive API where Photos are the natural entry point
 
 ### PhotoStacks
 - One-to-many relationship: each Photo can belong to at most ONE stack
@@ -936,7 +870,7 @@ All data operations are automatically scoped to the authenticated user. Users ca
 - 300x300px JPEG thumbnail
 - Auto-rotated based on EXIF orientation
 - Stored as binary blob in database
-- Used for fast gallery display
+- Used for fast gallery display and generating Photo hothash (SHA256)
 
 ---
 
@@ -964,6 +898,49 @@ All data operations are automatically scoped to the authenticated user. Users ca
 
 ---
 
-**Last Updated:** October 20, 2025  
-**API Version:** 2.1  
-**Backend Version:** Fase 1 (Multi-User + PhotoStacks)
+## 📋 Changelog
+
+### v2.1 (October 21, 2025) - 100% Photo-Centric API
+**Breaking Changes:**
+- ❌ **Removed:** Entire ImageFiles API (`/api/v1/image-files/*`)
+- ❌ **Removed:** `GET /api/v1/image-files/{id}` - Access ImageFiles via Photo responses
+- ❌ **Removed:** `POST /api/v1/image-files/new-photo` 
+- ❌ **Removed:** `POST /api/v1/image-files/add-to-photo`
+
+**New Endpoints:**
+- ✅ **Added:** `POST /api/v1/photos/new-photo` - Create Photo with initial ImageFile
+- ✅ **Added:** `POST /api/v1/photos/{hothash}/files` - Add ImageFile to existing Photo
+
+**Benefits:**
+- Cleaner, more intuitive API
+- Photos are the natural entry point for all operations
+- ImageFiles accessible via Photo relationships
+- Reduced API surface area
+
+**Migration Guide:**
+```bash
+# Before v2.1:
+POST /api/v1/image-files/new-photo
+
+# After v2.1:
+POST /api/v1/photos/new-photo
+
+# Before v2.1:
+POST /api/v1/image-files/add-to-photo
+{
+  "photo_hothash": "abc123...",
+  "filename": "image.raw"
+}
+
+# After v2.1:
+POST /api/v1/photos/abc123.../files
+{
+  "filename": "image.raw"
+}
+```
+
+---
+
+**Last Updated:** October 21, 2025  
+**API Version:** 2.1 (100% Photo-Centric)  
+**Backend Version:** Fase 1 (Multi-User + PhotoStacks + Photo-Centric API)
