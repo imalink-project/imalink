@@ -31,8 +31,7 @@ class PhotoResponse(BaseModel):
     """Complete photo response model"""
     hothash: str = Field(..., description="Content-based hash identifier")
     
-    # Visual presentation data
-    hotpreview: Optional[str] = Field(None, description="Base64 encoded preview image")
+    # Visual presentation data (from master ImageFile)
     width: Optional[int] = Field(None, description="Original image width in pixels")
     height: Optional[int] = Field(None, description="Original image height in pixels")
     
@@ -43,11 +42,12 @@ class PhotoResponse(BaseModel):
     coldpreview_height: Optional[int] = Field(None, description="Coldpreview height (computed from file)")  
     coldpreview_size: Optional[int] = Field(None, description="Coldpreview file size (computed from file)")
     
-    # Content metadata
+    # Content metadata (from master ImageFile)
     taken_at: Optional[datetime] = Field(None, description="When photo was taken (from EXIF)")
     gps_latitude: Optional[float] = Field(None, description="GPS latitude")
     gps_longitude: Optional[float] = Field(None, description="GPS longitude")
     exif_dict: Optional[dict] = Field(None, description="EXIF metadata from master image file")
+    perceptual_hash: Optional[str] = Field(None, description="Perceptual hash for similarity search")
     
     # User metadata
     rating: int = Field(0, ge=0, le=5, description="User rating (0-5 stars)")

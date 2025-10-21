@@ -18,18 +18,19 @@ class ImageFile(Base, TimestampMixin):
     """
     File-level image model - represents a single physical image file
     
-    ARCHITECTURE: ImageFile is the PRIMARY entry point
-    ImageFiles are created via POST /image-files, and automatically create/link to Photos:
-    - ImageFile.hotpreview is REQUIRED (hotpreview binary data)
+    ARCHITECTURE: ImageFile stores only file-specific metadata
+    Photos are created via POST /image-files/new-photo with visual data (hotpreview, exif_dict):
+    - First ImageFile (master) provides hotpreview/exif → Creates Photo with this data
     - Photo.hothash is generated from hotpreview via SHA256
-    - First ImageFile with new hotpreview → Creates new Photo (becomes master)
-    - Subsequent ImageFiles with same hotpreview → Link to existing Photo
-    - JPEG/RAW pairs naturally share same Photo (same visual content)
+    - Subsequent ImageFiles (companions) are added via POST /image-files/add-to-photo
+    - Companion files do NOT provide hotpreview/exif (already in Photo)
     
     Key design principles:
     - One record per physical file
-    - File-specific data only (filename, size, EXIF, hotpreview)
-    - hotpreview stored here (hotpreview for UI display)
+    - File-specific data only (filename, size, storage location)
+    - NO visual data (hotpreview stored in Photo)
+    - NO EXIF data (exif_dict stored in Photo)
+    - NO perceptual_hash (stored in Photo for similarity search)
     - Immutable after creation (no UPDATE operations)
     - Delete only via Photo cascade (no individual DELETE)
     """
@@ -44,12 +45,7 @@ class ImageFile(Base, TimestampMixin):
     filename = Column(String(255), nullable=False)  # Just name + extension, e.g. "IMG_1234.jpg"
     file_size = Column(Integer)  # Size in bytes
     
-    # File-specific processing data
-    exif_dict = Column(JSON, nullable=True)  # Parsed EXIF metadata as JSON (extracted by frontend)
-    hotpreview = Column(LargeBinary)  # Hotpreview image for this file
-    perceptual_hash = Column(String(16), nullable=True, index=True)  # pHash for similarity search
-    
-    # Link to Photo (via hothash - not a FK since it's generated from hotpreview)
+    # Link to Photo (via hothash)
     photo_hothash = Column(String(64), ForeignKey('photos.hothash'), nullable=True, index=True)
     
     # Import tracking (file-level) - EXPANDED
