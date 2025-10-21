@@ -28,7 +28,6 @@ class ImageFileNewPhotoRequest(BaseModel):
     
     # Optional file metadata
     file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")
-    perceptual_hash: Optional[str] = Field(None, description="Perceptual hash for similarity search (auto-generated if not provided)")
     
     # Parsed EXIF metadata (frontend responsibility)
     exif_dict: Optional[Dict[str, Any]] = Field(None, description="Parsed EXIF metadata as JSON structure (extracted by frontend)")
@@ -79,7 +78,7 @@ class ImageFileAddToPhotoRequest(BaseModel):
     or additional format of the same photo. The photo_hothash must be provided
     to specify which existing Photo to add this ImageFile to.
     
-    NOTE: hotpreview, perceptual_hash, and exif_dict are NOT included since the Photo 
+    NOTE: hotpreview and exif_dict are NOT included since the Photo 
     already exists with its visual representation and metadata. This is purely for 
     adding file variants.
     """

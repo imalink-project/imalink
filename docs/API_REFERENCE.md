@@ -119,6 +119,49 @@ Authorization: Bearer <token>
 
 All photo operations are scoped to the authenticated user.
 
+**IMPORTANT for Frontend Integration:**
+- All POST/PUT requests must include: `Content-Type: application/json`
+- All requests (except login/register) must include: `Authorization: Bearer <token>`
+- Dates must be in ISO 8601 format: `"2025-10-15T14:30:00Z"`
+- Base64 data can include data URL prefix or be raw: `"data:image/jpeg;base64,..."` or just the Base64 string
+
+**Quick Start - Upload Your First Photo:**
+```javascript
+// 1. Get authentication token (do this once)
+const loginResponse = await fetch('http://localhost:8000/api/v1/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ username: 'myuser', password: 'mypass' })
+});
+const { access_token } = await loginResponse.json();
+
+// 2. Create 300x300px thumbnail (hotpreview) from your image
+const canvas = document.createElement('canvas');
+canvas.width = 300;
+canvas.height = 300;
+const ctx = canvas.getContext('2d');
+ctx.drawImage(yourImage, 0, 0, 300, 300);
+const hotpreview = canvas.toDataURL('image/jpeg', 0.85); // Includes data URL prefix
+
+// 3. Upload the photo
+const response = await fetch('http://localhost:8000/api/v1/photos/new-photo', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${access_token}`
+  },
+  body: JSON.stringify({
+    filename: 'my_photo.jpg',
+    hotpreview: hotpreview,  // Can include "data:image/jpeg;base64," prefix
+    file_size: 2048576,
+    exif_dict: { Make: 'Canon', Model: 'EOS R5' }  // Optional
+  })
+});
+
+const result = await response.json();
+console.log('Photo created:', result.photo_hothash);
+```
+
 ### List Photos
 ```http
 GET /api/v1/photos?offset=0&limit=100
@@ -333,51 +376,78 @@ Content-Type: application/json
 
 {
   "filename": "IMG_001.jpg",
-  "file_size": 2048576,
-  "file_type": "jpeg",
-  "width": 4000,
-  "height": 3000,
   "hotpreview": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
-  "perceptual_hash": "a1b2c3d4e5f6g7h8",
+  "file_size": 2048576,
   "exif_dict": {
     "Make": "Canon",
     "Model": "EOS R5",
-    "DateTime": "2025:10:15 14:30:00"
+    "DateTime": "2025:10:15 14:30:00",
+    "ImageWidth": 4000,
+    "ImageHeight": 3000
   },
   "taken_at": "2025-10-15T14:30:00Z",
   "gps_latitude": 59.9139,
   "gps_longitude": 10.7522,
-  "import_session_id": 5
+  "import_session_id": 5,
+  "imported_info": {
+    "original_path": "/path/to/original.jpg"
+  },
+  "local_storage_info": {
+    "path": "/storage/photos/IMG_001.jpg"
+  }
 }
 ```
 
 **Description:** Create a new Photo with its first ImageFile. This is the primary way to add new photos to the system.
 
 **Required Fields:**
-- `filename`: Original filename
-- `hotpreview`: Base64-encoded 300x300px JPEG thumbnail (used to generate hothash)
+- `filename` (string): Original filename with extension
+- `hotpreview` (string): Base64-encoded JPEG thumbnail (300x300px recommended)
+  - Can be with data URL prefix: `"data:image/jpeg;base64,<data>"`
+  - Or just the Base64 data: `"<base64_data>"`
+  - Used to generate the Photo's unique `hothash` (SHA256)
 
 **Optional Fields:**
-- `perceptual_hash`: If not provided, will be generated from hotpreview
-- `file_size`, `file_type`, `width`, `height`: File metadata
-- `exif_dict`: EXIF metadata dictionary
-- `taken_at`, `gps_latitude`, `gps_longitude`: Photo metadata
-- `import_session_id`: Link to import session
+- `file_size` (integer): File size in bytes
+- `exif_dict` (object): Parsed EXIF metadata as JSON
+  - Should include `ImageWidth` and `ImageHeight` if available
+  - All other EXIF tags as key-value pairs
+- `taken_at` (datetime): When photo was taken (ISO 8601 format)
+- `gps_latitude` (float): GPS latitude (-90 to 90)
+- `gps_longitude` (float): GPS longitude (-180 to 180)
+- `import_session_id` (integer): ID of import session
+- `imported_info` (object): Import context (original path, source, etc.)
+- `local_storage_info` (object): Local storage metadata
+- `cloud_storage_info` (object): Cloud storage metadata
 
 **Response** (`201 Created`):
 ```json
 {
   "image_file_id": 123,
-  "photo_hothash": "abc123def456...",
+  "photo_hothash": "abc123def456789...",
   "photo_created": true,
-  "message": "ImageFile and Photo created successfully"
+  "success": true,
+  "message": "New photo created successfully",
+  "filename": "IMG_001.jpg",
+  "file_size": 2048576
 }
 ```
 
 **Error Responses:**
 - `409 Conflict` - Photo with this hotpreview already exists (duplicate)
-- `400 Bad Request` - Missing required fields or invalid data
-- `422 Unprocessable Entity` - Validation error
+  ```json
+  {
+    "detail": "Photo with this image already exists. Use POST /photos/{hothash}/files to add companion files."
+  }
+  ```
+- `400 Bad Request` - Validation error
+  ```json
+  {
+    "detail": "Validation error: <error details>"
+  }
+  ```
+- `422 Unprocessable Entity` - Invalid field values
+- `500 Internal Server Error` - Server error (check logs for details)
 
 ### Add ImageFile to Existing Photo
 ```http
@@ -388,19 +458,32 @@ Content-Type: application/json
 {
   "filename": "IMG_001.CR2",
   "file_size": 25000000,
-  "file_type": "raw",
-  "width": 5472,
-  "height": 3648,
-  "exif_dict": {
-    "Make": "Canon",
-    "Model": "EOS R5"
+  "import_session_id": 5,
+  "imported_info": {
+    "original_path": "/path/to/original.CR2"
   },
-  "taken_at": "2025-10-15T14:30:00Z",
-  "import_session_id": 5
+  "local_storage_info": {
+    "path": "/storage/photos/IMG_001.CR2"
+  }
 }
 ```
 
 **Description:** Add a companion ImageFile (e.g., RAW, different resolution) to an existing Photo. No hotpreview needed since the Photo already exists.
+
+**Path Parameters:**
+- `hothash` (string): The 64-character hash of the existing Photo
+
+**Required Fields:**
+- `filename` (string): Filename with extension
+
+**Optional Fields:**
+- `file_size` (integer): File size in bytes
+- `import_session_id` (integer): ID of import session
+- `imported_info` (object): Import context
+- `local_storage_info` (object): Local storage metadata
+- `cloud_storage_info` (object): Cloud storage metadata
+
+**Note:** The `photo_hothash` field is NOT sent in the request body - it's taken from the URL path parameter.
 
 **Use Cases:**
 - Adding RAW file when JPEG already imported
@@ -411,15 +494,83 @@ Content-Type: application/json
 ```json
 {
   "image_file_id": 124,
-  "photo_hothash": "abc123def456...",
+  "photo_hothash": "abc123def456789...",
   "photo_created": false,
-  "message": "ImageFile added to existing Photo"
+  "success": true,
+  "message": "Image file added to existing photo successfully",
+  "filename": "IMG_001.CR2",
+  "file_size": 25000000
 }
 ```
 
 **Error Responses:**
 - `404 Not Found` - Photo with this hothash doesn't exist
-- `422 Unprocessable Entity` - Validation error
+  ```json
+  {
+    "detail": "Photo with hothash 'abc123...' not found. Use POST /photos/new-photo to create new photo."
+  }
+  ```
+- `400 Bad Request` - Validation error
+- `422 Unprocessable Entity` - Invalid field values
+- `500 Internal Server Error` - Server error
+
+### Troubleshooting Photo Upload
+
+**Problem: Getting 500 Internal Server Error**
+
+Check the server logs for detailed error messages. Common issues:
+
+1. **Invalid hotpreview data:**
+   ```
+   ERROR: Validation error creating photo: Invalid hotpreview Base64 data
+   ```
+   - Solution: Ensure hotpreview is valid Base64-encoded JPEG
+   - Must be at least 10 bytes after decoding
+   - Can include or exclude `data:image/jpeg;base64,` prefix
+
+2. **Missing required fields:**
+   ```
+   ERROR: Request data details - filename: None, hotpreview_size: 0
+   ```
+   - Solution: Both `filename` and `hotpreview` are required
+
+3. **Invalid datetime format:**
+   ```
+   ERROR: Invalid datetime format for taken_at
+   ```
+   - Solution: Use ISO 8601 format: `"2025-10-15T14:30:00Z"`
+
+**Problem: Getting 409 Conflict (Duplicate)**
+
+This means a Photo with the same hotpreview already exists.
+- The system generates a unique `hothash` from the hotpreview
+- If you want to add another file for the same photo (e.g., RAW), use `POST /photos/{hothash}/files`
+
+**Problem: Getting 422 Validation Error**
+
+Check the response detail for specific field validation errors:
+- `gps_latitude` must be between -90 and 90
+- `gps_longitude` must be between -180 and 180
+- `file_size` must be >= 0
+- `filename` must be 1-255 characters
+
+**Debug Logging:**
+
+Server logs will show:
+```
+DEBUG: Creating new photo for user 123
+DEBUG: Request data: filename=IMG_001.jpg, has_hotpreview=True, file_size=2048576, has_exif=True
+```
+
+If you see:
+```
+ERROR: Unexpected error creating photo with file: <details>
+```
+
+This indicates a server-side issue. Check:
+- Database connection
+- File permissions
+- Server configuration
 
 ---
 

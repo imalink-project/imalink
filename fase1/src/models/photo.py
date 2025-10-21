@@ -23,9 +23,9 @@ class Photo(Base, TimestampMixin):
     
     CREATION FLOW:
     Photos are created when uploading the first (master) ImageFile:
-    1. Client uploads image file → POST /image-files/new-photo with hotpreview, exif_dict, perceptual_hash
+    1. Client uploads image file → POST /image-files/new-photo with hotpreview, exif_dict
     2. System generates hothash from hotpreview (SHA256)
-    3. Photo is created with hotpreview, exif_dict, perceptual_hash from request
+    3. Photo is created with hotpreview, exif_dict from request
     4. ImageFile is created and linked to Photo (without hotpreview/exif - stored only in Photo)
     5. Additional ImageFiles (RAW, etc.) can be added via POST /image-files/add-to-photo
     
@@ -54,7 +54,6 @@ class Photo(Base, TimestampMixin):
     # Visual presentation data from master ImageFile (immutable after creation)
     hotpreview = Column(LargeBinary, nullable=False)  # 64x64 thumbnail from master file
     exif_dict = Column(JSON, nullable=True)           # EXIF metadata from master file
-    perceptual_hash = Column(String(16), nullable=True, index=True)  # pHash for similarity search
     
     # Image dimensions (extracted from EXIF or provided by client)
     width = Column(Integer)           # Original image dimensions

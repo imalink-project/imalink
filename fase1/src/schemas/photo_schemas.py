@@ -47,7 +47,6 @@ class PhotoResponse(BaseModel):
     gps_latitude: Optional[float] = Field(None, description="GPS latitude")
     gps_longitude: Optional[float] = Field(None, description="GPS longitude")
     exif_dict: Optional[dict] = Field(None, description="EXIF metadata from master image file")
-    perceptual_hash: Optional[str] = Field(None, description="Perceptual hash for similarity search")
     
     # User metadata
     rating: int = Field(0, ge=0, le=5, description="User rating (0-5 stars)")

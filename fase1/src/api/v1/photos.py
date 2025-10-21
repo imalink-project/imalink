@@ -87,7 +87,7 @@ def create_photo_with_file(
     Create new Photo with initial ImageFile
     
     USE CASE: Uploading a completely new, unique photo
-    - Hotpreview, exif_dict, perceptual_hash stored in Photo (visual data)
+    - Hotpreview and exif_dict stored in Photo (visual data)
     - ImageFile stores only file metadata
     - A new Photo will always be created
     
@@ -120,8 +120,7 @@ def create_photo_with_file(
         logger.error(f"Request data details - filename: {image_data.filename}, "
                     f"hotpreview_size: {len(image_data.hotpreview) if image_data.hotpreview else 0}, "
                     f"file_size: {image_data.file_size}, "
-                    f"has_exif: {bool(image_data.exif_dict)}, "
-                    f"has_perceptual_hash: {bool(image_data.perceptual_hash)}")
+                    f"has_exif: {bool(image_data.exif_dict)}")
         raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
     except Exception as e:
         logger.error(f"Unexpected error creating photo with file: {str(e)}", exc_info=True)
@@ -148,7 +147,7 @@ def add_file_to_photo(
     
     REQUIREMENTS:
     - Photo with {hothash} must exist and belong to user
-    - NO hotpreview, exif_dict, or perceptual_hash (Photo already has these)
+    - NO hotpreview or exif_dict (Photo already has these)
     
     WORKFLOW:
     1. Validate that Photo with hothash exists

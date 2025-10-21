@@ -1,17 +1,19 @@
 """
-Photo Service - Business Logic Layer for Photo operations
-Orchestrates photo operations and implements business rules
+Photo Service - Business logic for photo operations
+
+ARCHITECTURAL NOTE (UPDATED):
+Photos are created via POST /photos/new-photo which creates both Photo + ImageFile.
+- Hotpreview and exif_dict stored in Photo (visual data)
+- ImageFile stores only file metadata
 """
-from typing import List, Optional, Dict, Any
+from typing import Optional, List, Dict, Any
+from datetime import datetime
 from sqlalchemy.orm import Session
 from pathlib import Path
-import json
-import time
 import hashlib
-import imagehash
 import io
+
 from PIL import Image as PILImage
-from datetime import datetime
 
 from repositories.photo_repository import PhotoRepository
 from repositories.image_file_repository import ImageFileRepository
@@ -113,18 +115,12 @@ class PhotoService:
         if existing_photo:
             raise DuplicateImageError(f"Photo with this image already exists (hothash: {hothash[:8]}...)")
         
-        # 5. Generate perceptual hash if not provided
-        perceptual_hash = self._generate_perceptual_hash_if_missing(
-            image_data.perceptual_hash, 
-            hotpreview_bytes
-        )
-        
-        # 6. Create new Photo + ImageFile
+        # 5. Create new Photo + ImageFile
         image_file = self._create_new_photo_with_image_file(
-            image_data, hothash, perceptual_hash, hotpreview_bytes, user_id
+            image_data, hothash, hotpreview_bytes, user_id
         )
         
-        # 7. Commit transaction
+        # 6. Commit transaction
         self.db.commit()
         self.db.refresh(image_file)
         
@@ -266,7 +262,6 @@ class PhotoService:
             gps_latitude=getattr(photo, 'gps_latitude', None),
             gps_longitude=getattr(photo, 'gps_longitude', None),
             exif_dict=getattr(photo, 'exif_dict', None),
-            perceptual_hash=getattr(photo, 'perceptual_hash', None),
             rating=getattr(photo, 'rating', 0),
             created_at=getattr(photo, 'created_at'),
             updated_at=getattr(photo, 'updated_at'),
@@ -419,7 +414,6 @@ class PhotoService:
         self, 
         image_data: ImageFileNewPhotoRequest, 
         hothash: str, 
-        perceptual_hash: Optional[str], 
         hotpreview_bytes: bytes, 
         user_id: int
     ) -> ImageFile:
@@ -431,7 +425,6 @@ class PhotoService:
             'hothash': hothash,
             'hotpreview': hotpreview_bytes,
             'exif_dict': image_data.exif_dict,
-            'perceptual_hash': perceptual_hash,
             'taken_at': image_data.taken_at,
             'gps_latitude': image_data.gps_latitude,
             'gps_longitude': image_data.gps_longitude,
@@ -484,21 +477,3 @@ class PhotoService:
     def _generate_hothash_from_hotpreview(self, hotpreview_bytes: bytes) -> str:
         """Generate SHA256 hash from hotpreview bytes"""
         return hashlib.sha256(hotpreview_bytes).hexdigest()
-    
-    def _generate_perceptual_hash_if_missing(
-        self, 
-        provided_hash: Optional[str], 
-        hotpreview_bytes: bytes
-    ) -> Optional[str]:
-        """Generate perceptual hash from hotpreview if not provided"""
-        if provided_hash:
-            return provided_hash
-        
-        try:
-            # Generate perceptual hash from hotpreview
-            img = PILImage.open(io.BytesIO(hotpreview_bytes))
-            phash = imagehash.phash(img)
-            return str(phash)
-        except Exception as e:
-            print(f"Warning: Could not generate perceptual hash: {e}")
-            return None
