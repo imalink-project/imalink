@@ -30,12 +30,36 @@ from models import ImageFile
 
 
 class ImageFileService:
-    """Simplified service for ImageFile creation only"""
+    """Simplified service for ImageFile creation and retrieval"""
     
     def __init__(self, db: Session):
         self.db = db
         self.image_file_repo = ImageFileRepository(db)
         self.photo_repo = PhotoRepository(db)
+    
+    def get_image_file_by_id(self, image_file_id: int, user_id: int) -> ImageFile:
+        """
+        Get ImageFile by ID (with user access validation)
+        
+        Args:
+            image_file_id: ImageFile database ID
+            user_id: User requesting access
+        
+        Returns:
+            ImageFile object
+            
+        Raises:
+            NotFoundError: If ImageFile not found or user lacks access
+        """
+        image_file = self.image_file_repo.get_by_id(image_file_id)
+        if not image_file:
+            raise NotFoundError("ImageFile", image_file_id)
+        
+        # Verify user access through Photo ownership
+        if image_file.photo and image_file.photo.user_id != user_id:
+            raise NotFoundError("ImageFile", image_file_id)
+        
+        return image_file
     
     def create_image_file_new_photo(self, image_data: ImageFileNewPhotoRequest, user_id: int) -> ImageFileUploadResponse:
         """

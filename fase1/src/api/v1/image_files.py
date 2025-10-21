@@ -2,13 +2,13 @@
 ImageFile API endpoints - Simplified architecture
 
 SIMPLIFIED ARCHITECTURE:
-ImageFiles are immutable file records with only two creation endpoints:
+ImageFiles are immutable file records with limited endpoints:
+- GET /image-files/{id}: Retrieve ImageFile metadata (for access to Photo's files)
 - POST /image-files/new-photo: Creates Photo + ImageFile (with visual data)
 - POST /image-files/add-to-photo: Adds ImageFile to existing Photo (file metadata only)
 
 ImageFiles CANNOT be:
 - Listed independently (use GET /photos instead)
-- Retrieved individually (access via Photo.image_files)
 - Updated (immutable file records)
 - Deleted individually (delete via Photo cascade: DELETE /photos/{hothash})
 
@@ -23,9 +23,52 @@ from models.user import User
 from schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
+from schemas.image_file_schemas import ImageFileResponse
 from core.exceptions import NotFoundError, ValidationError, DuplicateImageError
 
 router = APIRouter()
+
+
+@router.get("/{image_file_id}", response_model=ImageFileResponse)
+def get_image_file(
+    image_file_id: int,
+    image_file_service: ImageFileService = Depends(get_image_file_service),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get ImageFile metadata by ID
+    
+    USE CASE: Accessing file information for a Photo's image files
+    - Returns file metadata only (filename, size, storage info)
+    - Access validated through Photo ownership
+    - Used by frontends to display file details in Photo views
+    
+    Returns:
+        ImageFile metadata (no visual data - see Photo for that)
+    """
+    try:
+        image_file = image_file_service.get_image_file_by_id(image_file_id, current_user.id)
+        
+        # Extract values using getattr to handle Column types
+        filename = getattr(image_file, 'filename', '')
+        
+        return ImageFileResponse(
+            id=getattr(image_file, 'id'),
+            filename=filename,
+            file_size=getattr(image_file, 'file_size', None),
+            photo_hothash=getattr(image_file, 'photo_hothash', None),
+            import_session_id=getattr(image_file, 'import_session_id', None),
+            imported_time=getattr(image_file, 'imported_time', None),
+            imported_info=getattr(image_file, 'imported_info', None),
+            local_storage_info=getattr(image_file, 'local_storage_info', None),
+            cloud_storage_info=getattr(image_file, 'cloud_storage_info', None),
+            file_format=filename.split('.')[-1].upper() if filename else None,
+            file_path=None,  # TODO: Compute from storage service if needed
+            original_filename=filename,
+            created_at=getattr(image_file, 'created_at')
+        )
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/new-photo", response_model=ImageFileUploadResponse, status_code=201)
