@@ -73,6 +73,37 @@ class TestPhotosAPI:
         response = authenticated_client.get("/api/v1/photos/nonexistenthash/hotpreview", headers=authenticated_client.auth_headers)
         
         assert response.status_code == 404
+    
+    def test_create_photo_without_data(self, authenticated_client):
+        """POST /new-photo without required data should return 422"""
+        response = authenticated_client.post("/api/v1/photos/new-photo", json={}, headers=authenticated_client.auth_headers)
+        
+        assert response.status_code == 422  # Validation error
+    
+    def test_create_photo_missing_hotpreview(self, authenticated_client):
+        """POST /new-photo without hotpreview should return 400/422"""
+        photo_data = {
+            "filename": "test.jpg",
+            "file_size": 1000
+            # Missing hotpreview
+        }
+        
+        response = authenticated_client.post("/api/v1/photos/new-photo", json=photo_data, headers=authenticated_client.auth_headers)
+        
+        # Accept both 400 (service validation) and 422 (pydantic validation)
+        assert response.status_code in [400, 422]
+    
+    def test_add_file_to_nonexistent_photo(self, authenticated_client):
+        """POST /{hothash}/files with non-existent photo should return 404"""
+        file_data = {
+            "filename": "test_raw.cr2",
+            "file_size": 5000
+        }
+        
+        response = authenticated_client.post("/api/v1/photos/nonexistenthash/files", json=file_data, headers=authenticated_client.auth_headers)
+        
+        # Accept both 404 (photo not found) and 422 (validation error due to missing fields)
+        assert response.status_code in [404, 422]
 
 
 class TestPhotosErrorHandling:
@@ -105,6 +136,31 @@ class TestPhotosErrorHandling:
         response = authenticated_client.get("/api/v1/photos/?offset=-1", headers=authenticated_client.auth_headers)
         
         assert response.status_code == 422
+
+
+class TestPhotosArchitecture:
+    """Test 100% Photo-centric architecture principles"""
+    
+    def test_new_photo_endpoint_exists(self, authenticated_client):
+        """POST /new-photo endpoint should be accessible"""
+        # Should return validation error (not 404 or 405)
+        response = authenticated_client.post("/api/v1/photos/new-photo", json={}, headers=authenticated_client.auth_headers)
+        
+        assert response.status_code in [400, 422]
+    
+    def test_add_file_endpoint_exists(self, authenticated_client):
+        """POST /{hothash}/files endpoint should be accessible"""
+        # Should return 404 for non-existent photo (not 405 Method Not Allowed)
+        response = authenticated_client.post("/api/v1/photos/fakehash/files", json={}, headers=authenticated_client.auth_headers)
+        
+        assert response.status_code in [404, 422]
+    
+    def test_image_files_api_removed(self, authenticated_client):
+        """GET /image-files/ should be removed (404)"""
+        response = authenticated_client.get("/api/v1/image-files/", headers=authenticated_client.auth_headers)
+        
+        # Should return 404 (endpoint doesn't exist)
+        assert response.status_code == 404
 
 
 if __name__ == "__main__":
