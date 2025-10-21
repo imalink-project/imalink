@@ -20,6 +20,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Response, Query, File, UploadFile
 from fastapi.responses import StreamingResponse
 import io
+import logging
 
 from core.dependencies import get_photo_service, get_photo_stack_service
 from services.photo_service import PhotoService
@@ -38,6 +39,7 @@ from api.dependencies import get_current_active_user
 from models.user import User
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=PaginatedResponse[PhotoResponse])
@@ -101,16 +103,31 @@ def create_photo_with_file(
         ImageFileUploadResponse with photo_created=True
     """
     try:
+        logger.debug(f"Creating new photo for user {getattr(current_user, 'id')}")
+        logger.debug(f"Request data: filename={image_data.filename}, has_hotpreview={bool(image_data.hotpreview)}, "
+                    f"file_size={image_data.file_size}, has_exif={bool(image_data.exif_dict)}")
+        
         return photo_service.create_photo_with_file(image_data, getattr(current_user, 'id'))
     except DuplicateImageError as e:
         # Photo with same hotpreview already exists
+        logger.warning(f"Duplicate photo upload attempt by user {getattr(current_user, 'id')}: {str(e)}")
         raise HTTPException(
             status_code=409, 
             detail=f"Photo with this image already exists. Use POST /photos/{{hothash}}/files to add companion files. {str(e)}"
         )
     except ValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Validation error creating photo: {str(e)}")
+        logger.error(f"Request data details - filename: {image_data.filename}, "
+                    f"hotpreview_size: {len(image_data.hotpreview) if image_data.hotpreview else 0}, "
+                    f"file_size: {image_data.file_size}, "
+                    f"has_exif: {bool(image_data.exif_dict)}, "
+                    f"has_perceptual_hash: {bool(image_data.perceptual_hash)}")
+        raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
     except Exception as e:
+        logger.error(f"Unexpected error creating photo with file: {str(e)}", exc_info=True)
+        logger.error(f"Request data - filename: {image_data.filename if hasattr(image_data, 'filename') else 'N/A'}, "
+                    f"hotpreview_present: {bool(getattr(image_data, 'hotpreview', None))}, "
+                    f"user_id: {getattr(current_user, 'id')}")
         raise HTTPException(status_code=500, detail=f"Failed to create photo with file: {str(e)}")
 
 
@@ -142,16 +159,25 @@ def add_file_to_photo(
         ImageFileUploadResponse with photo_created=False
     """
     try:
+        logger.debug(f"Adding file to existing photo {hothash} for user {getattr(current_user, 'id')}")
+        logger.debug(f"Request data: filename={image_data.filename}, file_size={image_data.file_size}")
+        
         return photo_service.add_file_to_photo(hothash, image_data, getattr(current_user, 'id'))
     except NotFoundError as e:
         # Photo with provided hothash doesn't exist
+        logger.warning(f"Attempt to add file to non-existent photo {hothash} by user {getattr(current_user, 'id')}")
         raise HTTPException(
             status_code=404,
             detail=f"Photo with hothash '{hothash}' not found. Use POST /photos/new-photo to create new photo."
         )
     except ValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        logger.error(f"Validation error adding file to photo {hothash}: {str(e)}")
+        logger.error(f"Request data - filename: {image_data.filename}, file_size: {image_data.file_size}")
+        raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
     except Exception as e:
+        logger.error(f"Unexpected error adding file to photo {hothash}: {str(e)}", exc_info=True)
+        logger.error(f"Request data - filename: {image_data.filename if hasattr(image_data, 'filename') else 'N/A'}, "
+                    f"hothash: {hothash}, user_id: {getattr(current_user, 'id')}")
         raise HTTPException(status_code=500, detail=f"Failed to add file to photo: {str(e)}")
 
 
