@@ -9,7 +9,7 @@
 
 ### Register New User
 ```http
-POST /api/auth/register
+POST /api/v1/auth/register
 Content-Type: application/json
 
 {
@@ -35,7 +35,7 @@ Content-Type: application/json
 
 ### Login
 ```http
-POST /api/auth/login
+POST /api/v1/auth/login
 Content-Type: application/json
 
 {
@@ -61,13 +61,13 @@ Content-Type: application/json
 
 ### Get Current User
 ```http
-GET /api/auth/me
+GET /api/v1/auth/me
 Authorization: Bearer <token>
 ```
 
 ### Logout
 ```http
-POST /api/auth/logout
+POST /api/v1/auth/logout
 Authorization: Bearer <token>
 ```
 
