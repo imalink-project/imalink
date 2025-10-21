@@ -231,6 +231,98 @@ Authorization: Bearer <token>
 
 **Note:** Deletes the Photo record and all associated ImageFiles.
 
+### Get Photo Hotpreview
+```http
+GET /api/v1/photos/{hothash}/hotpreview
+Authorization: Bearer <token>
+```
+
+**Returns:** JPEG image (64x64 thumbnail) as binary data
+
+**Response Headers:**
+```
+Content-Type: image/jpeg
+Content-Disposition: inline; filename=hotpreview_{hothash}.jpg
+Cache-Control: public, max-age=3600
+```
+
+### Upload/Update Photo Coldpreview
+```http
+PUT /api/v1/photos/{hothash}/coldpreview
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+
+file: <image file>
+```
+
+**Description:** Upload or update medium-size preview (800-1200px) for a photo.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Coldpreview uploaded successfully",
+  "data": {
+    "hothash": "abc123def456...",
+    "coldpreview_path": "/path/to/coldpreview.jpg"
+  }
+}
+```
+
+### Get Photo Coldpreview
+```http
+GET /api/v1/photos/{hothash}/coldpreview?width=800&height=600
+Authorization: Bearer <token>
+```
+
+**Query Parameters:**
+- `width` (int, optional, 100-2000): Target width for dynamic resizing
+- `height` (int, optional, 100-2000): Target height for dynamic resizing
+
+**Returns:** JPEG image (medium-size preview) as binary data
+
+**Response Headers:**
+```
+Content-Type: image/jpeg
+Content-Disposition: inline; filename=coldpreview_{hothash}.jpg
+Cache-Control: public, max-age=3600
+```
+
+### Delete Photo Coldpreview
+```http
+DELETE /api/v1/photos/{hothash}/coldpreview
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Coldpreview deleted successfully"
+}
+```
+
+### Get Photo's Stack
+```http
+GET /api/v1/photos/{hothash}/stack
+Authorization: Bearer <token>
+```
+
+**Description:** Get the PhotoStack containing this photo (if any).
+
+**Response:** PhotoStackSummary object or `null` if photo doesn't belong to a stack.
+
+```json
+{
+  "id": 5,
+  "name": "Sunset Series",
+  "stack_type": "burst",
+  "photo_count": 8,
+  "cover_photo_hothash": "abc123def456...",
+  "created_at": "2025-10-20T10:00:00Z"
+}
+```
+
 ---
 
 ## 🗂️ ImageFiles
@@ -283,9 +375,130 @@ GET /api/v1/image-files/{image_id}/hotpreview
 Authorization: Bearer <token>
 ```
 
-**Response:** Binary image data (JPEG, 300x300px)
+**Returns:** Binary image data (JPEG, 64x64px thumbnail)
 
-### Upload New ImageFile (Creates Photo)
+**Response Headers:**
+```
+Content-Type: image/jpeg
+Cache-Control: public, max-age=3600
+```
+
+### Create ImageFile with New Photo
+```http
+POST /api/v1/image-files/new-photo
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "filename": "IMG_001.jpg",
+  "file_size": 2048576,
+  "file_type": "jpeg",
+  "width": 4000,
+  "height": 3000,
+  "hotpreview": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
+  "perceptual_hash": "a1b2c3d4e5f6g7h8",
+  "exif_dict": {
+    "Make": "Canon",
+    "Model": "EOS R5"
+  },
+  "taken_at": "2025-10-15T14:30:00Z",
+  "gps_latitude": 59.9139,
+  "gps_longitude": 10.7522,
+  "import_session_id": 5
+}
+```
+
+**Description:** Upload a completely new, unique photo. Creates both ImageFile and Photo.
+
+**Response** (`201 Created`):
+```json
+{
+  "image_file_id": 123,
+  "photo_hothash": "abc123def456...",
+  "photo_created": true,
+  "message": "ImageFile and Photo created successfully"
+}
+```
+
+### Add ImageFile to Existing Photo
+```http
+POST /api/v1/image-files/add-to-photo
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "photo_hothash": "abc123def456...",
+  "filename": "IMG_001.CR2",
+  "file_size": 25000000,
+  "file_type": "raw",
+  "width": 5472,
+  "height": 3648,
+  "exif_dict": {
+    "Make": "Canon",
+    "Model": "EOS R5"
+  },
+  "taken_at": "2025-10-15T14:30:00Z",
+  "import_session_id": 5
+}
+```
+
+**Description:** Add companion file (e.g., RAW) to existing photo. NO hotpreview needed.
+
+**Response** (`201 Created`):
+```json
+{
+  "image_file_id": 124,
+  "photo_hothash": "abc123def456...",
+  "photo_created": false,
+  "message": "ImageFile added to existing Photo"
+}
+```
+
+### Update ImageFile Storage Info
+```http
+PUT /api/v1/image-files/{image_file_id}/storage-info
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "storage_path": "/mnt/photos/2025/10/IMG_001.jpg",
+  "storage_type": "local",
+  "checksum": "sha256:abc123..."
+}
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "message": "Storage info updated",
+  "data": {
+    "id": 123,
+    "storage_path": "/mnt/photos/2025/10/IMG_001.jpg",
+    "storage_type": "local",
+    "checksum": "sha256:abc123..."
+  }
+}
+```
+
+### Get ImageFile Storage Info
+```http
+GET /api/v1/image-files/{image_file_id}/storage-info
+Authorization: Bearer <token>
+```
+
+**Response:**
+```json
+{
+  "id": 123,
+  "storage_path": "/mnt/photos/2025/10/IMG_001.jpg",
+  "storage_type": "local",
+  "checksum": "sha256:abc123...",
+  "last_verified": "2025-10-20T10:00:00Z"
+}
+```
+
+### Upload New ImageFile (LEGACY - DEPRECATED)
 ```http
 POST /api/v1/image-files
 Authorization: Bearer <token>
@@ -308,6 +521,8 @@ Content-Type: application/json
 }
 ```
 
+**⚠️ DEPRECATED:** Use `/new-photo` or `/add-to-photo` instead for clearer intent.
+
 **Response** (`201 Created`):
 ```json
 {
@@ -321,12 +536,33 @@ Content-Type: application/json
 
 ### Find Similar Images
 ```http
-GET /api/v1/image-files/similar/{image_id}?threshold=0.95
+GET /api/v1/image-files/similar/{image_id}?threshold=5&limit=10
 Authorization: Bearer <token>
 ```
 
 **Query Parameters:**
-- `threshold` (float, 0-1): Similarity threshold (default=0.95)
+- `threshold` (int, 0-16, default=5): Hamming distance threshold (lower = more similar)
+- `limit` (int, 1-100, default=10): Maximum number of results
+
+**Description:** Find visually similar images using perceptual hash comparison.
+
+**Response:**
+```json
+[
+  {
+    "id": 125,
+    "filename": "IMG_002.jpg",
+    "photo_hothash": "def456abc123...",
+    "hamming_distance": 2
+  },
+  {
+    "id": 127,
+    "filename": "IMG_003.jpg",
+    "photo_hothash": "ghi789jkl012...",
+    "hamming_distance": 4
+  }
+]
+```
 
 ---
 
