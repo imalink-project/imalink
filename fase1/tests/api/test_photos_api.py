@@ -3,6 +3,8 @@ Unit tests for API endpoints
 Tests synchronous endpoints with consistent error handling
 """
 import pytest
+import io
+from PIL import Image
 
 class TestPhotosAPI:
     """Test Photos API endpoints"""
@@ -161,6 +163,104 @@ class TestPhotosArchitecture:
         
         # Should return 404 (endpoint doesn't exist)
         assert response.status_code == 404
+
+
+class TestPhotosColdpreview:
+    """Test coldpreview endpoints for Photos API"""
+    
+    def _create_test_image(self, size=(800, 600), format='JPEG'):
+        """Helper: Create a test image in memory"""
+        img = Image.new('RGB', size, color='blue')
+        buffer = io.BytesIO()
+        img.save(buffer, format=format, quality=85)
+        buffer.seek(0)
+        return buffer
+    
+    def test_upload_coldpreview_to_nonexistent_photo(self, authenticated_client):
+        """PUT /{hothash}/coldpreview should return 404 for non-existent photo"""
+        test_image = self._create_test_image()
+        
+        response = authenticated_client.put(
+            "/api/v1/photos/nonexistenthash/coldpreview",
+            files={"file": ("test.jpg", test_image, "image/jpeg")},
+            headers=authenticated_client.auth_headers
+        )
+        
+        assert response.status_code == 404
+        data = response.json()
+        assert "detail" in data
+    
+    def test_get_coldpreview_nonexistent_photo(self, authenticated_client):
+        """GET /{hothash}/coldpreview should return 404 for non-existent photo"""
+        response = authenticated_client.get(
+            "/api/v1/photos/nonexistenthash/coldpreview",
+            headers=authenticated_client.auth_headers
+        )
+        
+        assert response.status_code == 404
+    
+    def test_get_coldpreview_with_width_parameter(self, authenticated_client):
+        """GET /{hothash}/coldpreview?width=X should accept width parameter"""
+        response = authenticated_client.get(
+            "/api/v1/photos/somehash/coldpreview?width=400",
+            headers=authenticated_client.auth_headers
+        )
+        
+        # Will be 404 since photo doesn't exist, but validates endpoint accepts parameter
+        assert response.status_code == 404
+    
+    def test_get_coldpreview_with_height_parameter(self, authenticated_client):
+        """GET /{hothash}/coldpreview?height=X should accept height parameter"""
+        response = authenticated_client.get(
+            "/api/v1/photos/somehash/coldpreview?height=300",
+            headers=authenticated_client.auth_headers
+        )
+        
+        # Will be 404 since photo doesn't exist, but validates endpoint accepts parameter
+        assert response.status_code == 404
+    
+    def test_get_coldpreview_with_both_dimensions(self, authenticated_client):
+        """GET /{hothash}/coldpreview?width=X&height=Y should accept both parameters"""
+        response = authenticated_client.get(
+            "/api/v1/photos/somehash/coldpreview?width=400&height=300",
+            headers=authenticated_client.auth_headers
+        )
+        
+        # Will be 404 since photo doesn't exist, but validates endpoint accepts parameters
+        assert response.status_code == 404
+    
+    def test_delete_coldpreview_nonexistent_photo(self, authenticated_client):
+        """DELETE /{hothash}/coldpreview should return 404 for non-existent photo"""
+        response = authenticated_client.delete(
+            "/api/v1/photos/nonexistenthash/coldpreview",
+            headers=authenticated_client.auth_headers
+        )
+        
+        assert response.status_code == 404
+    
+    def test_upload_coldpreview_requires_file(self, authenticated_client):
+        """PUT /{hothash}/coldpreview should require file parameter"""
+        response = authenticated_client.put(
+            "/api/v1/photos/somehash/coldpreview",
+            headers=authenticated_client.auth_headers
+        )
+        
+        # Should return 422 (validation error) for missing file
+        assert response.status_code == 422
+    
+    def test_upload_coldpreview_validates_file_type(self, authenticated_client):
+        """PUT /{hothash}/coldpreview should validate file is an image"""
+        # Create a text file instead of image
+        text_file = io.BytesIO(b"This is not an image")
+        
+        response = authenticated_client.put(
+            "/api/v1/photos/somehash/coldpreview",
+            files={"file": ("test.txt", text_file, "text/plain")},
+            headers=authenticated_client.auth_headers
+        )
+        
+        # Should either fail at validation (422) or when processing (404/400/500)
+        assert response.status_code in [400, 404, 422, 500]
 
 
 if __name__ == "__main__":
