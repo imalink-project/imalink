@@ -139,13 +139,6 @@ class PhotoService:
         has_raw_companion = photo.has_raw_companion
         primary_filename = photo.primary_filename
         
-        # Convert hotpreview binary to base64 string
-        hotpreview_b64 = None
-        hotpreview_data = getattr(photo, 'hotpreview', None)
-        if hotpreview_data:
-            import base64
-            hotpreview_b64 = base64.b64encode(hotpreview_data).decode('utf-8')
-        
         # Get coldpreview metadata dynamically from file
         coldpreview_path = getattr(photo, 'coldpreview_path', None)
         coldpreview_metadata = None
@@ -156,7 +149,6 @@ class PhotoService:
         
         return PhotoResponse(
             hothash=getattr(photo, 'hothash'),
-            hotpreview=hotpreview_b64,
             width=getattr(photo, 'width', None),
             height=getattr(photo, 'height', None),
             coldpreview_path=coldpreview_path,
@@ -166,7 +158,8 @@ class PhotoService:
             taken_at=getattr(photo, 'taken_at', None),
             gps_latitude=getattr(photo, 'gps_latitude', None),
             gps_longitude=getattr(photo, 'gps_longitude', None),
-            exif_dict=getattr(photo, 'exif_dict', None),  # 🆕 Include EXIF from master ImageFile
+            exif_dict=getattr(photo, 'exif_dict', None),
+            perceptual_hash=getattr(photo, 'perceptual_hash', None),
             rating=getattr(photo, 'rating', 0),
             created_at=getattr(photo, 'created_at'),
             updated_at=getattr(photo, 'updated_at'),
