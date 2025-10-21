@@ -1,14 +1,17 @@
 """
 API endpoints for photo operations using Service Layer
 
-ARCHITECTURAL NOTE:
-Photos are NOT created directly via this API. They are auto-generated when
-creating Images via POST /images. This ensures:
+ARCHITECTURAL NOTE (UPDATED):
+Photos are created via POST /photos/new-photo which creates both Photo + ImageFile.
+Additional files can be added to existing Photos via POST /photos/{hothash}/files.
+This ensures:
+- Photo-centric API (100% of operations through /photos)
 - No orphaned Photos without Image files
 - Photo.hothash is derived from Image.hotpreview (content-based)
 - JPEG/RAW pairs automatically share the same Photo
 
 This API provides:
+- CREATE: Upload new photos (POST /new-photo) and add files (POST /{hothash}/files)
 - READ: List, search, and retrieve photo metadata
 - UPDATE: Edit photo metadata (title, description, tags, rating, author)
 - DELETE: Remove photo and all associated image files (cascade)
@@ -25,9 +28,12 @@ from schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, 
     PhotoSearchRequest
 )
+from schemas.image_file_upload_schemas import (
+    ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
+)
 from schemas.common import PaginatedResponse, create_success_response
 from schemas.responses.photo_stack_responses import PhotoStackSummary
-from core.exceptions import NotFoundError, ValidationError
+from core.exceptions import NotFoundError, ValidationError, DuplicateImageError
 from api.dependencies import get_current_active_user
 from models.user import User
 
@@ -67,6 +73,86 @@ def search_photos(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to search photos: {str(e)}")
+
+
+@router.post("/new-photo", response_model=ImageFileUploadResponse, status_code=201)
+def create_photo_with_file(
+    image_data: ImageFileNewPhotoRequest,
+    current_user: User = Depends(get_current_active_user),
+    photo_service: PhotoService = Depends(get_photo_service)
+):
+    """
+    Create new Photo with initial ImageFile
+    
+    USE CASE: Uploading a completely new, unique photo
+    - Hotpreview, exif_dict, perceptual_hash stored in Photo (visual data)
+    - ImageFile stores only file metadata
+    - A new Photo will always be created
+    
+    WORKFLOW:
+    1. Validate hotpreview data
+    2. Generate photo_hothash from hotpreview (SHA256)
+    3. Check if Photo already exists (if yes → error 409)
+    4. Create new Photo with visual data
+    5. Create ImageFile with file metadata
+    6. Return success response
+    
+    Returns:
+        ImageFileUploadResponse with photo_created=True
+    """
+    try:
+        return photo_service.create_photo_with_file(image_data, getattr(current_user, 'id'))
+    except DuplicateImageError as e:
+        # Photo with same hotpreview already exists
+        raise HTTPException(
+            status_code=409, 
+            detail=f"Photo with this image already exists. Use POST /photos/{{hothash}}/files to add companion files. {str(e)}"
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create photo with file: {str(e)}")
+
+
+@router.post("/{hothash}/files", response_model=ImageFileUploadResponse, status_code=201)
+def add_file_to_photo(
+    hothash: str,
+    image_data: ImageFileAddToPhotoRequest,
+    current_user: User = Depends(get_current_active_user),
+    photo_service: PhotoService = Depends(get_photo_service)
+):
+    """
+    Add new ImageFile to an existing Photo
+    
+    USE CASE: Adding companion files to existing photos
+    - RAW file for existing JPEG photo
+    - Different format/resolution of same photo
+    - Additional file versions
+    
+    REQUIREMENTS:
+    - Photo with {hothash} must exist and belong to user
+    - NO hotpreview, exif_dict, or perceptual_hash (Photo already has these)
+    
+    WORKFLOW:
+    1. Validate that Photo with hothash exists
+    2. Create ImageFile with only file metadata
+    3. Return success response
+    
+    Returns:
+        ImageFileUploadResponse with photo_created=False
+    """
+    try:
+        return photo_service.add_file_to_photo(hothash, image_data, getattr(current_user, 'id'))
+    except NotFoundError as e:
+        # Photo with provided hothash doesn't exist
+        raise HTTPException(
+            status_code=404,
+            detail=f"Photo with hothash '{hothash}' not found. Use POST /photos/new-photo to create new photo."
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add file to photo: {str(e)}")
 
 
 @router.get("/{hothash}", response_model=PhotoResponse)

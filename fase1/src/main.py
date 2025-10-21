@@ -12,7 +12,6 @@ load_dotenv()
 # Import our modules
 from core.config import config
 from database.connection import init_database
-from api.v1.image_files import router as image_files_router
 from api.v1.import_sessions import router as import_sessions_router
 from api.v1.authors import router as authors_router
 from api.v1.debug import router as debug_router
@@ -47,7 +46,7 @@ app.add_middleware(
 # Include API routers with v1 prefix for versioning
 app.include_router(auth_router, prefix="/api/v1")  # Authentication endpoints
 app.include_router(users_router, prefix="/api/v1")  # User management endpoints
-app.include_router(image_files_router, prefix="/api/v1/image-files", tags=["image-files"])
+# NOTE: image-files endpoints removed - all operations now through /photos
 app.include_router(import_sessions_router, prefix="/api/v1/import-sessions", tags=["import-sessions"])
 app.include_router(authors_router, prefix="/api/v1/authors", tags=["authors"])
 app.include_router(debug_router, prefix="/api/v1/debug", tags=["debug"])
