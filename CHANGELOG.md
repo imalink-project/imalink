@@ -2,7 +2,85 @@
 
 Alle viktige endringer i dette prosjektet dokumenteres i denne filen.
 
-## [Unreleased] - 2025-10-20
+## [Unreleased]
+
+### Planned
+- Collections feature
+- Advanced search filters
+- Bulk photo operations
+
+---
+
+## [1.0.0] - 2025-10-22
+
+**🎉 First Production Release!**
+
+## [1.0.0] - 2025-10-22
+
+**🎉 First Production Release!**
+
+### Core Features
+- **✅ Multi-User Authentication**: Complete JWT-based auth system with user registration/login
+- **✅ User Data Isolation**: Complete data separation - users can only access their own data
+- **✅ Photo Management**: Upload, view, update, delete photos with metadata
+- **✅ Photo Corrections**: Non-destructive time/location and view corrections
+- **✅ Photo Tagging**: User-scoped many-to-many tagging system with autocomplete
+- **✅ Author Management**: Photographer profiles with CRUD operations
+- **✅ Import Sessions**: Track photo imports with session management
+- **✅ Preview System**: Hotpreview (150x150) + Coldpreview (800-1200px)
+- **✅ EXIF Support**: Complete EXIF metadata extraction and display
+- **✅ RAW+JPEG Handling**: Automatic companion file detection
+- **✅ Duplicate Detection**: Perceptual hash-based duplicate prevention
+
+### API Endpoints
+- **Authentication**: `/auth/register`, `/auth/login`, `/auth/me`, `/auth/logout`
+- **Users**: `/users/me` (get, update, delete, change password)
+- **Photos**: Full CRUD + corrections + tags (14 endpoints)
+- **Tags**: List, autocomplete, rename, delete (4 endpoints)
+- **Authors**: Full CRUD (5 endpoints)
+- **Import Sessions**: Full CRUD + statistics (6 endpoints)
+- **Photo Stacks**: Create, manage, unstack (5 endpoints)
+
+### Technical Implementation
+- **Architecture**: Repository-Service-API pattern with dependency injection
+- **Database**: SQLAlchemy 2.0 + SQLite with proper migrations
+- **Validation**: Pydantic v2 schemas with comprehensive validators
+- **Security**: JWT tokens, password hashing (bcrypt), CORS configuration
+- **Error Handling**: Structured exceptions with HTTP status codes
+- **Testing**: Complete test suite with user isolation tests
+
+### Photo Corrections System
+- **Time/Location Corrections**: Override EXIF datetime and GPS coordinates
+- **View Corrections**: Frontend rendering hints (rotation, crop, exposure)
+- **Restoration**: NULL support to restore original EXIF values
+- **EXIF Utils**: Dedicated parsing utilities for datetime and GPS data
+
+### Photo Tagging System
+- **User-Scoped**: Each user has isolated tag vocabulary
+- **Many-to-Many**: Tags reused across photos (normalized storage)
+- **Case-Insensitive**: Lowercase normalization for consistency
+- **Autocomplete**: Fast prefix-matching with photo counts
+- **Tag Operations**: Create, rename, delete, add to photo, remove from photo
+
+### Documentation
+- **✅ Complete API Reference**: All endpoints documented with examples
+- **✅ Architecture Guide**: Multi-user system architecture
+- **✅ Frontend Integration Guide**: TypeScript examples for authentication and uploads
+- **✅ Photo Corrections Guide**: Usage patterns and examples
+- **✅ Tagging System Guide**: Complete tag management documentation
+
+### Tech Stack
+- Python 3.13.7
+- FastAPI 0.118.0+
+- SQLAlchemy 2.0.43+
+- Pydantic 2.11.10+
+- Pillow 11.3.0+
+- python-jose 3.5.0+ (JWT)
+- passlib (bcrypt)
+
+---
+
+## [2.0.0] - 2025-10-16
 
 ### � MAJOR: Multi-User Authentication System
 - **🆕 JWT Authentication**: Complete JWT-based authentication with user registration/login

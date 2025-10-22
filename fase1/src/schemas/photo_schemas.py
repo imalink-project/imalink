@@ -2,12 +2,9 @@
 Photo-related Pydantic schemas for API requests and responses
 Provides type-safe data models for photo operations
 """
-from typing import Optional, List, TYPE_CHECKING
+from typing import Optional, List, TYPE_CHECKING, ForwardRef
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator, ConfigDict
-
-if TYPE_CHECKING:
-    from schemas.tag_schemas import TagSummary
 
 
 class RelativeCrop(BaseModel):
@@ -133,10 +130,9 @@ class PhotoResponse(BaseModel):
     has_raw_companion: bool = Field(False, description="Whether photo has both JPEG and RAW files")
     primary_filename: Optional[str] = Field(None, description="Primary filename for display")
     files: List[ImageFileSummary] = Field(default_factory=list, description="Associated image files")
-    tags: List['TagSummary'] = Field(default_factory=list, description="Tags applied to this photo")
+    tags: List = Field(default_factory=list, description="Tags applied to this photo")
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
     
     @field_validator('has_gps')
     @classmethod
@@ -213,3 +209,19 @@ class PhotoSearchRequest(BaseModel):
     # Sorting
     sort_by: str = Field("taken_at", description="Sort field (taken_at, created_at, rating)")
     sort_order: str = Field("desc", pattern="^(asc|desc)$", description="Sort order")
+
+
+# Import TagSummary after PhotoResponse is defined to avoid circular imports
+# Then rebuild PhotoResponse to include TagSummary in validation
+def _rebuild_models():
+    """Rebuild models after all schemas are imported"""
+    try:
+        from schemas.tag_schemas import TagSummary
+        # Update PhotoResponse annotations
+        PhotoResponse.model_fields['tags'].annotation = List[TagSummary]
+        PhotoResponse.model_rebuild()
+    except ImportError:
+        pass  # TagSummary not available yet
+
+# Call rebuild when module is imported
+_rebuild_models()
