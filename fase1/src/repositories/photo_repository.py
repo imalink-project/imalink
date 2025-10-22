@@ -144,7 +144,6 @@ class PhotoRepository:
         """
         photo = self.db.query(Photo).filter(Photo.hothash == hothash).first()
         return photo.hotpreview if photo else None  # type: ignore[return-value]
-        return None
     
     def _apply_filters(
         self, 
