@@ -54,6 +54,92 @@ ImaLink følger noen unike prinsipper som skiller den fra andre fotoarkiveringsp
 
 Denne filosofien gjør ImaLink spesielt egnet for fotografer med store arkiver som må håndtere bilder på tvers av forskjellige lagringsmedier og systemer.
 
+## Photo Corrections
+
+ImaLink supports non-destructive photo corrections that preserve original metadata while allowing users to override display values:
+
+### Time/Location Correction (`timeloc_correction`)
+Correct inaccurate timestamps and GPS coordinates without modifying the original image file. Common use cases:
+- Camera clock was set to wrong timezone
+- GPS coordinates are missing or incorrect
+- Date/time needs manual adjustment for historical photos
+
+**How it works:**
+- Original EXIF data is preserved in `ImageFile.exif_dict`
+- Corrections are stored in `Photo.timeloc_correction` (JSON field)
+- When corrections exist, display values are overwritten
+- Setting correction to `null` restores original EXIF values
+
+### View Correction (`view_correction`)
+Apply visual adjustments for display purposes only - no server-side image processing:
+- **Rotation**: Rotate image by 90° increments (0, 90, 180, 270)
+- **Relative Crop**: Crop using normalized coordinates (0.0-1.0)
+- **Exposure**: Adjust brightness for viewing (-2.0 to +2.0)
+
+**Important:** These are frontend rendering hints only. The backend stores preferences but does not modify images.
+
+### API Endpoints
+
+**Update Time/Location Correction:**
+```
+PATCH /api/v1/photos/{hothash}/timeloc-correction
+```
+
+**Update View Correction:**
+```
+PATCH /api/v1/photos/{hothash}/view-correction
+```
+
+See [API_REFERENCE.md](docs/api/API_REFERENCE.md) for detailed endpoint documentation.
+
+## Photo Tags
+
+ImaLink provides a flexible tagging system for organizing and searching photos with user-defined keywords.
+
+### Tag System Architecture
+- **User-scoped tags**: Each user has their own tag vocabulary (no tag sharing between users)
+- **Many-to-many relationship**: Photos can have multiple tags, tags can be applied to multiple photos
+- **Normalized storage**: Tags are stored once in `tags` table, linked via `photo_tags` association table
+- **Case-insensitive**: Tags are normalized to lowercase for consistent searching
+- **Autocomplete support**: Fast prefix-matching for tag suggestions while typing
+
+### Key Features
+- **Fast search**: Search photos by one or multiple tags (AND/OR logic)
+- **Tag management**: Create, rename, delete tags with automatic cleanup
+- **Photo counts**: See how many photos are tagged with each tag
+- **Bulk operations**: Add/remove multiple tags at once
+- **Duplicate prevention**: Same tag cannot be applied twice to the same photo
+
+### API Endpoints
+
+**List all user tags:**
+```
+GET /api/v1/tags
+```
+
+**Autocomplete tag suggestions:**
+```
+GET /api/v1/tags/autocomplete?q=land
+```
+
+**Add tags to photo:**
+```
+POST /api/v1/photos/{hothash}/tags
+Body: ["landscape", "sunset", "norway"]
+```
+
+**Remove tag from photo:**
+```
+DELETE /api/v1/photos/{hothash}/tags/{tag_name}
+```
+
+**Search photos by tags:**
+```
+GET /api/v1/photos?tags=landscape,sunset&tag_logic=AND
+```
+
+See [API_REFERENCE.md](docs/api/API_REFERENCE.md) for detailed endpoint documentation.
+
 ## � Lagringsstruktur
 
 ImaLink organiserer data i en ryddig struktur:

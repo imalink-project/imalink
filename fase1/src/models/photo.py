@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from .image_file import ImageFile
     from .import_session import ImportSession
     from .user import User
+    from .tag import Tag
 
 
 class Photo(Base, TimestampMixin):
@@ -77,12 +78,18 @@ class Photo(Base, TimestampMixin):
     # SIMPLIFIED: Only store path, metadata is read dynamically from file
     coldpreview_path = Column(String(255), nullable=True)  # Filesystem path to coldpreview file
     
+    # Photo Corrections - Non-destructive metadata overrides
+    # These allow users to correct inaccurate EXIF data without modifying original files
+    timeloc_correction = Column(JSON, nullable=True)  # Time/location corrections with metadata
+    view_correction = Column(JSON, nullable=True)      # Display adjustments (rotation, crop, exposure)
+    
     # Relationships
     user = relationship("User", back_populates="photos")
     image_files = relationship("ImageFile", back_populates="photo", cascade="all, delete-orphan", 
                         foreign_keys="[ImageFile.photo_hothash]")
     author = relationship("Author", back_populates="photos")
     stack = relationship("PhotoStack", back_populates="photos")
+    tags = relationship("Tag", secondary="photo_tags", back_populates="photos")
     # Note: No back_populates to ImportSession - access photos via ImportSession.image_files[].photo
     
     def __repr__(self):

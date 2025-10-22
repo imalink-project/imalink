@@ -2,9 +2,69 @@
 Photo-related Pydantic schemas for API requests and responses
 Provides type-safe data models for photo operations
 """
-from typing import Optional, List
+from typing import Optional, List, TYPE_CHECKING
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator, ConfigDict
+
+if TYPE_CHECKING:
+    from schemas.tag_schemas import TagSummary
+
+
+class RelativeCrop(BaseModel):
+    """Relative crop coordinates (0.0-1.0 normalized)"""
+    x: float = Field(..., ge=0.0, lt=1.0, description="Left edge (0.0 = left, 1.0 = right)")
+    y: float = Field(..., ge=0.0, lt=1.0, description="Top edge (0.0 = top, 1.0 = bottom)")
+    width: float = Field(..., gt=0.0, le=1.0, description="Width (0.0-1.0)")
+    height: float = Field(..., gt=0.0, le=1.0, description="Height (0.0-1.0)")
+    
+    @field_validator('width')
+    @classmethod
+    def validate_width(cls, v, info):
+        """Ensure x + width <= 1.0"""
+        if info.data and 'x' in info.data:
+            if info.data['x'] + v > 1.0:
+                raise ValueError('crop exceeds image bounds (x + width > 1.0)')
+        return v
+    
+    @field_validator('height')
+    @classmethod
+    def validate_height(cls, v, info):
+        """Ensure y + height <= 1.0"""
+        if info.data and 'y' in info.data:
+            if info.data['y'] + v > 1.0:
+                raise ValueError('crop exceeds image bounds (y + height > 1.0)')
+        return v
+
+
+class TimeLocCorrectionRequest(BaseModel):
+    """Request for time/location correction"""
+    taken_at: Optional[datetime] = Field(None, description="Corrected timestamp")
+    gps_latitude: Optional[float] = Field(None, ge=-90, le=90, description="Corrected GPS latitude")
+    gps_longitude: Optional[float] = Field(None, ge=-180, le=180, description="Corrected GPS longitude")
+    correction_reason: Optional[str] = Field(None, max_length=500, description="User explanation for correction")
+
+
+class ViewCorrectionRequest(BaseModel):
+    """Request for view correction (frontend rendering hints only)"""
+    rotation: Optional[int] = Field(None, description="Rotation in degrees (0, 90, 180, 270)")
+    relative_crop: Optional[RelativeCrop] = Field(None, description="Crop using normalized coordinates")
+    exposure_adjust: Optional[float] = Field(None, description="Exposure adjustment (-2.0 to +2.0)")
+    
+    @field_validator('rotation')
+    @classmethod
+    def validate_rotation(cls, v):
+        """Rotation must be 0, 90, 180, or 270"""
+        if v is not None and v not in [0, 90, 180, 270]:
+            raise ValueError('rotation must be 0, 90, 180, or 270')
+        return v
+    
+    @field_validator('exposure_adjust')
+    @classmethod
+    def validate_exposure(cls, v):
+        """Exposure must be between -2.0 and +2.0"""
+        if v is not None and not (-2.0 <= v <= 2.0):
+            raise ValueError('exposure_adjust must be between -2.0 and +2.0')
+        return v
 
 
 class AuthorSummary(BaseModel):
@@ -48,6 +108,10 @@ class PhotoResponse(BaseModel):
     gps_longitude: Optional[float] = Field(None, description="GPS longitude")
     exif_dict: Optional[dict] = Field(None, description="EXIF metadata from master image file")
     
+    # Photo Corrections - Non-destructive metadata overrides
+    timeloc_correction: Optional[dict] = Field(None, description="Time/location correction metadata")
+    view_correction: Optional[dict] = Field(None, description="View correction settings (rotation, crop, exposure)")
+    
     # User metadata
     rating: int = Field(0, ge=0, le=5, description="User rating (0-5 stars)")
     
@@ -69,6 +133,7 @@ class PhotoResponse(BaseModel):
     has_raw_companion: bool = Field(False, description="Whether photo has both JPEG and RAW files")
     primary_filename: Optional[str] = Field(None, description="Primary filename for display")
     files: List[ImageFileSummary] = Field(default_factory=list, description="Associated image files")
+    tags: List['TagSummary'] = Field(default_factory=list, description="Tags applied to this photo")
     
     class Config:
         from_attributes = True

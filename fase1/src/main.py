@@ -16,6 +16,7 @@ from api.v1.import_sessions import router as import_sessions_router
 from api.v1.authors import router as authors_router
 from api.v1.debug import router as debug_router
 from api.v1.photos import router as photos_router
+from api.v1.tags import router as tags_router
 from api.photo_stacks import router as photo_stacks_router
 from api.auth import router as auth_router
 from api.users import router as users_router
@@ -51,6 +52,7 @@ app.include_router(import_sessions_router, prefix="/api/v1/import-sessions", tag
 app.include_router(authors_router, prefix="/api/v1/authors", tags=["authors"])
 app.include_router(debug_router, prefix="/api/v1/debug", tags=["debug"])
 app.include_router(photos_router, prefix="/api/v1/photos", tags=["photos"])
+app.include_router(tags_router, prefix="/api/v1")  # Tag endpoints
 app.include_router(photo_stacks_router, prefix="/api/v1")  # PhotoStack endpoints
 
 # Debug endpoint to list all routes

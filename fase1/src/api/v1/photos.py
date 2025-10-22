@@ -27,11 +27,12 @@ from services.photo_service import PhotoService
 from services.photo_stack_service import PhotoStackService
 from schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, 
-    PhotoSearchRequest
+    PhotoSearchRequest, TimeLocCorrectionRequest, ViewCorrectionRequest
 )
 from schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
+from schemas.tag_schemas import AddTagsRequest, AddTagsResponse, RemoveTagResponse
 from schemas.common import PaginatedResponse, create_success_response
 from schemas.responses.photo_stack_responses import PhotoStackSummary
 from core.exceptions import NotFoundError, ValidationError, DuplicateImageError
@@ -340,6 +341,137 @@ def delete_coldpreview(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete coldpreview: {str(e)}")
+
+
+# ===== PHOTO CORRECTIONS ENDPOINTS =====
+
+@router.patch("/{hothash}/timeloc-correction", response_model=PhotoResponse)
+def update_timeloc_correction(
+    hothash: str,
+    correction: Optional[TimeLocCorrectionRequest] = None,
+    current_user: User = Depends(get_current_active_user),
+    photo_service: PhotoService = Depends(get_photo_service)
+):
+    """
+    Apply non-destructive time/location correction to photo
+    
+    - Send correction data to override EXIF values
+    - Send `null` to restore original EXIF values
+    - Original EXIF data in Photo.exif_dict is never modified
+    """
+    try:
+        updated_photo = photo_service.update_timeloc_correction(
+            hothash=hothash,
+            correction=correction,
+            user_id=getattr(current_user, 'id')
+        )
+        return updated_photo
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to update timeloc correction: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update time/location correction: {str(e)}")
+
+
+@router.patch("/{hothash}/view-correction", response_model=PhotoResponse)
+def update_view_correction(
+    hothash: str,
+    correction: Optional[ViewCorrectionRequest] = None,
+    current_user: User = Depends(get_current_active_user),
+    photo_service: PhotoService = Depends(get_photo_service)
+):
+    """
+    Update view correction settings (frontend rendering hints only)
+    
+    - Send correction data to set rotation, crop, exposure adjustments
+    - Send `null` to remove all view corrections
+    - Backend only stores metadata - no image processing
+    """
+    try:
+        updated_photo = photo_service.update_view_correction(
+            hothash=hothash,
+            correction=correction,
+            user_id=getattr(current_user, 'id')
+        )
+        return updated_photo
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to update view correction: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update view correction: {str(e)}")
+
+
+# Photo Tags Endpoints
+
+@router.post("/{hothash}/tags", response_model=AddTagsResponse)
+def add_tags_to_photo(
+    hothash: str,
+    request: AddTagsRequest,
+    current_user: User = Depends(get_current_active_user),
+    photo_service: PhotoService = Depends(get_photo_service)
+):
+    """
+    Add one or more tags to a photo.
+    
+    Tags are created automatically if they don't exist.
+    Duplicate tags are silently skipped.
+    
+    **Request body:**
+    ```json
+    {
+        "tags": ["landscape", "sunset", "norway"]
+    }
+    ```
+    """
+    from services.tag_service import TagService
+    
+    try:
+        tag_service = TagService(photo_service.db)
+        return tag_service.add_tags_to_photo(
+            hothash=hothash,
+            tag_names=request.tags,
+            user_id=getattr(current_user, 'id')
+        )
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to add tags to photo: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to add tags: {str(e)}")
+
+
+@router.delete("/{hothash}/tags/{tag_name}", response_model=RemoveTagResponse)
+def remove_tag_from_photo(
+    hothash: str,
+    tag_name: str,
+    current_user: User = Depends(get_current_active_user),
+    photo_service: PhotoService = Depends(get_photo_service)
+):
+    """
+    Remove a specific tag from a photo.
+    
+    The tag itself remains in the database for reuse.
+    Returns 404 if photo or tag not found.
+    """
+    from services.tag_service import TagService
+    
+    try:
+        tag_service = TagService(photo_service.db)
+        return tag_service.remove_tag_from_photo(
+            hothash=hothash,
+            tag_name=tag_name,
+            user_id=getattr(current_user, 'id')
+        )
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to remove tag from photo: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to remove tag: {str(e)}")
 
 
 # Additional utility endpoints

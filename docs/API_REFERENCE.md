@@ -267,6 +267,693 @@ Content-Type: application/json
   "gps_longitude": 11.0
 }
 ```
+### Update Photo Time/Location Correction
+
+**Endpoint:** `PATCH /api/v1/photos/{hothash}/timeloc-correction`
+
+**Authentication:** Required (JWT token)
+
+**Description:** Apply non-destructive corrections to photo timestamp and GPS location. Original EXIF data is preserved; corrections override display values only.
+
+**Path Parameters:**
+- `hothash` (string, required) - Photo's unique hotpreview hash
+
+**Request Body:**
+```json
+{
+  "taken_at": "2024-03-15T14:30:00Z",  // ISO 8601 format, optional
+  "gps_latitude": 59.9139,              // decimal degrees, optional
+  "gps_longitude": 10.7522,             // decimal degrees, optional
+  "correction_reason": "Camera clock was 2 hours ahead"  // optional, user note
+}
+```
+
+**Special Behavior - Restore from EXIF:**
+Send `null` as entire request body to restore all values from original EXIF:
+```json
+null
+```
+This will:
+1. Delete the `timeloc_correction` JSON (set to `null`)
+2. Re-parse `ImageFile.exif_dict` for original values
+3. Update `Photo.taken_at`, `gps_latitude`, `gps_longitude` with EXIF values (or `null`/`0` if not found)
+
+**Response (200 OK):**
+```json
+{
+  "hothash": "abc123...",
+  "taken_at": "2024-03-15T14:30:00Z",
+  "gps_latitude": 59.9139,
+  "gps_longitude": 10.7522,
+  "timeloc_correction": {
+    "taken_at": "2024-03-15T14:30:00Z",
+    "gps_latitude": 59.9139,
+    "gps_longitude": 10.7522,
+    "correction_reason": "Camera clock was 2 hours ahead",
+    "corrected_at": "2024-10-22T10:15:00Z",
+    "corrected_by": 1
+  }
+}
+```
+
+**Response after null request (200 OK):**
+```json
+{
+  "hothash": "abc123...",
+  "taken_at": "2024-03-15T12:30:00Z",  // restored from EXIF
+  "gps_latitude": 59.9139,              // restored from EXIF
+  "gps_longitude": 10.7522,             // restored from EXIF
+  "timeloc_correction": null            // correction removed
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - Photo not found
+- `401 Unauthorized` - No valid token
+- `422 Unprocessable Entity` - Invalid data format
+
+**Implementation Notes:**
+1. **First correction**: `timeloc_correction` is created with provided fields + metadata
+2. **Update correction**: Existing `timeloc_correction` is updated (merge with new fields)
+3. **Restore from EXIF**: `timeloc_correction` set to `null`, Photo fields restored from `ImageFile.exif_dict`
+
+**Database Schema:**
+```python
+# Photo model fields affected:
+taken_at: datetime | None           # Display value (EXIF or corrected)
+gps_latitude: float | None          # Display value (EXIF or corrected)
+gps_longitude: float | None         # Display value (EXIF or corrected)
+timeloc_correction: JSON | None     # Correction metadata + values
+
+# timeloc_correction JSON structure:
+{
+  "taken_at": "2024-03-15T14:30:00Z",
+  "gps_latitude": 59.9139,
+  "gps_longitude": 10.7522,
+  "correction_reason": "User explanation",
+  "corrected_at": "2024-10-22T10:15:00Z",  # auto-set
+  "corrected_by": 1                         # user_id, auto-set
+}
+```
+
+**Backend Logic:**
+
+```python
+# Scenario 1: NULL request - Restore from EXIF
+if request_body is None:
+    photo.timeloc_correction = None
+    photo.taken_at = parse_exif_datetime(image_file.exif_dict) or None
+    photo.gps_latitude = parse_exif_gps_lat(image_file.exif_dict) or 0.0
+    photo.gps_longitude = parse_exif_gps_lon(image_file.exif_dict) or 0.0
+
+# Scenario 2: First correction or update
+else:
+    correction = photo.timeloc_correction or {}
+    if request.taken_at is not None:
+        correction["taken_at"] = request.taken_at
+        photo.taken_at = request.taken_at
+    if request.gps_latitude is not None:
+        correction["gps_latitude"] = request.gps_latitude
+        photo.gps_latitude = request.gps_latitude
+    if request.gps_longitude is not None:
+        correction["gps_longitude"] = request.gps_longitude
+        photo.gps_longitude = request.gps_longitude
+    if request.correction_reason:
+        correction["correction_reason"] = request.correction_reason
+    
+    correction["corrected_at"] = datetime.utcnow()
+    correction["corrected_by"] = current_user.id
+    photo.timeloc_correction = correction
+```
+
+---
+
+### Update Photo View Correction
+
+**Endpoint:** `PATCH /api/v1/photos/{hothash}/view-correction`
+
+**Authentication:** Required (JWT token)
+
+**Description:** Store frontend display preferences for rotation, cropping, and exposure adjustments. **No server-side image processing** - these are rendering hints for clients only.
+
+**Path Parameters:**
+- `hothash` (string, required) - Photo's unique hotpreview hash
+
+**Request Body:**
+```json
+{
+  "rotation": 90,           // 0, 90, 180, 270 degrees, optional
+  "relative_crop": {        // Normalized coordinates 0.0-1.0, optional
+    "x": 0.1,               // Left edge (0.0 = left, 1.0 = right)
+    "y": 0.1,               // Top edge (0.0 = top, 1.0 = bottom)
+    "width": 0.8,           // Width (0.0-1.0)
+    "height": 0.8           // Height (0.0-1.0)
+  },
+  "exposure_adjust": 0.5    // -2.0 to +2.0, optional
+}
+```
+
+**Validation Rules:**
+- `rotation`: Must be 0, 90, 180, or 270
+- `relative_crop.x`: 0.0 ≤ x < 1.0
+- `relative_crop.y`: 0.0 ≤ y < 1.0
+- `relative_crop.width`: 0.0 < width ≤ 1.0
+- `relative_crop.height`: 0.0 < height ≤ 1.0
+- `x + width ≤ 1.0` (crop must stay within image bounds)
+- `y + height ≤ 1.0` (crop must stay within image bounds)
+- `exposure_adjust`: -2.0 ≤ value ≤ 2.0
+
+**Special Behavior - Reset to Defaults:**
+Send `null` as entire request body to remove all view corrections:
+```json
+null
+```
+
+**Response (200 OK):**
+```json
+{
+  "hothash": "abc123...",
+  "view_correction": {
+    "rotation": 90,
+    "relative_crop": {
+      "x": 0.1,
+      "y": 0.1,
+      "width": 0.8,
+      "height": 0.8
+    },
+    "exposure_adjust": 0.5,
+    "corrected_at": "2024-10-22T10:20:00Z",
+    "corrected_by": 1
+  }
+}
+```
+
+**Response after null request (200 OK):**
+```json
+{
+  "hothash": "abc123...",
+  "view_correction": null
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - Photo not found
+- `401 Unauthorized` - No valid token
+- `422 Unprocessable Entity` - Invalid data format or out-of-range values
+
+**Implementation Notes:**
+1. Backend **only stores** the JSON - no image processing
+2. Frontend applies these settings during rendering
+3. Relative crop uses normalized coordinates for resolution independence
+4. `null` request removes all view corrections
+
+**Database Schema:**
+```python
+# Photo model field:
+view_correction: JSON | None
+
+# view_correction JSON structure:
+{
+  "rotation": 90,
+  "relative_crop": {
+    "x": 0.1,
+    "y": 0.1,
+    "width": 0.8,
+    "height": 0.8
+  },
+  "exposure_adjust": 0.5,
+  "corrected_at": "2024-10-22T10:20:00Z",  # auto-set
+  "corrected_by": 1                         # user_id, auto-set
+}
+```
+
+**Frontend Rendering Example:**
+
+```python
+# Apply view corrections to image display
+if photo.view_correction:
+    vc = photo.view_correction
+    
+    # 1. Apply rotation
+    if vc.get("rotation"):
+        image = image.rotate(vc["rotation"])
+    
+    # 2. Apply relative crop (convert to pixel coordinates)
+    if crop := vc.get("relative_crop"):
+        width, height = image.size
+        x = int(crop["x"] * width)
+        y = int(crop["y"] * height)
+        w = int(crop["width"] * width)
+        h = int(crop["height"] * height)
+        image = image.crop((x, y, x + w, y + h))
+    
+    # 3. Apply exposure adjustment
+    if exp := vc.get("exposure_adjust"):
+        enhancer = ImageEnhance.Brightness(image)
+        # exposure -2.0 to +2.0 maps to brightness 0.5 to 1.5
+        brightness = 1.0 + (exp * 0.25)
+        image = enhancer.enhance(brightness)
+```
+
+**Backend Logic:**
+
+```python
+# Scenario 1: NULL request - Remove corrections
+if request_body is None:
+    photo.view_correction = None
+
+# Scenario 2: Update corrections
+else:
+    correction = photo.view_correction or {}
+    
+    if request.rotation is not None:
+        if request.rotation not in [0, 90, 180, 270]:
+            raise ValidationError("rotation must be 0, 90, 180, or 270")
+        correction["rotation"] = request.rotation
+    
+    if request.relative_crop is not None:
+        crop = request.relative_crop
+        # Validate bounds
+        if not (0 <= crop.x < 1 and 0 <= crop.y < 1):
+            raise ValidationError("crop x,y must be 0-1")
+        if not (0 < crop.width <= 1 and 0 < crop.height <= 1):
+            raise ValidationError("crop width,height must be 0-1")
+        if crop.x + crop.width > 1 or crop.y + crop.height > 1:
+            raise ValidationError("crop exceeds image bounds")
+        correction["relative_crop"] = crop
+    
+    if request.exposure_adjust is not None:
+        if not (-2.0 <= request.exposure_adjust <= 2.0):
+            raise ValidationError("exposure_adjust must be -2.0 to +2.0")
+        correction["exposure_adjust"] = request.exposure_adjust
+    
+    correction["corrected_at"] = datetime.utcnow()
+    correction["corrected_by"] = current_user.id
+    photo.view_correction = correction
+```
+
+---
+
+## 🏷️ Photo Tags
+
+Photo tags enable flexible organization and search using user-defined keywords. Tags are user-scoped (each user has their own vocabulary) and support many-to-many relationships with photos.
+
+### List All Tags
+
+**Endpoint:** `GET /api/v1/tags`
+
+**Authentication:** Required (JWT token)
+
+**Description:** Get all tags for current user with photo counts.
+
+**Query Parameters:**
+- `sort_by` (string, optional) - Sort order: `name` (default), `count`, `created_at`
+- `order` (string, optional) - Sort direction: `asc` (default), `desc`
+
+**Response (200 OK):**
+```json
+{
+  "tags": [
+    {
+      "id": 1,
+      "name": "landscape",
+      "photo_count": 245,
+      "created_at": "2024-10-20T10:00:00Z",
+      "updated_at": "2024-10-22T15:30:00Z"
+    },
+    {
+      "id": 2,
+      "name": "sunset",
+      "photo_count": 89,
+      "created_at": "2024-10-20T11:30:00Z",
+      "updated_at": "2024-10-22T14:20:00Z"
+    }
+  ],
+  "total": 2
+}
+```
+
+**Implementation Notes:**
+- Returns only tags belonging to current user
+- `photo_count` is calculated via COUNT on `photo_tags` association table
+- Tags without photos are still included (count = 0)
+
+---
+
+### Tag Autocomplete
+
+**Endpoint:** `GET /api/v1/tags/autocomplete`
+
+**Authentication:** Required (JWT token)
+
+**Description:** Get tag suggestions for autocomplete while typing. Fast prefix-matching search.
+
+**Query Parameters:**
+- `q` (string, required) - Search query (minimum 1 character)
+- `limit` (integer, optional) - Max results (default: 10, max: 50)
+
+**Response (200 OK):**
+```json
+{
+  "suggestions": [
+    {
+      "id": 1,
+      "name": "landscape",
+      "photo_count": 245
+    },
+    {
+      "id": 15,
+      "name": "land",
+      "photo_count": 12
+    }
+  ]
+}
+```
+
+**Example Usage:**
+```http
+GET /api/v1/tags/autocomplete?q=land&limit=5
+```
+
+**Implementation Notes:**
+- Case-insensitive prefix matching: `q=land` matches "landscape", "landmark", "land"
+- Results ordered by photo count (descending) for most relevant suggestions
+- Only returns user's own tags
+
+---
+
+### Add Tags to Photo
+
+**Endpoint:** `POST /api/v1/photos/{hothash}/tags`
+
+**Authentication:** Required (JWT token)
+
+**Description:** Add one or more tags to a photo. Tags are created automatically if they don't exist. Duplicate tags are silently ignored.
+
+**Path Parameters:**
+- `hothash` (string, required) - Photo's unique hotpreview hash
+
+**Request Body:**
+```json
+{
+  "tags": ["landscape", "sunset", "norway"]
+}
+```
+
+**Alternative (single tag):**
+```json
+{
+  "tags": ["vacation"]
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "hothash": "abc123...",
+  "tags": [
+    {
+      "id": 1,
+      "name": "landscape"
+    },
+    {
+      "id": 2,
+      "name": "sunset"
+    },
+    {
+      "id": 3,
+      "name": "norway"
+    }
+  ],
+  "added": 3,
+  "skipped": 0
+}
+```
+
+**Response with duplicates (200 OK):**
+```json
+{
+  "hothash": "abc123...",
+  "tags": [
+    {
+      "id": 1,
+      "name": "landscape"
+    },
+    {
+      "id": 2,
+      "name": "sunset"
+    }
+  ],
+  "added": 1,
+  "skipped": 1,
+  "message": "Tag 'landscape' was already applied to this photo"
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - Photo not found
+- `401 Unauthorized` - No valid token
+- `422 Unprocessable Entity` - Invalid tag format
+
+**Validation Rules:**
+- Tag names are normalized to lowercase
+- Tag names must be 1-50 characters
+- Only alphanumeric, space, hyphen, underscore allowed
+- Leading/trailing whitespace is trimmed
+
+**Implementation Notes:**
+1. Check if tags exist in user's tag vocabulary
+2. Create new tags if needed (user-scoped)
+3. Create associations in `photo_tags` table
+4. Skip if association already exists (no error)
+5. Return updated list of all tags for photo
+
+---
+
+### Remove Tag from Photo
+
+**Endpoint:** `DELETE /api/v1/photos/{hothash}/tags/{tag_name}`
+
+**Authentication:** Required (JWT token)
+
+**Description:** Remove a specific tag from a photo. The tag itself remains in the database for reuse.
+
+**Path Parameters:**
+- `hothash` (string, required) - Photo's unique hotpreview hash
+- `tag_name` (string, required) - Tag name to remove (case-insensitive)
+
+**Response (200 OK):**
+```json
+{
+  "hothash": "abc123...",
+  "removed_tag": "landscape",
+  "remaining_tags": [
+    {
+      "id": 2,
+      "name": "sunset"
+    },
+    {
+      "id": 3,
+      "name": "norway"
+    }
+  ]
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - Photo or tag not found
+- `401 Unauthorized` - No valid token
+
+**Implementation Notes:**
+- Only removes association in `photo_tags` table
+- Tag remains in `tags` table (can be reused)
+- Case-insensitive tag name matching
+
+---
+
+### Delete Tag Completely
+
+**Endpoint:** `DELETE /api/v1/tags/{tag_id}`
+
+**Authentication:** Required (JWT token)
+
+**Description:** Permanently delete a tag and remove it from all photos. Use with caution.
+
+**Path Parameters:**
+- `tag_id` (integer, required) - Tag ID to delete
+
+**Response (200 OK):**
+```json
+{
+  "deleted_tag": "landscape",
+  "photos_affected": 245,
+  "message": "Tag 'landscape' deleted from 245 photos"
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - Tag not found or doesn't belong to user
+- `401 Unauthorized` - No valid token
+
+**Implementation Notes:**
+- Cascade deletes all `photo_tags` associations
+- Only allows deletion of user's own tags
+
+---
+
+### Rename Tag
+
+**Endpoint:** `PUT /api/v1/tags/{tag_id}`
+
+**Authentication:** Required (JWT token)
+
+**Description:** Rename a tag. The new name applies to all photos using this tag.
+
+**Path Parameters:**
+- `tag_id` (integer, required) - Tag ID to rename
+
+**Request Body:**
+```json
+{
+  "new_name": "seascape"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": 1,
+  "old_name": "landscape",
+  "new_name": "seascape",
+  "photo_count": 245,
+  "updated_at": "2024-10-22T16:45:00Z"
+}
+```
+
+**Error Responses:**
+- `404 Not Found` - Tag not found or doesn't belong to user
+- `409 Conflict` - Tag with new name already exists for user
+- `401 Unauthorized` - No valid token
+- `422 Unprocessable Entity` - Invalid tag name format
+
+---
+
+### Search Photos by Tags
+
+**Endpoint:** `GET /api/v1/photos`
+
+**Authentication:** Required (JWT token)
+
+**Description:** Search photos using tag filters. Supports AND/OR logic for multiple tags.
+
+**Query Parameters:**
+- `tags` (string, optional) - Comma-separated tag names: `tags=landscape,sunset`
+- `tag_logic` (string, optional) - Logic operator: `AND` (default) or `OR`
+- `offset` (integer, optional) - Pagination offset (default: 0)
+- `limit` (integer, optional) - Results per page (default: 50, max: 500)
+
+**Example - Photos with ALL specified tags:**
+```http
+GET /api/v1/photos?tags=landscape,norway&tag_logic=AND
+```
+
+**Example - Photos with ANY specified tag:**
+```http
+GET /api/v1/photos?tags=sunset,sunrise&tag_logic=OR
+```
+
+**Response (200 OK):**
+```json
+{
+  "items": [
+    {
+      "hothash": "abc123...",
+      "tags": [
+        {"id": 1, "name": "landscape"},
+        {"id": 3, "name": "norway"}
+      ],
+      "taken_at": "2024-08-15T18:30:00Z",
+      ...
+    }
+  ],
+  "total": 42,
+  "offset": 0,
+  "limit": 50
+}
+```
+
+**Implementation Notes:**
+
+**AND Logic (default):**
+```sql
+-- Photo must have ALL specified tags
+SELECT p.* FROM photos p
+INNER JOIN photo_tags pt1 ON p.hothash = pt1.photo_hothash
+INNER JOIN tags t1 ON pt1.tag_id = t1.id AND t1.name = 'landscape'
+INNER JOIN photo_tags pt2 ON p.hothash = pt2.photo_hothash  
+INNER JOIN tags t2 ON pt2.tag_id = t2.id AND t2.name = 'norway'
+WHERE p.user_id = ?
+```
+
+**OR Logic:**
+```sql
+-- Photo must have AT LEAST ONE specified tag
+SELECT DISTINCT p.* FROM photos p
+INNER JOIN photo_tags pt ON p.hothash = pt.photo_hothash
+INNER JOIN tags t ON pt.tag_id = t.id
+WHERE p.user_id = ? AND t.name IN ('sunset', 'sunrise')
+```
+
+---
+
+### Database Schema
+
+```python
+# models/tag.py
+class Tag(Base, TimestampMixin):
+    """User-scoped tag for photo categorization"""
+    __tablename__ = "tags"
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
+    name = Column(String(50), nullable=False)  # Lowercase normalized
+    
+    # Unique constraint per user
+    __table_args__ = (
+        Index('idx_user_tag', 'user_id', 'name', unique=True),
+    )
+    
+    user = relationship("User", back_populates="tags")
+    photos = relationship("Photo", secondary="photo_tags", back_populates="tags")
+
+# Association table (many-to-many)
+class PhotoTag(Base):
+    """Association between Photos and Tags"""
+    __tablename__ = "photo_tags"
+    
+    photo_hothash = Column(String(64), ForeignKey('photos.hothash'), 
+                           primary_key=True, index=True)
+    tag_id = Column(Integer, ForeignKey('tags.id'), 
+                    primary_key=True, index=True)
+    tagged_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Composite index for reverse lookup
+    __table_args__ = (
+        Index('idx_tag_photos', 'tag_id', 'photo_hothash'),
+    )
+
+# Photo model addition
+class Photo(Base):
+    # ... existing fields ...
+    tags = relationship("Tag", secondary="photo_tags", back_populates="photos")
+```
+
+**Key Design Decisions:**
+1. **User-scoped**: `(user_id, name)` unique constraint prevents duplicates per user
+2. **Normalized**: Tag strings stored once, reused across photos (efficient)
+3. **Case-insensitive**: All tag names converted to lowercase
+4. **Timestamped**: `tagged_at` tracks when tag was applied to photo
+5. **Indexed**: Fast lookups via `idx_user_tag` and `idx_tag_photos`
 
 ### Delete Photo
 ```http

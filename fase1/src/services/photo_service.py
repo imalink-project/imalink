@@ -19,8 +19,9 @@ from repositories.photo_repository import PhotoRepository
 from repositories.image_file_repository import ImageFileRepository
 from schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, PhotoSearchRequest,
-    AuthorSummary, ImageFileSummary
+    AuthorSummary, ImageFileSummary, TimeLocCorrectionRequest, ViewCorrectionRequest
 )
+from schemas.tag_schemas import TagSummary
 from schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
@@ -211,6 +212,140 @@ class PhotoService:
             user_id=user_id
         )
     
+    def update_timeloc_correction(
+        self, 
+        hothash: str, 
+        correction: Optional[TimeLocCorrectionRequest], 
+        user_id: int
+    ) -> PhotoResponse:
+        """
+        Update time/location correction for photo (non-destructive)
+        
+        Args:
+            hothash: Photo identifier
+            correction: Correction data or None to restore from EXIF
+            user_id: Current user ID
+        
+        Returns:
+            Updated PhotoResponse
+        
+        Behavior:
+            - If correction is None: Restore taken_at/GPS from Photo.exif_dict, clear timeloc_correction
+            - If correction has data: Update timeloc_correction JSON and Photo display fields
+        """
+        from utils.exif_utils import parse_exif_datetime, parse_exif_gps_latitude, parse_exif_gps_longitude
+        
+        # Get photo (user-scoped)
+        photo = self.photo_repo.get_by_hash(hothash, user_id)
+        if not photo:
+            raise NotFoundError("Photo", hothash)
+        
+        # Case 1: NULL request - Restore from EXIF
+        if correction is None:
+            # Clear correction
+            setattr(photo, 'timeloc_correction', None)
+            
+            # Restore from EXIF (stored in Photo.exif_dict)
+            exif_dict = getattr(photo, 'exif_dict', None)
+            setattr(photo, 'taken_at', parse_exif_datetime(exif_dict))
+            setattr(photo, 'gps_latitude', parse_exif_gps_latitude(exif_dict) or 0.0)
+            setattr(photo, 'gps_longitude', parse_exif_gps_longitude(exif_dict) or 0.0)
+        
+        # Case 2: Update/create correction
+        else:
+            # Get existing correction or create new dict
+            timeloc_correction = getattr(photo, 'timeloc_correction', None) or {}
+            
+            # Update correction fields and Photo display fields
+            if correction.taken_at is not None:
+                timeloc_correction['taken_at'] = correction.taken_at.isoformat()
+                setattr(photo, 'taken_at', correction.taken_at)
+            
+            if correction.gps_latitude is not None:
+                timeloc_correction['gps_latitude'] = correction.gps_latitude
+                setattr(photo, 'gps_latitude', correction.gps_latitude)
+            
+            if correction.gps_longitude is not None:
+                timeloc_correction['gps_longitude'] = correction.gps_longitude
+                setattr(photo, 'gps_longitude', correction.gps_longitude)
+            
+            if correction.correction_reason:
+                timeloc_correction['correction_reason'] = correction.correction_reason
+            
+            # Add metadata
+            timeloc_correction['corrected_at'] = datetime.utcnow().isoformat()
+            timeloc_correction['corrected_by'] = user_id
+            
+            setattr(photo, 'timeloc_correction', timeloc_correction)
+        
+        # Commit changes
+        self.db.commit()
+        self.db.refresh(photo)
+        
+        return self._convert_to_response(photo)
+    
+    def update_view_correction(
+        self, 
+        hothash: str, 
+        correction: Optional[ViewCorrectionRequest], 
+        user_id: int
+    ) -> PhotoResponse:
+        """
+        Update view correction for photo (frontend rendering hints only)
+        
+        Args:
+            hothash: Photo identifier
+            correction: View correction settings or None to reset
+            user_id: Current user ID
+        
+        Returns:
+            Updated PhotoResponse
+        
+        Behavior:
+            - If correction is None: Remove all view corrections
+            - If correction has data: Update view_correction JSON (no image processing)
+        """
+        # Get photo (user-scoped)
+        photo = self.photo_repo.get_by_hash(hothash, user_id)
+        if not photo:
+            raise NotFoundError("Photo", hothash)
+        
+        # Case 1: NULL request - Remove all corrections
+        if correction is None:
+            setattr(photo, 'view_correction', None)
+        
+        # Case 2: Update/create correction
+        else:
+            # Get existing correction or create new dict
+            view_correction = getattr(photo, 'view_correction', None) or {}
+            
+            # Update correction fields
+            if correction.rotation is not None:
+                view_correction['rotation'] = correction.rotation
+            
+            if correction.relative_crop is not None:
+                view_correction['relative_crop'] = {
+                    'x': correction.relative_crop.x,
+                    'y': correction.relative_crop.y,
+                    'width': correction.relative_crop.width,
+                    'height': correction.relative_crop.height
+                }
+            
+            if correction.exposure_adjust is not None:
+                view_correction['exposure_adjust'] = correction.exposure_adjust
+            
+            # Add metadata
+            view_correction['corrected_at'] = datetime.utcnow().isoformat()
+            view_correction['corrected_by'] = user_id
+            
+            setattr(photo, 'view_correction', view_correction)
+        
+        # Commit changes
+        self.db.commit()
+        self.db.refresh(photo)
+        
+        return self._convert_to_response(photo)
+    
     def _convert_to_response(self, photo: Photo) -> PhotoResponse:
         """Convert Photo model to PhotoResponse"""
         
@@ -270,7 +405,10 @@ class PhotoService:
             has_gps=has_gps,
             has_raw_companion=has_raw_companion,
             primary_filename=primary_filename,
-            files=files
+            files=files,
+            timeloc_correction=getattr(photo, 'timeloc_correction', None),
+            view_correction=getattr(photo, 'view_correction', None),
+            tags=[TagSummary(id=tag.id, name=tag.name) for tag in getattr(photo, 'tags', [])]
         )
     
 

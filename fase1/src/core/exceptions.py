@@ -49,6 +49,17 @@ class DuplicatePhotoError(APIException):
         )
 
 
+class ConflictError(APIException):
+    """Raised when a conflict occurs (e.g., duplicate tag name, constraint violation)"""
+    
+    def __init__(self, message: str):
+        super().__init__(
+            message=message,
+            code="CONFLICT",
+            status_code=409
+        )
+
+
 class ValidationError(APIException):
     """Raised when request data fails validation"""
     

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from .photo import Photo
     from .import_session import ImportSession
     from .author import Author
+    from .tag import Tag
 
 
 class User(Base, TimestampMixin):
@@ -45,6 +46,7 @@ class User(Base, TimestampMixin):
     authors = relationship("Author", back_populates="user", cascade="all, delete-orphan")
     image_files = relationship("ImageFile", back_populates="user", cascade="all, delete-orphan")
     photo_stacks = relationship("PhotoStack", back_populates="user", cascade="all, delete-orphan")
+    tags = relationship("Tag", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', email='{self.email}', active={self.is_active})>"
