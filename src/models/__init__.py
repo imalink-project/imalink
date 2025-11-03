@@ -11,6 +11,7 @@ from .import_session import ImportSession
 from .photo_stack import PhotoStack
 from .saved_photo_search import SavedPhotoSearch
 from .photo_collection import PhotoCollection
+from .tag import Tag, PhotoTag
 
 __all__ = [
     "Base",
@@ -22,5 +23,7 @@ __all__ = [
     "ImportSession",
     "PhotoStack",
     "SavedPhotoSearch",
-    "PhotoCollection"
+    "PhotoCollection",
+    "Tag",
+    "PhotoTag"
 ]

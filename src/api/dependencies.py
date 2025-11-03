@@ -32,7 +32,8 @@ def _get_test_user(db: Session) -> User:
             username="test_user",
             email="test@example.com",
             password="test_password",
-            full_name="Test User"
+            display_name="Test User",
+            is_active=True
         )
         test_user = auth_service.register_user(user_data)
     
@@ -119,8 +120,6 @@ async def get_current_active_user(
     if config.DISABLE_AUTH:
         # Return the first user without requiring authentication
         return _get_test_user(db)
-    
-    # Normal authentication flow        return test_user
     
     # Normal authentication flow
     if not credentials:

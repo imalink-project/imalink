@@ -28,8 +28,8 @@ class ImageFileRepository:
         return query.first()
     
     # NOTE: get_by_hash and exists_by_hash removed - ImageFile no longer has hothash field
-    # ImageFiles are linked to Photos via photo_hothash instead
-    # Use get_by_id or filter by photo_hothash if needed
+    # ImageFiles are linked to Photos via photo_id instead
+    # Use get_by_id or filter by photo_id if needed
     
     def get_image_files(
         self, 
@@ -141,7 +141,7 @@ class ImageFileRepository:
         from models import Photo
         return (
             self.db.query(ImageFile)
-            .join(Photo, ImageFile.photo_hothash == Photo.hothash)
+            .join(Photo, ImageFile.photo_id == Photo.id)
             .filter(and_(Photo.gps_latitude.isnot(None), Photo.gps_longitude.isnot(None)))
             .order_by(desc(Photo.taken_at))
             .limit(limit)
@@ -177,7 +177,7 @@ class ImageFileRepository:
             if search_params.taken_after or search_params.taken_before:
                 from models import Photo
                 if not any(isinstance(mapper, Photo) for mapper in query.column_descriptions):
-                    query = query.join(Photo, ImageFile.photo_hothash == Photo.hothash)
+                    query = query.join(Photo, ImageFile.photo_id == Photo.id)
                 
                 if search_params.taken_after:
                     query = query.filter(Photo.taken_at >= search_params.taken_after)
@@ -188,7 +188,7 @@ class ImageFileRepository:
             if search_params.has_gps is not None:
                 from models import Photo
                 if not any(isinstance(mapper, Photo) for mapper in query.column_descriptions):
-                    query = query.join(Photo, ImageFile.photo_hothash == Photo.hothash)
+                    query = query.join(Photo, ImageFile.photo_id == Photo.id)
                 
                 if search_params.has_gps:
                     query = query.filter(

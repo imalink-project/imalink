@@ -50,18 +50,19 @@ class PhotoTag(Base):
     
     Tracks when a tag was applied to a photo.
     Composite primary key ensures no duplicate tag-photo pairs.
+    Uses photo_id (integer) instead of photo_hothash for performance.
     """
     __tablename__ = "photo_tags"
     
-    photo_hothash = Column(String(64), ForeignKey('photos.hothash'), primary_key=True)
+    photo_id = Column(Integer, ForeignKey('photos.id'), primary_key=True)
     tag_id = Column(Integer, ForeignKey('tags.id'), primary_key=True)
     tagged_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     
     # Index for reverse lookup (find all photos with a tag)
     __table_args__ = (
-        Index('idx_tag_photos', 'tag_id', 'photo_hothash'),
-        Index('idx_photo_tags', 'photo_hothash', 'tag_id'),
+        Index('idx_tag_photos', 'tag_id', 'photo_id'),
+        Index('idx_photo_tags', 'photo_id', 'tag_id'),
     )
     
     def __repr__(self):
-        return f"<PhotoTag(photo={self.photo_hothash[:8]}..., tag_id={self.tag_id})>"
+        return f"<PhotoTag(photo_id={self.photo_id}, tag_id={self.tag_id})>"

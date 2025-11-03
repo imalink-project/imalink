@@ -20,7 +20,7 @@ class ImageFile(Base, TimestampMixin):
     
     ARCHITECTURE: ImageFile is an internal implementation detail
     - Represents a physical file on disk (JPEG, RAW, etc.)
-    - Belongs to exactly ONE Photo (via photo_hothash)
+    - Belongs to exactly ONE Photo (via photo_id foreign key)
     - NO direct API access - all operations go through Photo
     - NO user_id - access control handled via Photo.user_id
     - Cascade deletion: When Photo is deleted, ImageFiles are deleted
@@ -49,8 +49,8 @@ class ImageFile(Base, TimestampMixin):
     filename = Column(String(255), nullable=False)  # Just name + extension, e.g. "IMG_1234.jpg"
     file_size = Column(Integer)  # Size in bytes
     
-    # Link to Photo (via hothash)
-    photo_hothash = Column(String(64), ForeignKey('photos.hothash'), nullable=True, index=True)
+    # Link to Photo (via integer id for performance)
+    photo_id = Column(Integer, ForeignKey('photos.id'), nullable=True, index=True)
     
     # Import tracking (file-level) - when THIS SPECIFIC FILE was imported
     imported_time = Column(DateTime, nullable=True)  # When this specific file was imported
@@ -61,7 +61,7 @@ class ImageFile(Base, TimestampMixin):
     cloud_storage_info = Column(JSON, nullable=True)   # Current cloud storage details
     
     # Relationships
-    photo = relationship("Photo", back_populates="image_files", foreign_keys=[photo_hothash])
+    photo = relationship("Photo", back_populates="image_files", foreign_keys=[photo_id])
     
     def __repr__(self):
         return f"<ImageFile(id={self.id}, filename={self.filename})>"

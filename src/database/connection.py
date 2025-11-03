@@ -15,18 +15,29 @@ from core.config import Config
 config = Config()
 DATABASE_URL = config.DATABASE_URL
 
-# SQLite specific configuration for better performance
-engine = create_engine(
-    DATABASE_URL,
-    # SQLite specific options
-    poolclass=StaticPool,
-    pool_pre_ping=True,
-    echo=False,  # Set to True for SQL debugging
-    connect_args={
+# Determine database type and configure accordingly
+is_sqlite = DATABASE_URL.startswith("sqlite")
+is_postgresql = DATABASE_URL.startswith("postgresql")
+
+# Database-specific configuration
+engine_kwargs = {
+    "pool_pre_ping": True,
+    "echo": False,  # Set to True for SQL debugging
+}
+
+if is_sqlite:
+    # SQLite specific configuration for better performance
+    engine_kwargs["poolclass"] = StaticPool
+    engine_kwargs["connect_args"] = {
         "check_same_thread": False,  # Allow SQLite to be used across threads
         "timeout": 30,  # 30 second timeout for locks
     }
-)
+elif is_postgresql:
+    # PostgreSQL specific configuration
+    engine_kwargs["pool_size"] = 10
+    engine_kwargs["max_overflow"] = 20
+
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 
 # Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

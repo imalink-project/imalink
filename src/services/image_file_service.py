@@ -140,7 +140,7 @@ class ImageFileService:
             raise NotFoundError("Photo", image_data.photo_hothash)
         
         # 2. Create ImageFile for existing Photo (no visual data)
-        image_file = self._create_image_file_for_existing_photo(image_data, user_id)
+        image_file = self._create_image_file_for_existing_photo(image_data, existing_photo, user_id)
         
         # 3. Commit transaction
         self.db.commit()
@@ -190,7 +190,7 @@ class ImageFileService:
         image_data_dict = {
             'filename': image_data.filename,
             'file_size': image_data.file_size,
-            'photo_hothash': hothash,
+            'photo_id': photo.id,  # Use integer photo_id instead of photo_hothash
             'import_session_id': image_data.import_session_id,
             'imported_time': datetime.utcnow(),
             'imported_info': image_data.imported_info,
@@ -204,7 +204,8 @@ class ImageFileService:
     
     def _create_image_file_for_existing_photo(
         self, 
-        image_data: ImageFileAddToPhotoRequest, 
+        image_data: ImageFileAddToPhotoRequest,
+        existing_photo,  # Photo object
         user_id: int
     ) -> ImageFile:
         """
@@ -213,7 +214,7 @@ class ImageFileService:
         image_data_dict = {
             'filename': image_data.filename,
             'file_size': image_data.file_size,
-            'photo_hothash': image_data.photo_hothash,
+            'photo_id': existing_photo.id,  # Use integer photo_id instead of photo_hothash
             'import_session_id': image_data.import_session_id,
             'imported_time': datetime.utcnow(),
             'imported_info': image_data.imported_info,

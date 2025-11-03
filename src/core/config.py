@@ -5,19 +5,27 @@ Configuration management for ImaLink
 import os
 from pathlib import Path
 from typing import Optional
+from dotenv import load_dotenv
+
+# Load .env file from project root
+env_path = Path(__file__).parent.parent.parent / ".env"
+load_dotenv(env_path)
 
 class Config:
     """Application configuration loaded from environment variables"""
     
-    # Database
-#    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///C:/temp/imalink_data/imalink.db")
-#    DATABASE_URL: str = "sqlite:///C:/temp/00imalink_data/imalink.db"
-    TEMP: str = "/mnt/c/temp"
-    DATA_DIRECTORY: str = f"{TEMP}/00imalink_data"
-    DATABASE_URL: str = f"sqlite:///{DATA_DIRECTORY}/imalink.db"
+    # Database - Read from environment or default to SQLite
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:////mnt/c/temp/00imalink_data/imalink.db")
     
     # Storage for imported files
+    TEMP: str = "/mnt/c/temp"
+    DATA_DIRECTORY: str = f"{TEMP}/00imalink_data"
     STORAGE_ROOT: str = f"{TEMP}/imalink-storage"
+    
+    # Coldpreview storage (filesystem)
+    COLDPREVIEW_ROOT: str = f"{DATA_DIRECTORY}/coldpreviews"
+    COLDPREVIEW_MAX_SIZE: int = 1200  # Max width/height in pixels
+    COLDPREVIEW_QUALITY: int = 85  # JPEG quality (1-100)
     
     # Note: IMAGE_POOL and frontend-related paths removed - handled by frontend
     # Image processing quality settings handled by services as needed
@@ -49,7 +57,8 @@ class Config:
         """Ensure all required directories exist"""
         directories = [
             cls.DATA_DIRECTORY,
-            cls.STORAGE_ROOT
+            cls.STORAGE_ROOT,
+            cls.COLDPREVIEW_ROOT
         ]
         
         for directory in directories:

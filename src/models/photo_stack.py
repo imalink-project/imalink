@@ -36,12 +36,13 @@ class PhotoStack(Base, TimestampMixin):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     
     # Optional metadata
-    cover_photo_hothash = Column(String, nullable=True)  # Which photo to show as cover
+    cover_photo_id = Column(Integer, ForeignKey("photos.id"), nullable=True)  # Which photo to show as cover
     stack_type = Column(String, nullable=True)  # "panorama", "burst", "animation", etc.
     
     # Relationships
     user = relationship("User", back_populates="photo_stacks")
-    photos = relationship("Photo", back_populates="stack")  # One-to-many: stack has many photos
+    photos = relationship("Photo", back_populates="stack", foreign_keys="[Photo.stack_id]")  # One-to-many: stack has many photos
+    cover_photo = relationship("Photo", foreign_keys=[cover_photo_id], post_update=True)  # Cover photo reference
     
     def __repr__(self):
         return f"<PhotoStack(id={self.id}, user_id={self.user_id}, type='{self.stack_type}', photos={len(self.photos) if self.photos else 0})>"

@@ -38,14 +38,14 @@ class TagRepository:
         """
         query = self.db.query(
             Tag,
-            func.count(PhotoTag.photo_hothash).label('photo_count')
+            func.count(PhotoTag.photo_id).label('photo_count')
         ).outerjoin(PhotoTag, Tag.id == PhotoTag.tag_id)\
          .filter(Tag.user_id == user_id)\
          .group_by(Tag.id)
         
         # Apply sorting
         if sort_by == 'count':
-            order_col = func.count(PhotoTag.photo_hothash)
+            order_col = func.count(PhotoTag.photo_id)
         elif sort_by == 'created_at':
             order_col = Tag.created_at
         else:  # default to name
@@ -77,7 +77,7 @@ class TagRepository:
         """
         results = self.db.query(
             Tag,
-            func.count(PhotoTag.photo_hothash).label('photo_count')
+            func.count(PhotoTag.photo_id).label('photo_count')
         ).outerjoin(PhotoTag, Tag.id == PhotoTag.tag_id)\
          .filter(
             and_(
@@ -86,7 +86,7 @@ class TagRepository:
             )
          )\
          .group_by(Tag.id)\
-         .order_by(func.count(PhotoTag.photo_hothash).desc())\
+         .order_by(func.count(PhotoTag.photo_id).desc())\
          .limit(limit)\
          .all()
         
@@ -131,14 +131,18 @@ class TagRepository:
             return True
         return False
     
-    def add_tag_to_photo(self, photo_hothash: str, tag_id: int) -> bool:
+    def add_tag_to_photo(self, photo_id: int, tag_id: int) -> bool:
         """
         Add tag to photo (create association)
         Returns False if association already exists
+        
+        Args:
+            photo_id: Photo's integer ID (not hothash)
+            tag_id: Tag ID
         """
         existing = self.db.query(PhotoTag).filter(
             and_(
-                PhotoTag.photo_hothash == photo_hothash,
+                PhotoTag.photo_id == photo_id,
                 PhotoTag.tag_id == tag_id
             )
         ).first()
@@ -146,35 +150,44 @@ class TagRepository:
         if existing:
             return False  # Already tagged
         
-        photo_tag = PhotoTag(photo_hothash=photo_hothash, tag_id=tag_id)
+        photo_tag = PhotoTag(photo_id=photo_id, tag_id=tag_id)
         self.db.add(photo_tag)
         self.db.flush()
         return True
     
-    def remove_tag_from_photo(self, photo_hothash: str, tag_id: int) -> bool:
+    def remove_tag_from_photo(self, photo_id: int, tag_id: int) -> bool:
         """
         Remove tag from photo (delete association)
         Returns False if association doesn't exist
+        
+        Args:
+            photo_id: Photo's integer ID (not hothash)
+            tag_id: Tag ID
         """
         deleted = self.db.query(PhotoTag).filter(
             and_(
-                PhotoTag.photo_hothash == photo_hothash,
+                PhotoTag.photo_id == photo_id,
                 PhotoTag.tag_id == tag_id
             )
         ).delete()
         
         return deleted > 0
     
-    def get_photo_tags(self, photo_hothash: str) -> List[Tag]:
-        """Get all tags for a photo"""
+    def get_photo_tags(self, photo_id: int) -> List[Tag]:
+        """
+        Get all tags for a photo
+        
+        Args:
+            photo_id: Photo's integer ID (not hothash)
+        """
         return self.db.query(Tag)\
             .join(PhotoTag, Tag.id == PhotoTag.tag_id)\
-            .filter(PhotoTag.photo_hothash == photo_hothash)\
+            .filter(PhotoTag.photo_id == photo_id)\
             .order_by(Tag.name)\
             .all()
     
     def count_photos_with_tag(self, tag_id: int) -> int:
         """Count how many photos have this tag"""
-        return self.db.query(func.count(PhotoTag.photo_hothash))\
+        return self.db.query(func.count(PhotoTag.photo_id))\
             .filter(PhotoTag.tag_id == tag_id)\
             .scalar() or 0

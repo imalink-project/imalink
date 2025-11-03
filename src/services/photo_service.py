@@ -152,9 +152,7 @@ class PhotoService:
             raise NotFoundError("Photo", hothash)
         
         # 2. Create ImageFile for existing Photo (no visual data)
-        # Set the hothash in the request data
-        image_data.photo_hothash = hothash
-        image_file = self._create_image_file_for_existing_photo(image_data, user_id)
+        image_file = self._create_image_file_for_existing_photo(image_data, existing_photo.id, user_id)
         
         # 3. Commit transaction
         self.db.commit()
@@ -570,7 +568,7 @@ class PhotoService:
         image_data_dict = {
             'filename': image_data.filename,
             'file_size': image_data.file_size,
-            'photo_hothash': hothash,
+            'photo_id': photo.id,  # Link via integer ID for performance
             'imported_time': datetime.utcnow(),
             'imported_info': image_data.imported_info,
             'local_storage_info': image_data.local_storage_info,
@@ -584,16 +582,22 @@ class PhotoService:
     def _create_image_file_for_existing_photo(
         self, 
         image_data: ImageFileAddToPhotoRequest, 
+        photo_id: int,
         user_id: int
     ) -> ImageFile:
         """
         Create ImageFile for existing Photo (file metadata only)
         Note: import_session_id is NOT set here - it's already on the Photo
+        
+        Args:
+            image_data: File metadata
+            photo_id: Photo's integer ID (not hothash)
+            user_id: User ID
         """
         image_data_dict = {
             'filename': image_data.filename,
             'file_size': image_data.file_size,
-            'photo_hothash': image_data.photo_hothash,
+            'photo_id': photo_id,  # Link via integer ID for performance
             'imported_time': datetime.utcnow(),
             'imported_info': image_data.imported_info,
             'local_storage_info': image_data.local_storage_info,

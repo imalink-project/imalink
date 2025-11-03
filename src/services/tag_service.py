@@ -98,8 +98,8 @@ class TagService:
             # Get or create tag
             tag = self.tag_repo.get_or_create(tag_name, user_id)
             
-            # Try to add association
-            was_added = self.tag_repo.add_tag_to_photo(hothash, tag.id)
+            # Try to add association (using photo_id for performance)
+            was_added = self.tag_repo.add_tag_to_photo(photo.id, tag.id)
             if was_added:
                 added_count += 1
             else:
@@ -109,8 +109,8 @@ class TagService:
         # Commit all changes
         self.db.commit()
         
-        # Get updated tag list for photo
-        photo_tags = self.tag_repo.get_photo_tags(hothash)
+        # Get updated tag list for photo (using photo_id)
+        photo_tags = self.tag_repo.get_photo_tags(photo.id)
         tag_summaries = [TagSummary(id=tag.id, name=tag.name) for tag in photo_tags]
         
         # Build response message
@@ -148,15 +148,15 @@ class TagService:
         if not tag:
             raise NotFoundError("Tag", tag_name)
         
-        # Remove association
-        was_removed = self.tag_repo.remove_tag_from_photo(hothash, tag.id)
+        # Remove association (using photo_id for performance)
+        was_removed = self.tag_repo.remove_tag_from_photo(photo.id, tag.id)
         if not was_removed:
             raise NotFoundError("Tag association", f"{tag_name} on photo {hothash}")
         
         self.db.commit()
         
-        # Get remaining tags
-        remaining_tags = self.tag_repo.get_photo_tags(hothash)
+        # Get remaining tags (using photo_id)
+        remaining_tags = self.tag_repo.get_photo_tags(photo.id)
         tag_summaries = [TagSummary(id=t.id, name=t.name) for t in remaining_tags]
         
         return RemoveTagResponse(

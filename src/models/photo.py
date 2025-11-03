@@ -37,7 +37,9 @@ class Photo(Base, TimestampMixin):
     - Photo metadata can be edited independently of ImageFile files
     
     Key design principles:
-    - hothash as primary key (content-based, shared between JPEG/RAW)
+    - Hybrid primary key: Integer id (technical PK) + unique hothash (content-based identifier)
+    - hothash used for API operations (content-based, shared between JPEG/RAW)
+    - id used internally for foreign key relationships (performance optimization)
     - Contains all user-facing metadata (rating, author, GPS)
     - Contains visual data (hotpreview, coldpreview, dimensions)
     - Contains EXIF metadata from master file (immutable after creation)
@@ -45,9 +47,12 @@ class Photo(Base, TimestampMixin):
     """
     __tablename__ = "photos"
     
-    # Primary key = content-based hash (same for JPEG/RAW pairs)
-    # Hash is generated from hotpreview (provided by first ImageFile = master)
-    hothash = Column(String(64), primary_key=True, index=True)
+    # Technical primary key for efficient joins and foreign key relationships
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    
+    # Content-based identifier (unique, used in API)
+    # Hash is generated from hotpreview (SHA256) - same for JPEG/RAW pairs
+    hothash = Column(String(64), unique=True, nullable=False, index=True)
     
     # Data ownership - each photo belongs to a user
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
@@ -89,10 +94,10 @@ class Photo(Base, TimestampMixin):
     # Relationships
     user = relationship("User", back_populates="photos")
     image_files = relationship("ImageFile", back_populates="photo", cascade="all, delete-orphan", 
-                        foreign_keys="[ImageFile.photo_hothash]")
+                        foreign_keys="[ImageFile.photo_id]")
     author = relationship("Author", back_populates="photos")
     import_session = relationship("ImportSession", back_populates="photos")
-    stack = relationship("PhotoStack", back_populates="photos")
+    stack = relationship("PhotoStack", back_populates="photos", foreign_keys=[stack_id])
     tags = relationship("Tag", secondary="photo_tags", back_populates="photos")
     
     def __repr__(self):

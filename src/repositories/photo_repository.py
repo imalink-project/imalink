@@ -12,13 +12,29 @@ from schemas.photo_schemas import PhotoCreateRequest, PhotoUpdateRequest, PhotoS
 
 
 class PhotoRepository:
-    """Repository for Photo data access operations"""
+    """Repository for Photo data access operations with hybrid key support"""
     
     def __init__(self, db: Session):
         self.db = db
     
+    def get_by_id(self, photo_id: int, user_id: Optional[int] = None) -> Optional[Photo]:
+        """Get photo by integer ID with relationships loaded (optionally user-scoped)"""
+        query = (
+            self.db.query(Photo)
+            .options(
+                joinedload(Photo.author),
+                joinedload(Photo.image_files)
+            )
+            .filter(Photo.id == photo_id)
+        )
+        
+        if user_id is not None:
+            query = query.filter(Photo.user_id == user_id)
+        
+        return query.first()
+    
     def get_by_hash(self, hothash: str, user_id: Optional[int] = None) -> Optional[Photo]:
-        """Get photo by hash with relationships loaded (optionally user-scoped)"""
+        """Get photo by hothash with relationships loaded (optionally user-scoped)"""
         query = (
             self.db.query(Photo)
             .options(
@@ -32,6 +48,11 @@ class PhotoRepository:
             query = query.filter(Photo.user_id == user_id)
         
         return query.first()
+    
+    def get_id_by_hash(self, hothash: str) -> Optional[int]:
+        """Get photo ID by hothash (helper for internal operations)"""
+        result = self.db.query(Photo.id).filter(Photo.hothash == hothash).first()
+        return result[0] if result else None
     
     def exists_by_hash(self, hothash: str) -> bool:
         """Check if photo with hash already exists"""
