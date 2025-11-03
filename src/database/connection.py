@@ -7,8 +7,8 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 
-from models import Base
-from core.config import Config
+from src.models import Base
+from src.core.config import Config
 
 # Database configuration
 # Use configuration from config.py
