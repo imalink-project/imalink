@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, desc, asc, func
 from datetime import datetime
 
-from models import ImageFile, Author
-from schemas.image_file_schemas import ImageFileCreateRequest, ImageFileUpdateRequest, ImageFileSearchRequest
+from src.models import ImageFile, Author
+from src.schemas.image_file_schemas import ImageFileCreateRequest, ImageFileUpdateRequest, ImageFileSearchRequest
 
 
 class ImageFileRepository:

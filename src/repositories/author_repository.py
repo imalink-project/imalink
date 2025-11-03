@@ -5,8 +5,8 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc
 
-from models import Author
-from schemas.requests.author_requests import AuthorCreateRequest, AuthorUpdateRequest
+from src.models import Author
+from src.schemas.requests.author_requests import AuthorCreateRequest, AuthorUpdateRequest
 
 
 class AuthorRepository:

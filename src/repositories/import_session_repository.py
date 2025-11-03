@@ -6,7 +6,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 
-from models import ImportSession
+from src.models import ImportSession
 
 
 class ImportSessionRepository:

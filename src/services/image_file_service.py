@@ -24,9 +24,9 @@ from src.repositories.photo_repository import PhotoRepository
 from schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
-from schemas.photo_schemas import PhotoCreateRequest
+from src.schemas.photo_schemas import PhotoCreateRequest
 from src.core.exceptions import NotFoundError, DuplicateImageError, ValidationError
-from models import ImageFile
+from src.models import ImageFile
 
 
 class ImageFileService:

@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, desc, asc, func, text, String
 from datetime import datetime
 
-from models import Photo, Author, ImageFile
-from schemas.photo_schemas import PhotoCreateRequest, PhotoUpdateRequest, PhotoSearchRequest
+from src.models import Photo, Author, ImageFile
+from src.schemas.photo_schemas import PhotoCreateRequest, PhotoUpdateRequest, PhotoSearchRequest
 
 
 class PhotoRepository:

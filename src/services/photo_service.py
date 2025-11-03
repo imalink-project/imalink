@@ -22,12 +22,12 @@ from schemas.photo_schemas import (
     AuthorSummary, ImageFileSummary, TimeLocCorrectionRequest, ViewCorrectionRequest
 )
 from schemas.tag_schemas import TagSummary
-from schemas.image_file_upload_schemas import (
+from src.schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
-from schemas.common import PaginatedResponse, create_paginated_response
+from src.schemas.common import PaginatedResponse, create_paginated_response
 from src.core.exceptions import NotFoundError, DuplicatePhotoError, DuplicateImageError, ValidationError
-from models import Photo, ImageFile
+from src.models import Photo, ImageFile
 
 
 class PhotoService:
