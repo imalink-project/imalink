@@ -32,7 +32,7 @@ async def get_my_profile(
     user_response.photos_count = current_user.photos_count
     user_response.import_sessions_count = current_user.import_sessions_count
     user_response.authors_count = current_user.authors_count
-    user_response.image_files_count = current_user.image_files_count
+    # Note: image_files_count removed - ImageFile has no user_id, access via Photo
     
     return user_response
 

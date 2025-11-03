@@ -41,6 +41,9 @@ class Config:
     DEBUG: bool = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     
+    # Testing - Disable authentication for easier testing
+    DISABLE_AUTH: bool = os.getenv("DISABLE_AUTH", "False").lower() in ("true", "1", "yes")
+    
     @classmethod
     def ensure_directories(cls) -> None:
         """Ensure all required directories exist"""

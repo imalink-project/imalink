@@ -44,9 +44,10 @@ class User(Base, TimestampMixin):
     photos = relationship("Photo", back_populates="user", cascade="all, delete-orphan")
     import_sessions = relationship("ImportSession", back_populates="user", cascade="all, delete-orphan")
     authors = relationship("Author", back_populates="user", cascade="all, delete-orphan")
-    image_files = relationship("ImageFile", back_populates="user", cascade="all, delete-orphan")
     photo_stacks = relationship("PhotoStack", back_populates="user", cascade="all, delete-orphan")
     tags = relationship("Tag", back_populates="user", cascade="all, delete-orphan")
+    saved_photo_searches = relationship("SavedPhotoSearch", back_populates="user", cascade="all, delete-orphan")
+    photo_collections = relationship("PhotoCollection", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', email='{self.email}', active={self.is_active})>"
@@ -65,8 +66,3 @@ class User(Base, TimestampMixin):
     def authors_count(self) -> int:
         """Count of authors created by this user"""
         return len(self.authors) if self.authors else 0
-    
-    @property
-    def image_files_count(self) -> int:
-        """Count of image files owned by this user"""
-        return len(self.image_files) if self.image_files else 0

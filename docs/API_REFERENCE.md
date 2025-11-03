@@ -1779,6 +1779,127 @@ POST /api/v1/photos/abc123.../files
 
 ---
 
-**Last Updated:** October 21, 2025  
+## 📊 System & Monitoring
+
+### Get Database Statistics
+Get comprehensive statistics about database tables, storage usage, and disk space.
+
+```http
+GET /api/v1/database-stats
+```
+
+**Authentication:** ❌ **Not required** - This endpoint is intended for system monitoring.
+
+**Response** (`200 OK`):
+```json
+{
+  "tables": {
+    "photos": {
+      "name": "photos",
+      "record_count": 45,
+      "size_bytes": 4612096,
+      "size_mb": 4.4
+    },
+    "image_files": {
+      "name": "image_files",
+      "record_count": 45,
+      "size_bytes": 92160,
+      "size_mb": 0.09
+    },
+    "users": {
+      "name": "users",
+      "record_count": 2,
+      "size_bytes": 8192,
+      "size_mb": 0.01
+    },
+    "authors": {
+      "name": "authors",
+      "record_count": 3,
+      "size_bytes": 12288,
+      "size_mb": 0.01
+    },
+    "tags": {
+      "name": "tags",
+      "record_count": 15,
+      "size_bytes": 24576,
+      "size_mb": 0.02
+    },
+    "import_sessions": {
+      "name": "import_sessions",
+      "record_count": 1,
+      "size_bytes": 4096,
+      "size_mb": 0.0
+    },
+    "photo_stacks": {
+      "name": "photo_stacks",
+      "record_count": 0,
+      "size_bytes": 0,
+      "size_mb": 0.0
+    }
+  },
+  "coldstorage": {
+    "path": "/mnt/c/temp/00imalink_data/coldpreviews",
+    "total_files": 45,
+    "total_size_bytes": 6656400,
+    "total_size_mb": 6.35,
+    "total_size_gb": 0.01
+  },
+  "database_file": "/mnt/c/temp/00imalink_data/imalink.db",
+  "database_size_bytes": 8392704,
+  "database_size_mb": 8.0
+}
+```
+
+**Response Fields:**
+
+- `tables`: Dictionary of table statistics
+  - `name`: Table name
+  - `record_count`: Number of records in table
+  - `size_bytes`: Approximate size on disk in bytes
+  - `size_mb`: Approximate size on disk in megabytes
+
+- `coldstorage`: Cold storage (coldpreview files) statistics
+  - `path`: Storage directory path
+  - `total_files`: Number of coldpreview files
+  - `total_size_bytes`: Total size in bytes
+  - `total_size_mb`: Total size in megabytes
+  - `total_size_gb`: Total size in gigabytes
+
+- `database_file`: Path to database file
+- `database_size_bytes`: Total database file size in bytes
+- `database_size_mb`: Total database file size in megabytes
+
+**Use Cases:**
+- System monitoring dashboards
+- Storage space alerts
+- Database maintenance scheduling
+- Performance analysis
+- Capacity planning
+
+**Example - Python:**
+```python
+import requests
+
+response = requests.get("http://localhost:8000/api/v1/database-stats")
+stats = response.json()
+
+print(f"Total photos: {stats['tables']['photos']['record_count']}")
+print(f"Database size: {stats['database_size_mb']} MB")
+print(f"Coldstorage size: {stats['coldstorage']['total_size_gb']} GB")
+```
+
+**Example - cURL:**
+```bash
+curl http://localhost:8000/api/v1/database-stats
+```
+
+**Notes:**
+- Table sizes are approximate for SQLite (uses dbstat when available)
+- Coldstorage includes all coldpreview files (800-1200px JPEG previews)
+- Read-only operation with minimal overhead - safe to call frequently
+
+---
+
+**Last Updated:** October 24, 2025  
 **API Version:** 2.1 (100% Photo-Centric)  
 **Backend Version:** Fase 1 (Multi-User + PhotoStacks + Photo-Centric API)

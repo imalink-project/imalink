@@ -42,7 +42,7 @@ class UserResponse(UserBase):
     photos_count: int = Field(0, description="Number of photos owned by this user")
     import_sessions_count: int = Field(0, description="Number of import sessions created by this user")
     authors_count: int = Field(0, description="Number of authors created by this user")
-    image_files_count: int = Field(0, description="Number of image files owned by this user")
+    # Note: image_files_count removed - ImageFile has no user_id, files accessed via Photo
     
     class Config:
         from_attributes = True

@@ -47,12 +47,12 @@ class ImportSession(Base, TimestampMixin):
     # Relationships
     user = relationship("User", back_populates="import_sessions")
     default_author = relationship("Author", back_populates="imports")
-    image_files = relationship("ImageFile", back_populates="import_session", cascade="all, delete-orphan")
+    photos = relationship("Photo", back_populates="import_session", lazy="selectin")
     
     @property
     def images_count(self) -> int:
-        """Count of image files in this import session"""
-        return len(self.image_files) if self.image_files else 0
+        """Count of photos in this import session"""
+        return len(self.photos) if self.photos else 0
     
     @property
     def index_filename(self) -> str:
@@ -80,25 +80,23 @@ class ImportSession(Base, TimestampMixin):
             }
         }
         
-        # Add file data for each image in this session
-        if self.image_files:
-            for image_file in self.image_files:
-                if hasattr(image_file, 'photo') and image_file.photo:
-                    hothash = image_file.photo.hothash
-                    session_data["files"][hothash] = {
-                        "filename": image_file.filename,
-                        "file_size": image_file.file_size,
-                        "taken_at": image_file.taken_at.isoformat() if image_file.taken_at else None,
-                        "created_at": image_file.created_at.isoformat() if image_file.created_at else None,
-                        "original_filename": image_file.original_filename,
-                        "file_format": image_file.file_format,
-                        "width": image_file.width,
-                        "height": image_file.height,
-                        "has_hotpreview": image_file.has_hotpreview
-                    }
+        # Add photo data for each photo in this session
+        if self.photos:
+            for photo in self.photos:
+                session_data["files"][photo.hothash] = {
+                    "hothash": photo.hothash,
+                    "primary_filename": photo.primary_filename,
+                    "taken_at": photo.taken_at.isoformat() if photo.taken_at else None,
+                    "created_at": photo.created_at.isoformat() if photo.created_at else None,
+                    "width": photo.width,
+                    "height": photo.height,
+                    "rating": photo.rating,
+                    "has_gps": photo.has_gps,
+                    "file_count": len(photo.image_files) if photo.image_files else 0
+                }
         
         return session_data
     
     def __repr__(self):
         title_info = f"'{self.title}'" if getattr(self, 'title', None) else "Untitled"
-        return f"<ImportSession(id={self.id}, title={title_info}, images={self.images_count})>"
+        return f"<ImportSession(id={self.id}, title={title_info}, photos={self.images_count})>"

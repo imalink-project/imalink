@@ -17,6 +17,9 @@ from api.v1.authors import router as authors_router
 from api.v1.debug import router as debug_router
 from api.v1.photos import router as photos_router
 from api.v1.tags import router as tags_router
+from api.v1.database_stats import router as database_stats_router
+from api.v1.photo_searches import router as photo_searches_router
+from api.v1.photo_collections import router as photo_collections_router
 from api.photo_stacks import router as photo_stacks_router
 from api.auth import router as auth_router
 from api.users import router as users_router
@@ -52,8 +55,11 @@ app.include_router(import_sessions_router, prefix="/api/v1/import-sessions", tag
 app.include_router(authors_router, prefix="/api/v1/authors", tags=["authors"])
 app.include_router(debug_router, prefix="/api/v1/debug", tags=["debug"])
 app.include_router(photos_router, prefix="/api/v1/photos", tags=["photos"])
+app.include_router(photo_searches_router, prefix="/api/v1/photo-searches", tags=["photo-searches"])
+app.include_router(photo_collections_router, prefix="/api/v1")  # Photo collections endpoints
 app.include_router(tags_router, prefix="/api/v1")  # Tag endpoints
 app.include_router(photo_stacks_router, prefix="/api/v1")  # PhotoStack endpoints
+app.include_router(database_stats_router, prefix="/api/v1")  # Database statistics (no auth required)
 
 # Debug endpoint to list all routes
 @app.get("/debug/routes")

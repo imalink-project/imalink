@@ -399,7 +399,7 @@ class PhotoService:
             updated_at=getattr(photo, 'updated_at'),
             author=author,
             author_id=getattr(photo, 'author_id', None),
-            import_sessions=photo.import_sessions,
+            import_session_id=getattr(photo, 'import_session_id', None),
             first_imported=photo.first_imported,
             last_imported=photo.last_imported,
             has_gps=has_gps,
@@ -555,6 +555,7 @@ class PhotoService:
             'taken_at': image_data.taken_at,
             'gps_latitude': image_data.gps_latitude,
             'gps_longitude': image_data.gps_longitude,
+            'import_session_id': image_data.import_session_id,  # Track which import session created this Photo
             # Try to extract dimensions from EXIF metadata
             # Common EXIF fields: ImageWidth, ImageHeight, ExifImageWidth, ExifImageHeight
             'width': (image_data.exif_dict.get('ImageWidth') or 
@@ -565,12 +566,11 @@ class PhotoService:
         photo_data = PhotoCreateRequest(**photo_data_dict)
         photo = self.photo_repo.create(photo_data, user_id=user_id)
         
-        # 2. Create ImageFile with only file metadata (no visual data)
+        # 2. Create ImageFile with only file metadata (no visual data, no import_session_id)
         image_data_dict = {
             'filename': image_data.filename,
             'file_size': image_data.file_size,
             'photo_hothash': hothash,
-            'import_session_id': image_data.import_session_id,
             'imported_time': datetime.utcnow(),
             'imported_info': image_data.imported_info,
             'local_storage_info': image_data.local_storage_info,
@@ -588,12 +588,12 @@ class PhotoService:
     ) -> ImageFile:
         """
         Create ImageFile for existing Photo (file metadata only)
+        Note: import_session_id is NOT set here - it's already on the Photo
         """
         image_data_dict = {
             'filename': image_data.filename,
             'file_size': image_data.file_size,
             'photo_hothash': image_data.photo_hothash,
-            'import_session_id': image_data.import_session_id,
             'imported_time': datetime.utcnow(),
             'imported_info': image_data.imported_info,
             'local_storage_info': image_data.local_storage_info,

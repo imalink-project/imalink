@@ -18,12 +18,13 @@ class ImageFileRepository:
         self.db = db
     
     def get_by_id(self, image_file_id: int, user_id: Optional[int] = None) -> Optional[ImageFile]:
-        """Get image file by ID (user-scoped)"""
+        """
+        Get image file by ID
+        
+        NOTE: user_id parameter kept for API compatibility but not used.
+        ImageFile has no user_id - access control happens via Photo.user_id
+        """
         query = self.db.query(ImageFile).filter(ImageFile.id == image_file_id)
-        
-        if user_id is not None:
-            query = query.filter(ImageFile.user_id == user_id)
-        
         return query.first()
     
     # NOTE: get_by_hash and exists_by_hash removed - ImageFile no longer has hothash field
@@ -37,12 +38,13 @@ class ImageFileRepository:
         search_params: Optional[ImageFileSearchRequest] = None,
         user_id: Optional[int] = None
     ) -> List[ImageFile]:
-        """Get image_file files with optional filtering and pagination (user-scoped)"""
-        query = self.db.query(ImageFile)
+        """
+        Get image_file files with optional filtering and pagination
         
-        # Apply user filtering first if needed
-        if user_id is not None:
-            query = query.filter(ImageFile.user_id == user_id)
+        NOTE: user_id parameter kept for API compatibility but not used.
+        ImageFile has no user_id - access control happens via Photo.user_id
+        """
+        query = self.db.query(ImageFile)
         
         # Apply filters
         query = self._apply_filters(query, search_params)
@@ -61,12 +63,13 @@ class ImageFileRepository:
         search_params: Optional[ImageFileSearchRequest] = None,
         user_id: Optional[int] = None
     ) -> int:
-        """Count images matching criteria (user-scoped)"""
-        query = self.db.query(ImageFile)
+        """
+        Count images matching criteria
         
-        # Apply user filtering first if needed
-        if user_id is not None:
-            query = query.filter(ImageFile.user_id == user_id)
+        NOTE: user_id parameter kept for API compatibility but not used.
+        ImageFile has no user_id - access control happens via Photo.user_id
+        """
+        query = self.db.query(ImageFile)
         
         # Apply same filters as get_images
         query = self._apply_filters(query, search_params)
@@ -74,19 +77,17 @@ class ImageFileRepository:
         return query.count()
     
     def create(self, image_file_data: ImageFileCreateRequest | Dict[str, Any], user_id: int) -> ImageFile:
-        """Create new image_file record (user-scoped)"""
+        """Create new image_file record (user-scoped - user_id used for validation only)"""
         if isinstance(image_file_data, dict):
             image_dict = image_file_data
         else:
             image_dict = image_file_data.dict()
         
         # Filter out fields that belong to Photo model (not ImageFile)
-        # taken_at, gps_latitude, gps_longitude are used for Photo creation only
-        photo_fields = {'taken_at', 'gps_latitude', 'gps_longitude'}
+        # taken_at, gps_latitude, gps_longitude, import_session_id are Photo fields
+        # user_id is also NOT on ImageFile - access control via Photo.user_id
+        photo_fields = {'taken_at', 'gps_latitude', 'gps_longitude', 'import_session_id', 'user_id'}
         filtered_dict = {k: v for k, v in image_dict.items() if k not in photo_fields}
-        
-        # Add user_id to the data
-        filtered_dict['user_id'] = user_id
         
         image_file = ImageFile(**filtered_dict)
         self.db.add(image_file)

@@ -69,9 +69,19 @@ def search_photos(
     current_user: User = Depends(get_current_active_user),
     photo_service: PhotoService = Depends(get_photo_service)
 ):
-    """Search photos with advanced filtering (user-scoped)"""
+    """
+    Search photos with advanced filtering (user-scoped)
+    
+    DEPRECATED: This endpoint is maintained for backwards compatibility.
+    New code should use POST /api/v1/photo-searches/ad-hoc instead.
+    
+    This endpoint will be removed in a future version.
+    """
     try:
-        return photo_service.search_photos(search_request, getattr(current_user, 'id'))
+        # Delegate to PhotoSearchService for consistency
+        from services.photo_search_service import PhotoSearchService
+        search_service = PhotoSearchService(photo_service.db)
+        return search_service.execute_adhoc_search(search_request, getattr(current_user, 'id'))
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -106,7 +116,8 @@ def create_photo_with_file(
     try:
         logger.debug(f"Creating new photo for user {getattr(current_user, 'id')}")
         logger.debug(f"Request data: filename={image_data.filename}, has_hotpreview={bool(image_data.hotpreview)}, "
-                    f"file_size={image_data.file_size}, has_exif={bool(image_data.exif_dict)}")
+                    f"file_size={image_data.file_size}, has_exif={bool(image_data.exif_dict)}, "
+                    f"import_session_id={image_data.import_session_id}")
         
         return photo_service.create_photo_with_file(image_data, getattr(current_user, 'id'))
     except DuplicateImageError as e:

@@ -68,7 +68,10 @@ class Photo(Base, TimestampMixin):
     # User metadata (editable by users)
     rating = Column(Integer, default=0)  # 1-5 star rating
     
-    # Authorship (import tracking moved to ImageFile level)
+    # Import tracking - which import session this photo came from
+    import_session_id = Column(Integer, ForeignKey('import_sessions.id'), nullable=True, index=True)
+    
+    # Authorship
     author_id = Column(Integer, ForeignKey('authors.id'), nullable=True, index=True)
     
     # PhotoStack relationship - each photo can belong to ONE stack (optional)
@@ -88,9 +91,9 @@ class Photo(Base, TimestampMixin):
     image_files = relationship("ImageFile", back_populates="photo", cascade="all, delete-orphan", 
                         foreign_keys="[ImageFile.photo_hothash]")
     author = relationship("Author", back_populates="photos")
+    import_session = relationship("ImportSession", back_populates="photos")
     stack = relationship("PhotoStack", back_populates="photos")
     tags = relationship("Tag", secondary="photo_tags", back_populates="photos")
-    # Note: No back_populates to ImportSession - access photos via ImportSession.image_files[].photo
     
     def __repr__(self):
         return f"<Photo(hash={self.hothash[:8]}..., rating={self.rating}, files={len(self.image_files) if self.image_files else 0})>"
@@ -134,12 +137,6 @@ class Photo(Base, TimestampMixin):
         if self.image_files:
             return getattr(self.image_files[0], 'filename', 'Unknown')
         return "Unknown"
-    
-    @property
-    def import_sessions(self) -> List[int]:
-        """Get all unique import sessions for this photo's files"""
-        sessions = [f.import_session_id for f in self.image_files if f.import_session_id]
-        return list(set(sessions))
     
     @property
     def first_imported(self) -> Optional[datetime]:

@@ -41,6 +41,21 @@ class PhotoRepository:
             .first()
         ) is not None
     
+    def get_by_hothashes(self, hothashes: List[str], user_id: int) -> List[Photo]:
+        """Get multiple photos by hothashes (user-scoped)"""
+        return (
+            self.db.query(Photo)
+            .options(
+                joinedload(Photo.author),
+                joinedload(Photo.image_files)
+            )
+            .filter(
+                Photo.hothash.in_(hothashes),
+                Photo.user_id == user_id
+            )
+            .all()
+        )
+    
     def get_photos(
         self, 
         offset: int = 0, 
@@ -90,6 +105,7 @@ class PhotoRepository:
         - exif_dict: Full EXIF metadata from master file
         - GPS, dimensions, taken_at: Extracted metadata for fast queries
         - rating, author: User-editable metadata
+        - import_session_id: Which import session created this photo
         """
         photo = Photo(
             hothash=photo_data.hothash,
@@ -102,7 +118,8 @@ class PhotoRepository:
             gps_latitude=photo_data.gps_latitude,
             gps_longitude=photo_data.gps_longitude,
             rating=photo_data.rating or 0,
-            author_id=photo_data.author_id
+            author_id=photo_data.author_id,
+            import_session_id=photo_data.import_session_id
         )
         
         self.db.add(photo)
@@ -152,7 +169,15 @@ class PhotoRepository:
         search_params: Optional[PhotoSearchRequest] = None,
         user_id: Optional[int] = None
     ):
-        """Apply filters to photo query"""
+        """
+        Apply filters to photo query
+        
+        Rules:
+        - All filters are optional (None = ignore)
+        - Multiple filters use AND logic
+        - tag_ids uses OR logic (photos with ANY of the tags)
+        - Empty search returns all user's photos
+        """
         
         # Filter by user (data isolation)
         if user_id:
@@ -168,6 +193,16 @@ class PhotoRepository:
         # Filter by author_id from search params
         if search_params.author_id:
             query = query.filter(Photo.author_id == search_params.author_id)
+        
+        # Filter by import_session_id
+        if search_params.import_session_id:
+            query = query.filter(Photo.import_session_id == search_params.import_session_id)
+        
+        # Filter by tags (OR logic: photos with ANY of the specified tags)
+        if search_params.tag_ids:
+            from models.tag import Tag
+            # Join with photo_tags association table
+            query = query.join(Photo.tags).filter(Tag.id.in_(search_params.tag_ids)).distinct()
         
         # Filter by rating range
         if search_params.rating_min is not None:

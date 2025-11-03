@@ -9,6 +9,8 @@ from .image_file import ImageFile
 from .author import Author
 from .import_session import ImportSession
 from .photo_stack import PhotoStack
+from .saved_photo_search import SavedPhotoSearch
+from .photo_collection import PhotoCollection
 
 __all__ = [
     "Base",
@@ -18,5 +20,7 @@ __all__ = [
     "ImageFile", 
     "Author",
     "ImportSession",
-    "PhotoStack"
+    "PhotoStack",
+    "SavedPhotoSearch",
+    "PhotoCollection"
 ]

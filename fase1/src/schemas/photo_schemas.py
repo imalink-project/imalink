@@ -120,10 +120,12 @@ class PhotoResponse(BaseModel):
     author: Optional[AuthorSummary] = Field(None, description="Photo author/photographer")
     author_id: Optional[int] = Field(None, description="Author ID")
     
-    # Import information (computed from ImageFiles)
-    import_sessions: List[int] = Field(default_factory=list, description="All import sessions for this photo's files")
-    first_imported: Optional[datetime] = Field(None, description="Earliest import time")
-    last_imported: Optional[datetime] = Field(None, description="Latest import time")
+    # Import information - which import session created this Photo
+    import_session_id: Optional[int] = Field(None, description="Import session that created this photo")
+    
+    # File import times (computed from ImageFiles)
+    first_imported: Optional[datetime] = Field(None, description="Earliest file import time")
+    last_imported: Optional[datetime] = Field(None, description="Latest file import time")
     
     # Computed properties
     has_gps: bool = Field(False, description="Whether photo has GPS coordinates")
@@ -178,7 +180,7 @@ class PhotoCreateRequest(BaseModel):
     
     # Relationships
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
-    # import_session_id removed - now tracked at ImageFile level
+    import_session_id: Optional[int] = Field(None, description="Import session that created this photo")
 
 
 class PhotoUpdateRequest(BaseModel):
@@ -191,16 +193,34 @@ class PhotoUpdateRequest(BaseModel):
 
 
 class PhotoSearchRequest(BaseModel):
-    """Request model for photo search"""
+    """
+    Request model for photo search
+    
+    Search criteria rules:
+    - All filters are optional (None = ignore this filter)
+    - Multiple filters are combined with AND logic
+    - Empty search (all fields None) returns all photos (with pagination)
+    - tag_ids uses OR logic (photos with ANY of the specified tags)
+    - For ranges (rating, dates): both min/max are inclusive
+    """
     model_config = ConfigDict(extra='forbid')
     
-    author_id: Optional[int] = Field(None, description="Filter by author ID")
-    rating_min: Optional[int] = Field(None, ge=0, le=5, description="Minimum rating")
-    rating_max: Optional[int] = Field(None, ge=0, le=5, description="Maximum rating")
-    taken_after: Optional[datetime] = Field(None, description="Taken after date")
-    taken_before: Optional[datetime] = Field(None, description="Taken before date")
-    has_gps: Optional[bool] = Field(None, description="Filter by GPS availability")
-    has_raw: Optional[bool] = Field(None, description="Filter by RAW file availability")
+    # Relationship filters
+    author_id: Optional[int] = Field(None, description="Filter by author ID (exact match)")
+    import_session_id: Optional[int] = Field(None, description="Filter by import session ID (exact match)")
+    tag_ids: Optional[List[int]] = Field(None, description="Filter by tag IDs (photos with ANY of these tags)")
+    
+    # Metadata filters
+    rating_min: Optional[int] = Field(None, ge=0, le=5, description="Minimum rating (inclusive)")
+    rating_max: Optional[int] = Field(None, ge=0, le=5, description="Maximum rating (inclusive)")
+    
+    # Date filters
+    taken_after: Optional[datetime] = Field(None, description="Photos taken after this date (inclusive)")
+    taken_before: Optional[datetime] = Field(None, description="Photos taken before this date (inclusive)")
+    
+    # Boolean filters
+    has_gps: Optional[bool] = Field(None, description="True: only with GPS, False: only without GPS, None: all")
+    has_raw: Optional[bool] = Field(None, description="True: only with RAW, False: only without RAW, None: all")
     
     # Pagination
     offset: int = Field(0, ge=0, description="Number of items to skip")
@@ -208,7 +228,33 @@ class PhotoSearchRequest(BaseModel):
     
     # Sorting
     sort_by: str = Field("taken_at", description="Sort field (taken_at, created_at, rating)")
-    sort_order: str = Field("desc", pattern="^(asc|desc)$", description="Sort order")
+    sort_order: str = Field("desc", pattern="^(asc|desc)$", description="Sort order (asc or desc)")
+    
+    @field_validator('rating_max')
+    @classmethod
+    def validate_rating_range(cls, v, info):
+        """Ensure rating_max >= rating_min if both are set"""
+        if v is not None and info.data.get('rating_min') is not None:
+            if v < info.data['rating_min']:
+                raise ValueError('rating_max must be >= rating_min')
+        return v
+    
+    @field_validator('taken_before')
+    @classmethod
+    def validate_date_range(cls, v, info):
+        """Ensure taken_before >= taken_after if both are set"""
+        if v is not None and info.data.get('taken_after') is not None:
+            if v < info.data['taken_after']:
+                raise ValueError('taken_before must be >= taken_after')
+        return v
+    
+    @field_validator('tag_ids')
+    @classmethod
+    def validate_tag_ids(cls, v):
+        """Ensure tag_ids list is not empty if provided"""
+        if v is not None and len(v) == 0:
+            raise ValueError('tag_ids must contain at least one ID if provided')
+        return v
 
 
 # Import TagSummary after PhotoResponse is defined to avoid circular imports
