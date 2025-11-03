@@ -10,20 +10,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Import our modules
-from core.config import config
-from database.connection import init_database
-from api.v1.import_sessions import router as import_sessions_router
-from api.v1.authors import router as authors_router
-from api.v1.debug import router as debug_router
-from api.v1.photos import router as photos_router
-from api.v1.tags import router as tags_router
-from api.v1.database_stats import router as database_stats_router
-from api.v1.photo_searches import router as photo_searches_router
-from api.v1.photo_collections import router as photo_collections_router
-from api.photo_stacks import router as photo_stacks_router
-from api.auth import router as auth_router
-from api.users import router as users_router
-from core.exceptions import APIException
+from src.core.config import config
+from src.database.connection import init_database
+from src.api.v1.import_sessions import router as import_sessions_router
+from src.api.v1.authors import router as authors_router
+from src.api.v1.debug import router as debug_router
+from src.api.v1.photos import router as photos_router
+from src.api.v1.tags import router as tags_router
+from src.api.v1.database_stats import router as database_stats_router
+from src.api.v1.photo_searches import router as photo_searches_router
+from src.api.v1.photo_collections import router as photo_collections_router
+from src.api.photo_stacks import router as photo_stacks_router
+from src.api.auth import router as auth_router
+from src.api.users import router as users_router
+from src.core.exceptions import APIException
 
 # Ensure directories exist
 config.ensure_directories()
