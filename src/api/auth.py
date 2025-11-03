@@ -4,11 +4,11 @@ Authentication API endpoints
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from database.connection import get_db
-from services.auth_service import AuthService
+from src.database.connection import get_db
+from src.services.auth_service import AuthService
 from schemas.user import UserCreate, UserResponse, UserLogin, UserToken
-from api.dependencies import get_current_active_user
-from models.user import User
+from src.api.dependencies import get_current_active_user
+from src.models.user import User
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 

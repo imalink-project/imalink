@@ -9,9 +9,9 @@ import os
 from pathlib import Path
 from typing import Dict
 
-from database.connection import get_db
+from src.database.connection import get_db
 from schemas.database_stats_schemas import DatabaseStatsResponse, TableStats, StorageStats
-from core.config import Config
+from src.core.config import Config
 
 router = APIRouter(prefix="/database-stats", tags=["System"])
 

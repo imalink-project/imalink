@@ -19,13 +19,13 @@ import io
 from PIL import Image as PILImage
 from datetime import datetime
 
-from repositories.image_file_repository import ImageFileRepository
-from repositories.photo_repository import PhotoRepository
+from src.repositories.image_file_repository import ImageFileRepository
+from src.repositories.photo_repository import PhotoRepository
 from schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
 from schemas.photo_schemas import PhotoCreateRequest
-from core.exceptions import NotFoundError, DuplicateImageError, ValidationError
+from src.core.exceptions import NotFoundError, DuplicateImageError, ValidationError
 from models import ImageFile
 
 

@@ -5,15 +5,15 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from repositories.photo_search_repository import PhotoSearchRepository
-from repositories.photo_repository import PhotoRepository
+from src.repositories.photo_search_repository import PhotoSearchRepository
+from src.repositories.photo_repository import PhotoRepository
 from schemas.photo_search_schemas import (
     SavedPhotoSearchCreate, SavedPhotoSearchUpdate, SavedPhotoSearchResponse,
     SavedPhotoSearchSummary, SavedPhotoSearchListResponse
 )
 from schemas.photo_schemas import PhotoSearchRequest, PhotoResponse
 from schemas.common import PaginatedResponse, create_paginated_response
-from core.exceptions import NotFoundError, ValidationError
+from src.core.exceptions import NotFoundError, ValidationError
 
 
 class PhotoSearchService:

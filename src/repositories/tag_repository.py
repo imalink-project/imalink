@@ -5,8 +5,8 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 
-from models.tag import Tag, PhotoTag
-from models.photo import Photo
+from src.models.tag import Tag, PhotoTag
+from src.models.photo import Photo
 
 
 class TagRepository:

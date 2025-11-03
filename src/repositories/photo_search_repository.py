@@ -5,7 +5,7 @@ from typing import Optional, List
 from sqlalchemy.orm import Session
 from datetime import datetime
 
-from models.saved_photo_search import SavedPhotoSearch
+from src.models.saved_photo_search import SavedPhotoSearch
 from schemas.photo_search_schemas import SavedPhotoSearchCreate, SavedPhotoSearchUpdate
 
 

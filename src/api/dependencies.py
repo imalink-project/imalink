@@ -6,11 +6,11 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 
-from database.connection import get_db
-from services.auth_service import AuthService
-from models.user import User
+from src.database.connection import get_db
+from src.services.auth_service import AuthService
+from src.models.user import User
 from utils.security import get_user_id_from_token
-from core.config import config
+from src.core.config import config
 
 # HTTP Bearer token scheme for extracting JWT from Authorization header
 security = HTTPBearer(auto_error=False)  # auto_error=False to allow optional auth

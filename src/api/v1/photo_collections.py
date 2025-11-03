@@ -6,9 +6,9 @@ from typing import List
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
-from api.dependencies import get_current_user
-from database.connection import get_db
-from models.user import User
+from src.api.dependencies import get_current_user
+from src.database.connection import get_db
+from src.models.user import User
 from schemas.photo_collection import (
     PhotoCollectionCreate,
     PhotoCollectionUpdate,
@@ -20,7 +20,7 @@ from schemas.photo_collection import (
     CollectionListResponse
 )
 from schemas.photo_schemas import PhotoResponse
-from services.photo_collection_service import PhotoCollectionService
+from src.services.photo_collection_service import PhotoCollectionService
 
 
 router = APIRouter(prefix="/collections", tags=["Photo Collections"])

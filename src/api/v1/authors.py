@@ -4,16 +4,16 @@ API endpoints for Author management - Modernized with Service Layer
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from services.author_service import AuthorService
+from src.services.author_service import AuthorService
 from schemas.responses.author_responses import (
     AuthorResponse, AuthorListResponse
 )
 from schemas.requests.author_requests import AuthorCreateRequest, AuthorUpdateRequest
 from schemas.common import PaginatedResponse, SingleResponse, create_success_response
-from core.dependencies import get_author_service
-from core.exceptions import NotFoundError, ValidationError, DuplicateImageError
-from api.dependencies import get_current_user
-from models.user import User
+from src.core.dependencies import get_author_service
+from src.core.exceptions import NotFoundError, ValidationError, DuplicateImageError
+from src.api.dependencies import get_current_user
+from src.models.user import User
 
 router = APIRouter()
 

@@ -7,14 +7,14 @@ from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
 
 # Database dependency (reuse existing)
-from database.connection import get_db
+from src.database.connection import get_db
 
 # Service imports
-from services.image_file_service import ImageFileService
-from services.author_service import AuthorService
-from services.import_session_service import ImportSessionService
-from services.photo_service import PhotoService
-from services.photo_stack_service import PhotoStackService
+from src.services.image_file_service import ImageFileService
+from src.services.author_service import AuthorService
+from src.services.import_session_service import ImportSessionService
+from src.services.photo_service import PhotoService
+from src.services.photo_stack_service import PhotoStackService
 
 
 # ImageFile Service Dependencies

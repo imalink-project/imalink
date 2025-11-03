@@ -7,9 +7,9 @@ without modifying the underlying Photo objects.
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from core.dependencies import get_current_user, get_photo_stack_service
-from models.user import User
-from services.photo_stack_service import PhotoStackService
+from src.core.dependencies import get_current_user, get_photo_stack_service
+from src.models.user import User
+from src.services.photo_stack_service import PhotoStackService
 from schemas.requests import (
     PhotoStackCreateRequest,
     PhotoStackUpdateRequest,
@@ -23,7 +23,7 @@ from schemas.responses import (
     PhotoStackPhotoResponse
 )
 from schemas.common import PaginatedResponse
-from core.exceptions import NotFoundError, ValidationError
+from src.core.exceptions import NotFoundError, ValidationError
 
 router = APIRouter(prefix="/photo-stacks", tags=["photo-stacks"])
 

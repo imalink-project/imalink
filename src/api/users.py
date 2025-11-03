@@ -4,11 +4,11 @@ User management API endpoints
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from database.connection import get_db
-from repositories.user_repository import UserRepository
+from src.database.connection import get_db
+from src.repositories.user_repository import UserRepository
 from schemas.user import UserResponse, UserUpdate, UserChangePassword
-from api.dependencies import get_current_active_user
-from models.user import User
+from src.api.dependencies import get_current_active_user
+from src.models.user import User
 from utils.security import verify_password
 
 router = APIRouter(prefix="/users", tags=["users"])

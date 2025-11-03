@@ -5,7 +5,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from models.user import User
+from src.models.user import User
 from utils.security import hash_password
 
 

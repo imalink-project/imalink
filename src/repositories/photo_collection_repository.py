@@ -6,7 +6,7 @@ from typing import List, Optional
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
-from models.photo_collection import PhotoCollection
+from src.models.photo_collection import PhotoCollection
 from schemas.photo_collection import PhotoCollectionCreate, PhotoCollectionUpdate
 
 

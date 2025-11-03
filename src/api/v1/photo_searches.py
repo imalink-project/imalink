@@ -6,17 +6,17 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 import logging
 
-from services.photo_search_service import PhotoSearchService
+from src.services.photo_search_service import PhotoSearchService
 from schemas.photo_search_schemas import (
     SavedPhotoSearchCreate, SavedPhotoSearchUpdate, SavedPhotoSearchResponse,
     SavedPhotoSearchListResponse
 )
 from schemas.photo_schemas import PhotoSearchRequest, PhotoResponse
 from schemas.common import PaginatedResponse, create_success_response
-from core.exceptions import NotFoundError, ValidationError
-from api.dependencies import get_current_user
-from models.user import User
-from database.connection import get_db
+from src.core.exceptions import NotFoundError, ValidationError
+from src.api.dependencies import get_current_user
+from src.models.user import User
+from src.database.connection import get_db
 from sqlalchemy.orm import Session
 
 router = APIRouter()

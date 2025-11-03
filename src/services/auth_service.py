@@ -4,8 +4,8 @@ Authentication service for user login/registration
 from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 
-from models.user import User
-from repositories.user_repository import UserRepository
+from src.models.user import User
+from src.repositories.user_repository import UserRepository
 from utils.security import verify_password, create_access_token
 from schemas.user import UserCreate, UserResponse
 

@@ -7,12 +7,12 @@ All file operations are handled by the client application.
 from typing import Optional
 from sqlalchemy.orm import Session
 
-from repositories.import_session_repository import ImportSessionRepository
+from src.repositories.import_session_repository import ImportSessionRepository
 from schemas.responses.import_session_responses import (
     ImportSessionResponse,
     ImportSessionListResponse
 )
-from core.exceptions import NotFoundError
+from src.core.exceptions import NotFoundError
 
 
 class ImportSessionService:

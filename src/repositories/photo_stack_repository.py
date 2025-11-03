@@ -5,8 +5,8 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from models.photo_stack import PhotoStack
-from models.photo import Photo
+from src.models.photo_stack import PhotoStack
+from src.models.photo import Photo
 
 
 class PhotoStackRepository:

@@ -6,15 +6,15 @@ from sqlalchemy.orm import Session
 from typing import List
 import logging
 
-from database.connection import get_db
-from services.tag_service import TagService
+from src.database.connection import get_db
+from src.services.tag_service import TagService
 from schemas.tag_schemas import (
     TagListResponse, TagAutocompleteResponse, TagUpdate,
     DeleteTagResponse, RenameTagResponse
 )
-from models.user import User
-from api.dependencies import get_current_user
-from core.exceptions import NotFoundError, ValidationError
+from src.models.user import User
+from src.api.dependencies import get_current_user
+from src.core.exceptions import NotFoundError, ValidationError
 
 router = APIRouter(prefix="/tags", tags=["tags"])
 logger = logging.getLogger(__name__)

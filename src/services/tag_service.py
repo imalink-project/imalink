@@ -5,14 +5,14 @@ from typing import List
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
-from repositories.tag_repository import TagRepository
-from repositories.photo_repository import PhotoRepository
+from src.repositories.tag_repository import TagRepository
+from src.repositories.photo_repository import PhotoRepository
 from schemas.tag_schemas import (
     TagResponse, TagListResponse, TagAutocompleteResponse, TagAutocompleteItem,
     AddTagsResponse, RemoveTagResponse, DeleteTagResponse, RenameTagResponse,
     TagSummary
 )
-from core.exceptions import NotFoundError, ValidationError, ConflictError
+from src.core.exceptions import NotFoundError, ValidationError, ConflictError
 
 
 class TagService:

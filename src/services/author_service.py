@@ -4,13 +4,13 @@ Author Service - Business Logic Layer for Author operations
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 
-from repositories.author_repository import AuthorRepository
+from src.repositories.author_repository import AuthorRepository
 from schemas.responses.author_responses import (
     AuthorResponse, AuthorListResponse
 )
 from schemas.requests.author_requests import AuthorCreateRequest, AuthorUpdateRequest
 from schemas.common import PaginatedResponse, create_paginated_response
-from core.exceptions import NotFoundError, DuplicateImageError, ValidationError
+from src.core.exceptions import NotFoundError, DuplicateImageError, ValidationError
 
 
 class AuthorService:

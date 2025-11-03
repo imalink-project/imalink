@@ -13,10 +13,10 @@ import logging
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from core.dependencies import get_import_session_service
-from api.dependencies import get_current_user
-from services.import_session_service import ImportSessionService
-from models.user import User
+from src.core.dependencies import get_import_session_service
+from src.api.dependencies import get_current_user
+from src.services.import_session_service import ImportSessionService
+from src.models.user import User
 from schemas.requests.import_session_requests import (
     ImportSessionCreateRequest, 
     ImportSessionUpdateRequest
@@ -26,7 +26,7 @@ from schemas.responses.import_session_responses import (
     ImportSessionListResponse
 )
 from schemas.common import create_success_response
-from core.exceptions import NotFoundError, ValidationError
+from src.core.exceptions import NotFoundError, ValidationError
 
 logger = logging.getLogger(__name__)
 router = APIRouter()

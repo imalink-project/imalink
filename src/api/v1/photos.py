@@ -22,9 +22,9 @@ from fastapi.responses import StreamingResponse
 import io
 import logging
 
-from core.dependencies import get_photo_service, get_photo_stack_service
-from services.photo_service import PhotoService
-from services.photo_stack_service import PhotoStackService
+from src.core.dependencies import get_photo_service, get_photo_stack_service
+from src.services.photo_service import PhotoService
+from src.services.photo_stack_service import PhotoStackService
 from schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, 
     PhotoSearchRequest, TimeLocCorrectionRequest, ViewCorrectionRequest
@@ -35,9 +35,9 @@ from schemas.image_file_upload_schemas import (
 from schemas.tag_schemas import AddTagsRequest, AddTagsResponse, RemoveTagResponse
 from schemas.common import PaginatedResponse, create_success_response
 from schemas.responses.photo_stack_responses import PhotoStackSummary
-from core.exceptions import NotFoundError, ValidationError, DuplicateImageError
-from api.dependencies import get_current_active_user
-from models.user import User
+from src.core.exceptions import NotFoundError, ValidationError, DuplicateImageError
+from src.api.dependencies import get_current_active_user
+from src.models.user import User
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

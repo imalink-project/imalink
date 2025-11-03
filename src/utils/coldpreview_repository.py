@@ -20,7 +20,7 @@ from typing import Optional, Tuple
 from PIL import Image as PILImage
 import io
 
-from core.config import Config
+from src.core.config import Config
 
 
 class ColdpreviewRepository:

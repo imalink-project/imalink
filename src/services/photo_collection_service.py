@@ -6,10 +6,10 @@ from typing import List, Optional, Set
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from models.photo_collection import PhotoCollection
-from models.photo import Photo
-from repositories.photo_collection_repository import PhotoCollectionRepository
-from repositories.photo_repository import PhotoRepository
+from src.models.photo_collection import PhotoCollection
+from src.models.photo import Photo
+from src.repositories.photo_collection_repository import PhotoCollectionRepository
+from src.repositories.photo_repository import PhotoRepository
 from schemas.photo_collection import (
     PhotoCollectionCreate,
     PhotoCollectionUpdate,

@@ -15,8 +15,8 @@ import io
 
 from PIL import Image as PILImage
 
-from repositories.photo_repository import PhotoRepository
-from repositories.image_file_repository import ImageFileRepository
+from src.repositories.photo_repository import PhotoRepository
+from src.repositories.image_file_repository import ImageFileRepository
 from schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, PhotoSearchRequest,
     AuthorSummary, ImageFileSummary, TimeLocCorrectionRequest, ViewCorrectionRequest
@@ -26,7 +26,7 @@ from schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
 from schemas.common import PaginatedResponse, create_paginated_response
-from core.exceptions import NotFoundError, DuplicatePhotoError, DuplicateImageError, ValidationError
+from src.core.exceptions import NotFoundError, DuplicatePhotoError, DuplicateImageError, ValidationError
 from models import Photo, ImageFile
 
 
