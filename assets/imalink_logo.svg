@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Red border frame -->
+  <rect width="64" height="64" fill="#e74c3c" rx="8"/>
+  <rect x="4" y="4" width="56" height="56" fill="#f1c40f" rx="4"/>
+  
+  <!-- Sunset mountain scene -->
+  <!-- Dramatic sun (placed behind mountains) -->
+  <circle cx="48" cy="20" r="8" fill="#e67e22" opacity="0.8"/>
+  <circle cx="48" cy="20" r="6" fill="#f39c12"/>
+  <circle cx="48" cy="20" r="4" fill="#f1c40f"/>
+  
+  <!-- Mountain range silhouette -->
+  <polygon points="6,52 6,45 18,32 28,40 38,30 48,38 58,28 58,52" fill="#2c3e50"/>
+  
+  <!-- Prominent peak -->
+  <polygon points="20,52 20,42 35,24 50,35 58,30 58,52" fill="#34495e"/>
+  
+  <!-- Stylized "IL" -->
+  <text x="12" y="15" text-anchor="middle" font-family="Arial, sans-serif" 
+        font-size="10" font-weight="bold" fill="#c0392b">IL</text>
+</svg>
