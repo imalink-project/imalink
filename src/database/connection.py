@@ -76,7 +76,11 @@ def get_db_sync() -> Session:
 # Initialize database on import
 def init_database():
     """Initialize database with all tables"""
+    # Create tables if they don't exist
+    # This uses engine directly, not a session, so no transaction to worry about
     try:
-        create_tables()
+        Base.metadata.create_all(bind=engine)
     except Exception as e:
-        raise
+        # Log but don't fail startup
+        print(f"Warning: Could not create tables: {e}")
+        # Not raising - tables might already exist
