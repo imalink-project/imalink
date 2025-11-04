@@ -7,7 +7,7 @@ from sqlalchemy.exc import IntegrityError
 
 from src.repositories.tag_repository import TagRepository
 from src.repositories.photo_repository import PhotoRepository
-from schemas.tag_schemas import (
+from src.schemas.tag_schemas import (
     TagResponse, TagListResponse, TagAutocompleteResponse, TagAutocompleteItem,
     AddTagsResponse, RemoveTagResponse, DeleteTagResponse, RenameTagResponse,
     TagSummary

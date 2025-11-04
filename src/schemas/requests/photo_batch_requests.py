@@ -5,7 +5,7 @@ from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field, field_validator
 
-from schemas.image_schemas import ImageCreateRequest
+from src.schemas.image_schemas import ImageCreateRequest
 
 
 class PhotoGroupRequest(BaseModel):

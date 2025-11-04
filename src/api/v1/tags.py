@@ -8,7 +8,7 @@ import logging
 
 from src.database.connection import get_db
 from src.services.tag_service import TagService
-from schemas.tag_schemas import (
+from src.schemas.tag_schemas import (
     TagListResponse, TagAutocompleteResponse, TagUpdate,
     DeleteTagResponse, RenameTagResponse
 )

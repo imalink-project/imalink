@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
 from src.services.auth_service import AuthService
-from schemas.user import UserCreate, UserResponse, UserLogin, UserToken
+from src.schemas.user import UserCreate, UserResponse, UserLogin, UserToken
 from src.api.dependencies import get_current_active_user
 from src.models.user import User
 

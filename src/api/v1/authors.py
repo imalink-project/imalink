@@ -5,11 +5,11 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from src.services.author_service import AuthorService
-from schemas.responses.author_responses import (
+from src.schemas.responses.author_responses import (
     AuthorResponse, AuthorListResponse
 )
-from schemas.requests.author_requests import AuthorCreateRequest, AuthorUpdateRequest
-from schemas.common import PaginatedResponse, SingleResponse, create_success_response
+from src.schemas.requests.author_requests import AuthorCreateRequest, AuthorUpdateRequest
+from src.schemas.common import PaginatedResponse, SingleResponse, create_success_response
 from src.core.dependencies import get_author_service
 from src.core.exceptions import NotFoundError, ValidationError, DuplicateImageError
 from src.api.dependencies import get_current_user

@@ -21,7 +21,7 @@ from datetime import datetime
 
 from src.repositories.image_file_repository import ImageFileRepository
 from src.repositories.photo_repository import PhotoRepository
-from schemas.image_file_upload_schemas import (
+from src.schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
 from src.schemas.photo_schemas import PhotoCreateRequest

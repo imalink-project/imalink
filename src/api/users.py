@@ -6,10 +6,10 @@ from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
 from src.repositories.user_repository import UserRepository
-from schemas.user import UserResponse, UserUpdate, UserChangePassword
+from src.schemas.user import UserResponse, UserUpdate, UserChangePassword
 from src.api.dependencies import get_current_active_user
 from src.models.user import User
-from utils.security import verify_password
+from src.utils.security import verify_password
 
 router = APIRouter(prefix="/users", tags=["users"])
 

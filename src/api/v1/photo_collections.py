@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from src.api.dependencies import get_current_user
 from src.database.connection import get_db
 from src.models.user import User
-from schemas.photo_collection import (
+from src.schemas.photo_collection import (
     PhotoCollectionCreate,
     PhotoCollectionUpdate,
     PhotoCollectionResponse,
@@ -19,7 +19,7 @@ from schemas.photo_collection import (
     PhotoManagementResponse,
     CollectionListResponse
 )
-from schemas.photo_schemas import PhotoResponse
+from src.schemas.photo_schemas import PhotoResponse
 from src.services.photo_collection_service import PhotoCollectionService
 
 

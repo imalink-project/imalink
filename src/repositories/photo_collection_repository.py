@@ -7,7 +7,7 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
 from src.models.photo_collection import PhotoCollection
-from schemas.photo_collection import PhotoCollectionCreate, PhotoCollectionUpdate
+from src.schemas.photo_collection import PhotoCollectionCreate, PhotoCollectionUpdate
 
 
 class PhotoCollectionRepository:

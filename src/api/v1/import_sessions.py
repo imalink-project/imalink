@@ -17,15 +17,15 @@ from src.core.dependencies import get_import_session_service
 from src.api.dependencies import get_current_user
 from src.services.import_session_service import ImportSessionService
 from src.models.user import User
-from schemas.requests.import_session_requests import (
+from src.schemas.requests.import_session_requests import (
     ImportSessionCreateRequest, 
     ImportSessionUpdateRequest
 )
-from schemas.responses.import_session_responses import (
+from src.schemas.responses.import_session_responses import (
     ImportSessionResponse,
     ImportSessionListResponse
 )
-from schemas.common import create_success_response
+from src.schemas.common import create_success_response
 from src.core.exceptions import NotFoundError, ValidationError
 
 logger = logging.getLogger(__name__)

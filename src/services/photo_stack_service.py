@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session
 from src.repositories.photo_stack_repository import PhotoStackRepository
 from src.repositories.photo_repository import PhotoRepository
 from src.core.exceptions import NotFoundError, ValidationError
-from schemas.common import PaginatedResponse, PaginationMeta
-from schemas.responses.photo_stack_responses import PhotoStackSummary
+from src.schemas.common import PaginatedResponse, PaginationMeta
+from src.schemas.responses.photo_stack_responses import PhotoStackSummary
 
 
 class PhotoStackService:

@@ -8,7 +8,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from src.repositories.import_session_repository import ImportSessionRepository
-from schemas.responses.import_session_responses import (
+from src.schemas.responses.import_session_responses import (
     ImportSessionResponse,
     ImportSessionListResponse
 )

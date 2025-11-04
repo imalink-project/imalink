@@ -7,12 +7,12 @@ from datetime import datetime
 
 from src.repositories.photo_search_repository import PhotoSearchRepository
 from src.repositories.photo_repository import PhotoRepository
-from schemas.photo_search_schemas import (
+from src.schemas.photo_search_schemas import (
     SavedPhotoSearchCreate, SavedPhotoSearchUpdate, SavedPhotoSearchResponse,
     SavedPhotoSearchSummary, SavedPhotoSearchListResponse
 )
-from schemas.photo_schemas import PhotoSearchRequest, PhotoResponse
-from schemas.common import PaginatedResponse, create_paginated_response
+from src.schemas.photo_schemas import PhotoSearchRequest, PhotoResponse
+from src.schemas.common import PaginatedResponse, create_paginated_response
 from src.core.exceptions import NotFoundError, ValidationError
 
 

@@ -7,12 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 import logging
 
 from src.services.photo_search_service import PhotoSearchService
-from schemas.photo_search_schemas import (
+from src.schemas.photo_search_schemas import (
     SavedPhotoSearchCreate, SavedPhotoSearchUpdate, SavedPhotoSearchResponse,
     SavedPhotoSearchListResponse
 )
-from schemas.photo_schemas import PhotoSearchRequest, PhotoResponse
-from schemas.common import PaginatedResponse, create_success_response
+from src.schemas.photo_schemas import PhotoSearchRequest, PhotoResponse
+from src.schemas.common import PaginatedResponse, create_success_response
 from src.core.exceptions import NotFoundError, ValidationError
 from src.api.dependencies import get_current_user
 from src.models.user import User

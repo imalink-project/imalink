@@ -25,16 +25,16 @@ import logging
 from src.core.dependencies import get_photo_service, get_photo_stack_service
 from src.services.photo_service import PhotoService
 from src.services.photo_stack_service import PhotoStackService
-from schemas.photo_schemas import (
+from src.schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, 
     PhotoSearchRequest, TimeLocCorrectionRequest, ViewCorrectionRequest
 )
-from schemas.image_file_upload_schemas import (
+from src.schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
-from schemas.tag_schemas import AddTagsRequest, AddTagsResponse, RemoveTagResponse
-from schemas.common import PaginatedResponse, create_success_response
-from schemas.responses.photo_stack_responses import PhotoStackSummary
+from src.schemas.tag_schemas import AddTagsRequest, AddTagsResponse, RemoveTagResponse
+from src.schemas.common import PaginatedResponse, create_success_response
+from src.schemas.responses.photo_stack_responses import PhotoStackSummary
 from src.core.exceptions import NotFoundError, ValidationError, DuplicateImageError
 from src.api.dependencies import get_current_active_user
 from src.models.user import User

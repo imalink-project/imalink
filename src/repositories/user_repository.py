@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
 from src.models.user import User
-from utils.security import hash_password
+from src.utils.security import hash_password
 
 
 class UserRepository:

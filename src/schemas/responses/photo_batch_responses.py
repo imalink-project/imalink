@@ -4,7 +4,7 @@ Photo batch response schemas for bulk photo creation operations
 from typing import Optional, List
 from pydantic import BaseModel, Field
 
-from schemas.photo_schemas import PhotoResponse
+from src.schemas.photo_schemas import PhotoResponse
 
 
 class PhotoGroupResult(BaseModel):

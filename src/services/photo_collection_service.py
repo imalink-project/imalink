@@ -10,7 +10,7 @@ from src.models.photo_collection import PhotoCollection
 from src.models.photo import Photo
 from src.repositories.photo_collection_repository import PhotoCollectionRepository
 from src.repositories.photo_repository import PhotoRepository
-from schemas.photo_collection import (
+from src.schemas.photo_collection import (
     PhotoCollectionCreate,
     PhotoCollectionUpdate,
     PhotoCollectionResponse,

@@ -17,11 +17,11 @@ from PIL import Image as PILImage
 
 from src.repositories.photo_repository import PhotoRepository
 from src.repositories.image_file_repository import ImageFileRepository
-from schemas.photo_schemas import (
+from src.schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, PhotoSearchRequest,
     AuthorSummary, ImageFileSummary, TimeLocCorrectionRequest, ViewCorrectionRequest
 )
-from schemas.tag_schemas import TagSummary
+from src.schemas.tag_schemas import TagSummary
 from src.schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )

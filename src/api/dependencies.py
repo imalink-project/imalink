@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from src.database.connection import get_db
 from src.services.auth_service import AuthService
 from src.models.user import User
-from utils.security import get_user_id_from_token
+from src.utils.security import get_user_id_from_token
 from src.core.config import config
 
 # HTTP Bearer token scheme for extracting JWT from Authorization header

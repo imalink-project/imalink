@@ -5,11 +5,11 @@ from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
 
 from src.repositories.author_repository import AuthorRepository
-from schemas.responses.author_responses import (
+from src.schemas.responses.author_responses import (
     AuthorResponse, AuthorListResponse
 )
-from schemas.requests.author_requests import AuthorCreateRequest, AuthorUpdateRequest
-from schemas.common import PaginatedResponse, create_paginated_response
+from src.schemas.requests.author_requests import AuthorCreateRequest, AuthorUpdateRequest
+from src.schemas.common import PaginatedResponse, create_paginated_response
 from src.core.exceptions import NotFoundError, DuplicateImageError, ValidationError
 
 

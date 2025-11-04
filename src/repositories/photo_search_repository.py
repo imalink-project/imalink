@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime
 
 from src.models.saved_photo_search import SavedPhotoSearch
-from schemas.photo_search_schemas import SavedPhotoSearchCreate, SavedPhotoSearchUpdate
+from src.schemas.photo_search_schemas import SavedPhotoSearchCreate, SavedPhotoSearchUpdate
 
 
 class PhotoSearchRepository:
