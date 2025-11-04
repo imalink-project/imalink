@@ -54,8 +54,12 @@ def get_database_stats(db: Session = Depends(get_db)):
     No authentication required - intended for system monitoring.
     """
     try:
+        logger.info("Starting database stats collection")
+        
         # Get database file path and size
         db_url = config.DATABASE_URL
+        logger.info(f"Database URL type: {db_url.split(':')[0]}")
+        
         if db_url.startswith("sqlite:///"):
             db_file_path = db_url.replace("sqlite:///", "")
         else:
@@ -65,9 +69,13 @@ def get_database_stats(db: Session = Depends(get_db)):
         if os.path.exists(db_file_path):
             db_file_size_bytes = os.path.getsize(db_file_path)
         
+        logger.info("Creating inspector")
         # Get table statistics
         inspector = inspect(db.bind)
+        
+        logger.info("Getting table names")
         table_names = inspector.get_table_names()
+        logger.info(f"Found tables: {table_names}")
         
         tables_stats: Dict[str, TableStats] = {}
         
