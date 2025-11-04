@@ -76,6 +76,9 @@ def get_db_sync() -> Session:
 # Initialize database on import
 def init_database():
     """Initialize database with all tables"""
+    # Dispose of any existing connections first to ensure clean state
+    engine.dispose()
+    
     # Create tables if they don't exist
     # This uses engine directly, not a session, so no transaction to worry about
     try:
@@ -84,3 +87,6 @@ def init_database():
         # Log but don't fail startup
         print(f"Warning: Could not create tables: {e}")
         # Not raising - tables might already exist
+    
+    # Dispose again to ensure no lingering connections from table creation
+    engine.dispose()
