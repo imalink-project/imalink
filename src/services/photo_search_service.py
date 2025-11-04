@@ -55,7 +55,7 @@ class PhotoSearchService:
         )
         
         # Convert to response models
-        from services.photo_service import PhotoService
+        from src.services.photo_service import PhotoService
         photo_service = PhotoService(self.db)
         photo_responses = [photo_service._convert_to_response(photo) for photo in photos]
         
