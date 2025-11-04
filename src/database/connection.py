@@ -56,13 +56,12 @@ def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db
-        # If we get here without exception, commit any pending changes
-        db.commit()
     except Exception:
         # Rollback on any exception to prevent aborted transaction state
         db.rollback()
         raise
     finally:
+        # Always close the session
         db.close()
 
 

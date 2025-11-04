@@ -104,11 +104,11 @@ async def api_exception_handler(request: Request, exc: APIException):
 
 
 
-
 @app.get("/health")
 async def health_check():
     """Simple health check endpoint"""
     return {"status": "ok", "message": "ImaLink Fase 1 is running"}
+
 
 
 if __name__ == "__main__":
