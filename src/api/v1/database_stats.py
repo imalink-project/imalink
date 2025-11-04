@@ -72,28 +72,34 @@ def get_database_stats(db: Session = Depends(get_db)):
         tables_stats: Dict[str, TableStats] = {}
         
         for table_name in table_names:
-            # Get record count
-            result = db.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
-            record_count = result.scalar() or 0
-            
-            # For SQLite, get approximate size using DBSTAT (if available)
-            # This is an approximation - actual size includes indexes, overhead, etc.
             try:
-                result = db.execute(text(
-                    f"SELECT SUM(pgsize) FROM dbstat WHERE name='{table_name}'"
-                ))
-                size_bytes = result.scalar() or 0
-            except Exception:
-                # Fallback: rough estimate based on record count
-                # Assume average 1KB per record (very rough estimate)
-                size_bytes = record_count * 1024
-            
-            tables_stats[table_name] = TableStats(
-                name=table_name,
-                record_count=record_count,
-                size_bytes=size_bytes,
-                size_mb=round(size_bytes / (1024 * 1024), 2)
-            )
+                # Get record count
+                logger.info(f"Querying table: {table_name}")
+                result = db.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
+                record_count = result.scalar() or 0
+                
+                # For SQLite, get approximate size using DBSTAT (if available)
+                # This is an approximation - actual size includes indexes, overhead, etc.
+                try:
+                    result = db.execute(text(
+                        f"SELECT SUM(pgsize) FROM dbstat WHERE name='{table_name}'"
+                    ))
+                    size_bytes = result.scalar() or 0
+                except Exception:
+                    # Fallback: rough estimate based on record count
+                    # Assume average 1KB per record (very rough estimate)
+                    size_bytes = record_count * 1024
+                
+                tables_stats[table_name] = TableStats(
+                    name=table_name,
+                    record_count=record_count,
+                    size_bytes=size_bytes,
+                    size_mb=round(size_bytes / (1024 * 1024), 2)
+                )
+            except Exception as e:
+                logger.error(f"Failed to query table {table_name}: {e}")
+                # Skip this table and continue with others
+                continue
         
         # Get cold storage statistics
         # Coldpreviews are stored in DATA_DIRECTORY/coldpreviews
