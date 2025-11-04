@@ -51,10 +51,17 @@ def create_tables():
 def get_db() -> Generator[Session, None, None]:
     """
     Dependency function for FastAPI to get database sessions
+    Ensures proper cleanup even if transaction fails
     """
     db = SessionLocal()
     try:
         yield db
+        # If we get here without exception, commit any pending changes
+        db.commit()
+    except Exception:
+        # Rollback on any exception to prevent aborted transaction state
+        db.rollback()
+        raise
     finally:
         db.close()
 
