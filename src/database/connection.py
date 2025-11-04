@@ -5,7 +5,7 @@ import os
 from typing import Generator
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
+from sqlalchemy.pool import StaticPool, NullPool
 
 from src.models import Base
 from src.core.config import Config
@@ -34,8 +34,11 @@ if is_sqlite:
     }
 elif is_postgresql:
     # PostgreSQL specific configuration
-    engine_kwargs["pool_size"] = 10
-    engine_kwargs["max_overflow"] = 20
+    # TEMPORARY: Use NullPool to debug connection issues
+    # NullPool creates a new connection for each request
+    engine_kwargs["poolclass"] = NullPool
+    # engine_kwargs["pool_size"] = 10
+    # engine_kwargs["max_overflow"] = 20
 
 engine = create_engine(DATABASE_URL, **engine_kwargs)
 
