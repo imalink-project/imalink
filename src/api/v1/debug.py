@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, inspect
 
 from src.core.dependencies import get_db
 from src.core.config import Config
@@ -67,16 +67,13 @@ async def reset_database(
         )
     
     try:
-        # Get all table names
-        result = db.execute(text("""
-            SELECT name FROM sqlite_master 
-            WHERE type='table' AND name NOT LIKE 'sqlite_%'
-        """))
-        tables = [row[0] for row in result.fetchall()]
+        # Get all table names using SQLAlchemy inspector (database-agnostic)
+        inspector = inspect(db.bind)
+        tables = inspector.get_table_names()
         
         # Drop all tables
         for table in tables:
-            db.execute(text(f"DROP TABLE IF EXISTS {table}"))
+            db.execute(text(f"DROP TABLE IF EXISTS {table} CASCADE"))
         
         db.commit()
         db.close()
@@ -202,22 +199,24 @@ async def database_schema(db: Session = Depends(get_db)):
     try:
         schema_info = {}
         
-        # Get all table names
-        result = db.execute(text("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'"))
-        tables = [row[0] for row in result.fetchall()]
+        # Get all table names using SQLAlchemy inspector (database-agnostic)
+        inspector = inspect(db.bind)
+        tables = inspector.get_table_names()
         
         for table_name in tables:
-            # Get table info (columns, types, etc.)
-            table_info = db.execute(text(f"PRAGMA table_info({table_name})"))
-            columns = []
+            # Get table columns using inspector (database-agnostic)
+            columns_info = inspector.get_columns(table_name)
+            pk_constraint = inspector.get_pk_constraint(table_name)
+            pk_columns = pk_constraint.get('constrained_columns', [])
             
-            for column in table_info.fetchall():
+            columns = []
+            for col in columns_info:
                 columns.append({
-                    "name": column[1],  # column name
-                    "type": column[2],  # data type
-                    "not_null": bool(column[3]),  # not null constraint
-                    "default_value": column[4],  # default value
-                    "primary_key": bool(column[5])  # primary key
+                    "name": col['name'],
+                    "type": str(col['type']),
+                    "nullable": col['nullable'],
+                    "default": str(col['default']) if col['default'] is not None else None,
+                    "primary_key": col['name'] in pk_columns
                 })
             
             # Get row count
@@ -259,12 +258,9 @@ async def clear_database(db: Session = Depends(get_db)):
         )
     
     try:
-        # Get all table names
-        result = db.execute(text("""
-            SELECT name FROM sqlite_master 
-            WHERE type='table' AND name NOT LIKE 'sqlite_%'
-        """))
-        tables = [row[0] for row in result.fetchall()]
+        # Get all table names using SQLAlchemy inspector (database-agnostic)
+        inspector = inspect(db.bind)
+        tables = inspector.get_table_names()
         
         # Count records before deletion
         counts_before = {}
@@ -272,15 +268,11 @@ async def clear_database(db: Session = Depends(get_db)):
             count_result = db.execute(text(f"SELECT COUNT(*) FROM {table}"))
             counts_before[table] = count_result.scalar()
         
-        # Disable foreign key constraints temporarily
-        db.execute(text("PRAGMA foreign_keys = OFF"))
-        
+        # PostgreSQL doesn't have PRAGMA, use transaction instead
         # Clear all tables (but preserve schema)
         for table in tables:
+            # CASCADE handles foreign key constraints
             db.execute(text(f"DELETE FROM {table}"))
-        
-        # Re-enable foreign key constraints
-        db.execute(text("PRAGMA foreign_keys = ON"))
         
         db.commit()
         
