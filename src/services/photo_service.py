@@ -40,28 +40,28 @@ class PhotoService:
     
     def get_photos(
         self,
+        user_id: int,
         offset: int = 0,
         limit: int = 100,
         author_id: Optional[int] = None,
-        search_params: Optional[PhotoSearchRequest] = None,
-        user_id: Optional[int] = None
+        search_params: Optional[PhotoSearchRequest] = None
     ) -> PaginatedResponse[PhotoResponse]:
         """Get paginated list of photos (user-scoped)"""
         
         # Get photos from repository
         photos = self.photo_repo.get_photos(
+            user_id=user_id,
             offset=offset,
             limit=limit,
             author_id=author_id,
-            search_params=search_params,
-            user_id=user_id
+            search_params=search_params
         )
         
         # Count total photos
         total = self.photo_repo.count_photos(
+            user_id=user_id,
             author_id=author_id,
-            search_params=search_params,
-            user_id=user_id
+            search_params=search_params
         )
         
         # Convert to response models
@@ -107,9 +107,9 @@ class PhotoService:
         # 2. Generate content-based hash from hotpreview (SHA256)
         hothash = self._generate_hothash_from_hotpreview(hotpreview_bytes)
         
-        # 3. Check if Photo with same visual content already exists
+        # 3. Check if Photo with same visual content already exists (user-scoped)
         # If duplicate found, client should use POST /photos/{hothash}/files instead
-        existing_photo = self.photo_repo.get_by_hash(hothash)
+        existing_photo = self.photo_repo.get_by_hash(hothash, user_id)
         if existing_photo:
             raise DuplicateImageError(f"Photo with this image already exists (hothash: {hothash[:8]}...)")
         
@@ -439,10 +439,10 @@ class PhotoService:
         
         return format_map.get(ext, "unknown")
     
-    def upload_coldpreview(self, hothash: str, file_content: bytes) -> Dict[str, Any]:
-        """Upload or update coldpreview for a photo"""
-        # Get photo to ensure it exists
-        photo = self.photo_repo.get_by_hash(hothash)
+    def upload_coldpreview(self, hothash: str, file_content: bytes, user_id: int) -> Dict[str, Any]:
+        """Upload or update coldpreview for a photo (user-scoped)"""
+        # Get photo to ensure it exists and user has access
+        photo = self.photo_repo.get_by_hash(hothash, user_id)
         if not photo:
             raise NotFoundError("Photo", hothash)
         
@@ -468,10 +468,10 @@ class PhotoService:
             'path': relative_path
         }
     
-    def get_coldpreview(self, hothash: str, width: Optional[int] = None, height: Optional[int] = None) -> Optional[bytes]:
-        """Get coldpreview image for photo with optional resizing"""
-        # Get photo
-        photo = self.photo_repo.get_by_hash(hothash)
+    def get_coldpreview(self, hothash: str, user_id: int, width: Optional[int] = None, height: Optional[int] = None) -> Optional[bytes]:
+        """Get coldpreview image for photo with optional resizing (user-scoped)"""
+        # Get photo and verify user has access
+        photo = self.photo_repo.get_by_hash(hothash, user_id)
         if not photo:
             raise NotFoundError("Photo", hothash)
         
@@ -494,10 +494,10 @@ class PhotoService:
         else:
             return repository.load_coldpreview_by_hash(hothash)
     
-    def delete_coldpreview(self, hothash: str) -> None:
-        """Delete coldpreview for photo"""
-        # Get photo
-        photo = self.photo_repo.get_by_hash(hothash)
+    def delete_coldpreview(self, hothash: str, user_id: int) -> None:
+        """Delete coldpreview for photo (user-scoped)"""
+        # Get photo and verify user has access
+        photo = self.photo_repo.get_by_hash(hothash, user_id)
         if not photo:
             raise NotFoundError("Photo", hothash)
         

@@ -41,17 +41,17 @@ class PhotoSearchService:
         """
         # Use PhotoRepository's search functionality
         photos = self.photo_repo.get_photos(
+            user_id=user_id,
             offset=search_request.offset,
             limit=search_request.limit,
             author_id=search_request.author_id,
-            search_params=search_request,
-            user_id=user_id
+            search_params=search_request
         )
         
         total = self.photo_repo.count_photos(
+            user_id=user_id,
             author_id=search_request.author_id,
-            search_params=search_request,
-            user_id=user_id
+            search_params=search_request
         )
         
         # Convert to response models

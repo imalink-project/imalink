@@ -54,10 +54,10 @@ def list_photos(
     """Get paginated list of photos with metadata (user-scoped)"""
     try:
         return photo_service.get_photos(
+            user_id=getattr(current_user, 'id'),
             offset=offset,
             limit=limit,
-            author_id=author_id,
-            user_id=getattr(current_user, 'id')
+            author_id=author_id
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve photos: {str(e)}")
@@ -272,7 +272,8 @@ def get_hotpreview(
 async def upload_coldpreview(
     hothash: str,
     file: UploadFile = File(..., description="Coldpreview image file"),
-    photo_service: PhotoService = Depends(get_photo_service)
+    photo_service: PhotoService = Depends(get_photo_service),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Upload or update coldpreview for photo"""
     try:
@@ -296,7 +297,7 @@ async def upload_coldpreview(
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
         
-        result = photo_service.upload_coldpreview(hothash, file_content)
+        result = photo_service.upload_coldpreview(hothash, file_content, current_user.id)
         return create_success_response(
             message="Coldpreview uploaded successfully",
             data=result
@@ -316,11 +317,12 @@ def get_coldpreview(
     hothash: str,
     width: Optional[int] = Query(None, ge=100, le=2000, description="Target width for dynamic resizing"),
     height: Optional[int] = Query(None, ge=100, le=2000, description="Target height for dynamic resizing"),
-    photo_service: PhotoService = Depends(get_photo_service)
+    photo_service: PhotoService = Depends(get_photo_service),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Get coldpreview image for photo with optional resizing"""
     try:
-        coldpreview_data = photo_service.get_coldpreview(hothash, width=width, height=height)
+        coldpreview_data = photo_service.get_coldpreview(hothash, current_user.id, width=width, height=height)
         
         if coldpreview_data:
             return StreamingResponse(
@@ -342,11 +344,12 @@ def get_coldpreview(
 @router.delete("/{hothash}/coldpreview")
 def delete_coldpreview(
     hothash: str,
-    photo_service: PhotoService = Depends(get_photo_service)
+    photo_service: PhotoService = Depends(get_photo_service),
+    current_user: User = Depends(get_current_active_user)
 ):
     """Delete coldpreview for photo"""
     try:
-        photo_service.delete_coldpreview(hothash)
+        photo_service.delete_coldpreview(hothash, current_user.id)
         return create_success_response(message="Coldpreview deleted successfully")
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))

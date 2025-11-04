@@ -90,8 +90,8 @@ class ImageFileService:
         # 3. Generate hothash from hotpreview (SHA256)
         hothash = self._generate_hothash_from_hotpreview(hotpreview_bytes)
         
-        # 4. Check if Photo already exists - if yes, this is an error for this endpoint
-        existing_photo = self.photo_repo.get_by_hash(hothash)
+        # 4. Check if Photo already exists (user-scoped) - if yes, this is an error for this endpoint
+        existing_photo = self.photo_repo.get_by_hash(hothash, user_id)
         if existing_photo:
             raise DuplicateImageError(f"Photo with this image already exists (hothash: {hothash[:8]}...)")
         
