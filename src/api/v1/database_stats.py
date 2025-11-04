@@ -86,17 +86,28 @@ def get_database_stats(db: Session = Depends(get_db)):
                 result = db.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
                 record_count = result.scalar() or 0
                 
-                # For SQLite, get approximate size using DBSTAT (if available)
-                # This is an approximation - actual size includes indexes, overhead, etc.
-                try:
-                    result = db.execute(text(
-                        f"SELECT SUM(pgsize) FROM dbstat WHERE name='{table_name}'"
-                    ))
-                    size_bytes = result.scalar() or 0
-                except Exception:
-                    # Fallback: rough estimate based on record count
-                    # Assume average 1KB per record (very rough estimate)
-                    size_bytes = record_count * 1024
+                # Get table size - database specific
+                size_bytes = 0
+                if is_sqlite := db_url.startswith("sqlite"):
+                    # For SQLite, get approximate size using DBSTAT (if available)
+                    try:
+                        result = db.execute(text(
+                            f"SELECT SUM(pgsize) FROM dbstat WHERE name='{table_name}'"
+                        ))
+                        size_bytes = result.scalar() or 0
+                    except Exception:
+                        # Fallback for SQLite
+                        size_bytes = record_count * 1024
+                else:
+                    # For PostgreSQL, use pg_total_relation_size
+                    try:
+                        result = db.execute(text(
+                            f"SELECT pg_total_relation_size('{table_name}')"
+                        ))
+                        size_bytes = result.scalar() or 0
+                    except Exception:
+                        # Fallback: rough estimate
+                        size_bytes = record_count * 1024
                 
                 tables_stats[table_name] = TableStats(
                     name=table_name,
