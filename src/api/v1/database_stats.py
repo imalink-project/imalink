@@ -2,10 +2,11 @@
 Database statistics API endpoint
 Provides overview of database table sizes and storage usage
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import text, inspect
 import os
+import logging
 from pathlib import Path
 from typing import Dict
 
@@ -14,6 +15,7 @@ from src.schemas.database_stats_schemas import DatabaseStatsResponse, TableStats
 from src.core.config import Config
 
 router = APIRouter(prefix="/database-stats", tags=["System"])
+logger = logging.getLogger(__name__)
 
 config = Config()
 
@@ -51,64 +53,70 @@ def get_database_stats(db: Session = Depends(get_db)):
     
     No authentication required - intended for system monitoring.
     """
-    # Get database file path and size
-    db_url = config.DATABASE_URL
-    if db_url.startswith("sqlite:///"):
-        db_file_path = db_url.replace("sqlite:///", "")
-    else:
-        db_file_path = "unknown"
-    
-    db_file_size_bytes = 0
-    if os.path.exists(db_file_path):
-        db_file_size_bytes = os.path.getsize(db_file_path)
-    
-    # Get table statistics
-    inspector = inspect(db.bind)
-    table_names = inspector.get_table_names()
-    
-    tables_stats: Dict[str, TableStats] = {}
-    
-    for table_name in table_names:
-        # Get record count
-        result = db.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
-        record_count = result.scalar() or 0
+    try:
+        # Get database file path and size
+        db_url = config.DATABASE_URL
+        if db_url.startswith("sqlite:///"):
+            db_file_path = db_url.replace("sqlite:///", "")
+        else:
+            db_file_path = "unknown"
         
-        # For SQLite, get approximate size using DBSTAT (if available)
-        # This is an approximation - actual size includes indexes, overhead, etc.
-        try:
-            result = db.execute(text(
-                f"SELECT SUM(pgsize) FROM dbstat WHERE name='{table_name}'"
-            ))
-            size_bytes = result.scalar() or 0
-        except Exception:
-            # Fallback: rough estimate based on record count
-            # Assume average 1KB per record (very rough estimate)
-            size_bytes = record_count * 1024
+        db_file_size_bytes = 0
+        if os.path.exists(db_file_path):
+            db_file_size_bytes = os.path.getsize(db_file_path)
         
-        tables_stats[table_name] = TableStats(
-            name=table_name,
-            record_count=record_count,
-            size_bytes=size_bytes,
-            size_mb=round(size_bytes / (1024 * 1024), 2)
+        # Get table statistics
+        inspector = inspect(db.bind)
+        table_names = inspector.get_table_names()
+        
+        tables_stats: Dict[str, TableStats] = {}
+        
+        for table_name in table_names:
+            # Get record count
+            result = db.execute(text(f"SELECT COUNT(*) FROM {table_name}"))
+            record_count = result.scalar() or 0
+            
+            # For SQLite, get approximate size using DBSTAT (if available)
+            # This is an approximation - actual size includes indexes, overhead, etc.
+            try:
+                result = db.execute(text(
+                    f"SELECT SUM(pgsize) FROM dbstat WHERE name='{table_name}'"
+                ))
+                size_bytes = result.scalar() or 0
+            except Exception:
+                # Fallback: rough estimate based on record count
+                # Assume average 1KB per record (very rough estimate)
+                size_bytes = record_count * 1024
+            
+            tables_stats[table_name] = TableStats(
+                name=table_name,
+                record_count=record_count,
+                size_bytes=size_bytes,
+                size_mb=round(size_bytes / (1024 * 1024), 2)
+            )
+        
+        # Get cold storage statistics
+        # Coldpreviews are stored in DATA_DIRECTORY/coldpreviews
+        coldstorage_path = Path(config.DATA_DIRECTORY) / "coldpreviews"
+        coldstorage_size_bytes, coldstorage_files = get_directory_size(coldstorage_path)
+        
+        coldstorage_stats = StorageStats(
+            path=str(coldstorage_path),
+            total_files=coldstorage_files,
+            total_size_bytes=coldstorage_size_bytes,
+            total_size_mb=round(coldstorage_size_bytes / (1024 * 1024), 2),
+            total_size_gb=round(coldstorage_size_bytes / (1024 * 1024 * 1024), 2)
         )
-    
-    # Get cold storage statistics
-    # Coldpreviews are stored in DATA_DIRECTORY/coldpreviews
-    coldstorage_path = Path(config.DATA_DIRECTORY) / "coldpreviews"
-    coldstorage_size_bytes, coldstorage_files = get_directory_size(coldstorage_path)
-    
-    coldstorage_stats = StorageStats(
-        path=str(coldstorage_path),
-        total_files=coldstorage_files,
-        total_size_bytes=coldstorage_size_bytes,
-        total_size_mb=round(coldstorage_size_bytes / (1024 * 1024), 2),
-        total_size_gb=round(coldstorage_size_bytes / (1024 * 1024 * 1024), 2)
-    )
-    
-    return DatabaseStatsResponse(
-        tables=tables_stats,
-        coldstorage=coldstorage_stats,
-        database_file=db_file_path,
-        database_size_bytes=db_file_size_bytes,
-        database_size_mb=round(db_file_size_bytes / (1024 * 1024), 2)
-    )
+        
+        return DatabaseStatsResponse(
+            tables=tables_stats,
+            coldstorage=coldstorage_stats,
+            database_file=db_file_path,
+            database_size_bytes=db_file_size_bytes,
+            database_size_mb=round(db_file_size_bytes / (1024 * 1024), 2)
+        )
+    except Exception as e:
+        # Rollback any failed transaction
+        db.rollback()
+        logger.error(f"Failed to get database stats: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get database statistics: {str(e)}")
