@@ -65,13 +65,12 @@ class Config:
     # Testing - Disable authentication for easier testing
     DISABLE_AUTH: bool = os.getenv("DISABLE_AUTH", "False").lower() in ("true", "1", "yes")
     
-    @classmethod
-    def ensure_directories(cls) -> None:
+    def ensure_directories(self) -> None:
         """Ensure all required directories exist"""
         directories = [
-            cls.DATA_DIRECTORY,
-            cls.STORAGE_ROOT,
-            cls.COLDPREVIEW_ROOT
+            self.DATA_DIRECTORY,
+            self.STORAGE_ROOT,
+            self.COLDPREVIEW_ROOT
         ]
         
         for directory in directories:
