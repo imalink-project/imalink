@@ -14,6 +14,10 @@ load_dotenv(env_path)
 class Config:
     """Application configuration loaded from environment variables"""
     
+    # Security - JWT Secret Key
+    # CRITICAL: Must be set to a secure random value in production
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+    
     # Database - Read from environment or default to SQLite
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:////mnt/c/temp/00imalink_data/imalink.db")
     
@@ -51,6 +55,16 @@ class Config:
     # Testing - Disable authentication for easier testing
     DISABLE_AUTH: bool = os.getenv("DISABLE_AUTH", "False").lower() in ("true", "1", "yes")
     
+    def __post_init__(self) -> None:
+        """Validate configuration after initialization"""
+        # Security check: Ensure SECRET_KEY is changed in production
+        if not self.DISABLE_AUTH and self.SECRET_KEY == "your-secret-key-change-in-production":
+            import sys
+            print("ERROR: SECRET_KEY is using default value!")
+            print("You must set SECRET_KEY environment variable to a secure random value in production.")
+            print("Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(32))'")
+            sys.exit(1)
+    
     def ensure_directories(self) -> None:
         """Ensure all required directories exist"""
         directories = [
@@ -64,3 +78,6 @@ class Config:
 
 # Global config instance
 config = Config()
+
+# Validate configuration on module import
+config.__post_init__()

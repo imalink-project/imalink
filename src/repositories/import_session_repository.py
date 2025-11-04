@@ -17,36 +17,29 @@ class ImportSessionRepository:
     
     # === Simple CRUD Operations ===
     
-    def get_import_by_id(self, session_id: int, user_id: Optional[int] = None) -> Optional[ImportSession]:
-        """Get ImportSession by ID (optionally user-scoped)"""
+    def get_import_by_id(self, session_id: int, user_id: int) -> Optional[ImportSession]:
+        """Get ImportSession by ID (user-scoped)"""
         query = (
             self.db.query(ImportSession)
             .filter(ImportSession.id == session_id)
+            .filter(ImportSession.user_id == user_id)
         )
-        
-        if user_id is not None:
-            query = query.filter(ImportSession.user_id == user_id)
         
         return query.first()
     
-    def get_all_imports(self, limit: int = 50, offset: int = 0, user_id: Optional[int] = None) -> List[ImportSession]:
-        """Get all ImportSessions with pagination (optionally user-scoped)"""
+    def get_all_imports(self, user_id: int, limit: int = 50, offset: int = 0) -> List[ImportSession]:
+        """Get all ImportSessions with pagination (user-scoped)"""
         query = (
             self.db.query(ImportSession)
+            .filter(ImportSession.user_id == user_id)
             .order_by(desc(ImportSession.imported_at))
         )
         
-        if user_id is not None:
-            query = query.filter(ImportSession.user_id == user_id)
-        
         return query.limit(limit).offset(offset).all()
     
-    def count_imports(self, user_id: Optional[int] = None) -> int:
-        """Count total ImportSessions (optionally user-scoped)"""
-        query = self.db.query(ImportSession)
-        
-        if user_id is not None:
-            query = query.filter(ImportSession.user_id == user_id)
+    def count_imports(self, user_id: int) -> int:
+        """Count total ImportSessions (user-scoped)"""
+        query = self.db.query(ImportSession).filter(ImportSession.user_id == user_id)
         
         return query.count()
     

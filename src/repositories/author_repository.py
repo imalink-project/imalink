@@ -15,50 +15,41 @@ class AuthorRepository:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_by_id(self, author_id: int, user_id: Optional[int] = None) -> Optional[Author]:
-        """Get author by ID with photos (optionally user-scoped)"""
+    def get_by_id(self, author_id: int, user_id: int) -> Optional[Author]:
+        """Get author by ID with photos (user-scoped)"""
         query = (
             self.db.query(Author)
             .options(joinedload(Author.photos))
             .filter(Author.id == author_id)
+            .filter(Author.user_id == user_id)
         )
-        
-        if user_id is not None:
-            query = query.filter(Author.user_id == user_id)
         
         return query.first()
     
-    def get_by_name(self, name: str, user_id: Optional[int] = None) -> Optional[Author]:
-        """Get author by name (case-insensitive, optionally user-scoped)"""
+    def get_by_name(self, name: str, user_id: int) -> Optional[Author]:
+        """Get author by name (case-insensitive, user-scoped)"""
         query = (
             self.db.query(Author)
             .filter(func.lower(Author.name) == name.lower())
+            .filter(Author.user_id == user_id)
         )
-        
-        if user_id is not None:
-            query = query.filter(Author.user_id == user_id)
         
         return query.first()
     
-    def get_all(self, offset: int = 0, limit: int = 100, user_id: Optional[int] = None) -> List[Author]:
-        """Get all authors with pagination (optionally user-scoped)"""
+    def get_all(self, user_id: int, offset: int = 0, limit: int = 100) -> List[Author]:
+        """Get all authors with pagination (user-scoped)"""
         query = (
             self.db.query(Author)
             .options(joinedload(Author.photos))
+            .filter(Author.user_id == user_id)
             .order_by(Author.name)
         )
         
-        if user_id is not None:
-            query = query.filter(Author.user_id == user_id)
-        
         return query.offset(offset).limit(limit).all()
     
-    def count_all(self, user_id: Optional[int] = None) -> int:
-        """Count total authors (optionally user-scoped)"""
-        query = self.db.query(Author)
-        
-        if user_id is not None:
-            query = query.filter(Author.user_id == user_id)
+    def count_all(self, user_id: int) -> int:
+        """Count total authors (user-scoped)"""
+        query = self.db.query(Author).filter(Author.user_id == user_id)
         
         return query.count()
     

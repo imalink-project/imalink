@@ -17,8 +17,8 @@ class PhotoRepository:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_by_id(self, photo_id: int, user_id: Optional[int] = None) -> Optional[Photo]:
-        """Get photo by integer ID with relationships loaded (optionally user-scoped)"""
+    def get_by_id(self, photo_id: int, user_id: int) -> Optional[Photo]:
+        """Get photo by integer ID with relationships loaded (user-scoped)"""
         query = (
             self.db.query(Photo)
             .options(
@@ -26,15 +26,13 @@ class PhotoRepository:
                 joinedload(Photo.image_files)
             )
             .filter(Photo.id == photo_id)
+            .filter(Photo.user_id == user_id)
         )
-        
-        if user_id is not None:
-            query = query.filter(Photo.user_id == user_id)
         
         return query.first()
     
-    def get_by_hash(self, hothash: str, user_id: Optional[int] = None) -> Optional[Photo]:
-        """Get photo by hothash with relationships loaded (optionally user-scoped)"""
+    def get_by_hash(self, hothash: str, user_id: int) -> Optional[Photo]:
+        """Get photo by hothash with relationships loaded (user-scoped)"""
         query = (
             self.db.query(Photo)
             .options(
@@ -42,10 +40,8 @@ class PhotoRepository:
                 joinedload(Photo.image_files)
             )
             .filter(Photo.hothash == hothash)
+            .filter(Photo.user_id == user_id)
         )
-        
-        if user_id is not None:
-            query = query.filter(Photo.user_id == user_id)
         
         return query.first()
     
@@ -79,11 +75,11 @@ class PhotoRepository:
     
     def get_photos(
         self, 
+        user_id: int,
         offset: int = 0, 
         limit: int = 100,
         author_id: Optional[int] = None,
-        search_params: Optional[PhotoSearchRequest] = None,
-        user_id: Optional[int] = None
+        search_params: Optional[PhotoSearchRequest] = None
     ) -> List[Photo]:
         """Get photos with optional filtering and pagination (user-scoped)"""
         query = self.db.query(Photo).options(
@@ -92,7 +88,7 @@ class PhotoRepository:
         )
         
         # Apply filters
-        query = self._apply_filters(query, author_id, search_params, user_id)
+        query = self._apply_filters(query, author_id, search_params, user_id=user_id)
         
         # Apply sorting
         if search_params:
@@ -105,15 +101,15 @@ class PhotoRepository:
     
     def count_photos(
         self, 
+        user_id: int,
         author_id: Optional[int] = None,
-        search_params: Optional[PhotoSearchRequest] = None,
-        user_id: Optional[int] = None
+        search_params: Optional[PhotoSearchRequest] = None
     ) -> int:
         """Count photos matching criteria (user-scoped)"""
         query = self.db.query(Photo)
         
         # Apply same filters as get_photos
-        query = self._apply_filters(query, author_id, search_params, user_id)
+        query = self._apply_filters(query, author_id, search_params, user_id=user_id)
         
         return query.count()
     
@@ -188,7 +184,8 @@ class PhotoRepository:
         query, 
         author_id: Optional[int] = None,
         search_params: Optional[PhotoSearchRequest] = None,
-        user_id: Optional[int] = None
+        *,
+        user_id: int
     ):
         """
         Apply filters to photo query
@@ -198,11 +195,11 @@ class PhotoRepository:
         - Multiple filters use AND logic
         - tag_ids uses OR logic (photos with ANY of the tags)
         - Empty search returns all user's photos
+        - user_id is now REQUIRED for security
         """
         
-        # Filter by user (data isolation)
-        if user_id:
-            query = query.filter(Photo.user_id == user_id)
+        # Filter by user (data isolation) - REQUIRED
+        query = query.filter(Photo.user_id == user_id)
         
         # Filter by author
         if author_id:

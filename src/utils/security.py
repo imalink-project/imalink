@@ -13,7 +13,9 @@ from passlib.context import CryptContext
 pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
 
 # JWT configuration
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+# Import SECRET_KEY from config to ensure validation
+from src.core.config import config
+SECRET_KEY = config.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 24 * 60  # 24 hours
 
