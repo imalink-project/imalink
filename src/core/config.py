@@ -18,12 +18,25 @@ class Config:
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:////mnt/c/temp/00imalink_data/imalink.db")
     
     # Storage for imported files
-    TEMP: str = "/mnt/c/temp"
-    DATA_DIRECTORY: str = f"{TEMP}/00imalink_data"
-    STORAGE_ROOT: str = f"{TEMP}/imalink-storage"
+    TEMP: str = os.getenv("TEMP", "/mnt/c/temp")
     
-    # Coldpreview storage (filesystem)
-    COLDPREVIEW_ROOT: str = f"{DATA_DIRECTORY}/coldpreviews"
+    @property
+    def _temp(self) -> str:
+        return os.getenv("TEMP", "/mnt/c/temp")
+    
+    @property  
+    def DATA_DIRECTORY(self) -> str:
+        return os.getenv("DATA_DIRECTORY", f"{self._temp}/00imalink_data")
+    
+    @property
+    def STORAGE_ROOT(self) -> str:
+        return os.getenv("STORAGE_ROOT", f"{self._temp}/imalink-storage")
+    
+    # Coldpreview storage (filesystem) - read from environment or default
+    @property
+    def COLDPREVIEW_ROOT(self) -> str:
+        return os.getenv("COLDPREVIEW_ROOT", f"{self.DATA_DIRECTORY}/coldpreviews")
+    
     COLDPREVIEW_MAX_SIZE: int = 1200  # Max width/height in pixels
     COLDPREVIEW_QUALITY: int = 85  # JPEG quality (1-100)
     
