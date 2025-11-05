@@ -447,7 +447,7 @@ class PhotoService:
             raise NotFoundError("Photo", hothash)
         
         # Use coldpreview repository utility
-        from utils.coldpreview_repository import ColdpreviewRepository
+        from src.utils.coldpreview_repository import ColdpreviewRepository
         repository = ColdpreviewRepository()
         
         # Save coldpreview and get metadata (returns tuple)
