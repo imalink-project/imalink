@@ -334,10 +334,15 @@ def get_coldpreview(
                 }
             )
         else:
-            raise HTTPException(status_code=404, detail="Coldpreview not found")
+            # Coldpreview not generated yet - return 404
+            raise HTTPException(status_code=404, detail="Coldpreview not available")
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is (including our 404 above)
+        raise
     except Exception as e:
+        logger.error(f"Unexpected error retrieving coldpreview for {hothash}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to retrieve coldpreview: {str(e)}")
 
 
