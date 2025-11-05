@@ -480,7 +480,7 @@ class PhotoService:
             return None
         
         # Use coldpreview repository utility
-        from utils.coldpreview_repository import ColdpreviewRepository
+        from src.utils.coldpreview_repository import ColdpreviewRepository
         repository = ColdpreviewRepository()
         
         # Load coldpreview with optional resizing
@@ -506,7 +506,7 @@ class PhotoService:
             raise NotFoundError("Coldpreview", hothash)
         
         # Use coldpreview repository utility
-        from utils.coldpreview_repository import ColdpreviewRepository
+        from src.utils.coldpreview_repository import ColdpreviewRepository
         repository = ColdpreviewRepository()
         
         # Delete from filesystem (need to construct full path from relative path)
