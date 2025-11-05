@@ -231,7 +231,7 @@ class PhotoService:
             - If correction is None: Restore taken_at/GPS from Photo.exif_dict, clear timeloc_correction
             - If correction has data: Update timeloc_correction JSON and Photo display fields
         """
-        from utils.exif_utils import parse_exif_datetime, parse_exif_gps_latitude, parse_exif_gps_longitude
+        from src.utils.exif_utils import parse_exif_datetime, parse_exif_gps_latitude, parse_exif_gps_longitude
         
         # Get photo (user-scoped)
         photo = self.photo_repo.get_by_hash(hothash, user_id)
@@ -376,7 +376,7 @@ class PhotoService:
         coldpreview_path = getattr(photo, 'coldpreview_path', None)
         coldpreview_metadata = None
         if coldpreview_path:
-            from utils.coldpreview_repository import ColdpreviewRepository
+            from src.utils.coldpreview_repository import ColdpreviewRepository
             repository = ColdpreviewRepository()
             coldpreview_metadata = repository.get_coldpreview_metadata(coldpreview_path)
         

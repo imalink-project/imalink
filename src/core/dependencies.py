@@ -60,9 +60,9 @@ def get_current_user(
     db: Session = Depends(get_db)
 ):
     """Get current authenticated user from JWT token"""
-    from utils.security import get_user_id_from_token
-    from repositories.user_repository import UserRepository
-    from core.exceptions import AuthenticationError
+    from src.utils.security import get_user_id_from_token
+    from src.repositories.user_repository import UserRepository
+    from src.core.exceptions import AuthenticationError
     
     # Extract user ID from token
     user_id = get_user_id_from_token(token)
