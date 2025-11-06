@@ -531,6 +531,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "flet" },
     { name = "imagehash" },
+    { name = "imalink-core" },
     { name = "passlib", extra = ["bcrypt"] },
     { name = "pillow" },
     { name = "psycopg2-binary" },
@@ -562,6 +563,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.118.0" },
     { name = "flet", specifier = ">=0.28.3" },
     { name = "imagehash", specifier = ">=4.3.2" },
+    { name = "imalink-core", git = "https://github.com/kjelkols/imalink-core.git" },
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },
     { name = "pillow", specifier = ">=11.3.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.9" },
@@ -582,6 +584,14 @@ dev = [
     { name = "pytest", specifier = "==7.4.3" },
     { name = "pytest-asyncio", specifier = "==0.21.1" },
     { name = "requests", specifier = ">=2.32.5" },
+]
+
+[[package]]
+name = "imalink-core"
+version = "1.0.0"
+source = { git = "https://github.com/kjelkols/imalink-core.git#0acc9979243b0b82930d1f2fa653b46c90d0e079" }
+dependencies = [
+    { name = "pillow" },
 ]
 
 [[package]]

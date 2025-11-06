@@ -3,19 +3,22 @@ EXIF parsing utilities for Photo Corrections
 
 These utilities extract datetime and GPS data from EXIF dictionaries
 that are stored in Photo.exif_dict (provided by frontend during upload).
+
+Now using imalink-core for consistent parsing.
 """
 from typing import Optional, Dict, Any
 from datetime import datetime
+from imalink_core import ExifExtractor
+import tempfile
+import json
+from pathlib import Path
 
 
 def parse_exif_datetime(exif_dict: Optional[Dict[str, Any]]) -> Optional[datetime]:
     """
     Extract datetime from EXIF dictionary
     
-    Tries common EXIF datetime fields in order of preference:
-    1. DateTimeOriginal (when photo was taken)
-    2. DateTime (file modification time)
-    3. DateTimeDigitized (when digitized from film)
+    Uses imalink-core's ExifExtractor for consistent parsing.
     
     Args:
         exif_dict: EXIF metadata dictionary from frontend
@@ -26,7 +29,7 @@ def parse_exif_datetime(exif_dict: Optional[Dict[str, Any]]) -> Optional[datetim
     if not exif_dict:
         return None
     
-    # Try common EXIF datetime fields
+    # Try common EXIF datetime fields directly
     datetime_fields = ['DateTimeOriginal', 'DateTime', 'DateTimeDigitized']
     
     for field in datetime_fields:
@@ -38,7 +41,10 @@ def parse_exif_datetime(exif_dict: Optional[Dict[str, Any]]) -> Optional[datetim
             except (ValueError, TypeError):
                 # Try ISO 8601 format (if frontend already converted)
                 try:
-                    return datetime.fromisoformat(datetime_str.replace('Z', '+00:00'))
+                    # Handle ISO format with timezone
+                    if isinstance(datetime_str, str):
+                        clean_str = datetime_str.replace('Z', '+00:00')
+                        return datetime.fromisoformat(clean_str)
                 except (ValueError, TypeError, AttributeError):
                     continue
     

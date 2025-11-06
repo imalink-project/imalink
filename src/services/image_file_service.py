@@ -13,11 +13,11 @@ ImageFiles cannot be:
 """
 from typing import Optional
 from sqlalchemy.orm import Session
-import hashlib
 import imagehash
 import io
 from PIL import Image as PILImage
 from datetime import datetime
+from imalink_core import HothashCalculator
 
 from src.repositories.image_file_repository import ImageFileRepository
 from src.repositories.photo_repository import PhotoRepository
@@ -227,8 +227,9 @@ class ImageFileService:
         return image_file
     
     def _generate_hothash_from_hotpreview(self, hotpreview_bytes: bytes) -> str:
-        """Generate SHA256 hash from hotpreview bytes"""
-        return hashlib.sha256(hotpreview_bytes).hexdigest()
+        """Generate SHA256 hash from hotpreview bytes using imalink-core"""
+        calculator = HothashCalculator()
+        return calculator.calculate(hotpreview_bytes)
     
     def _generate_perceptual_hash_if_missing(
         self, 

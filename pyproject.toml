@@ -22,6 +22,7 @@ dependencies = [
     "sqlalchemy>=2.0.43",
     "uvicorn[standard]>=0.37.0",
     "psycopg2-binary>=2.9.9",
+    "imalink-core",
 ]
 
 [dependency-groups]
@@ -36,6 +37,9 @@ dev = [
 
 [tool.uv]
 package = false
+
+[tool.uv.sources]
+imalink-core = { git = "https://github.com/kjelkols/imalink-core.git" }
 
 [build-system]
 requires = ["hatchling"]

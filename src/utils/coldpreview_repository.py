@@ -6,11 +6,12 @@ This utility provides server-side repository for medium-size preview images (col
 Coldpreviews are typically 800-1200px images that provide good quality for photo evaluation
 without requiring full resolution downloads.
 
+Now using imalink-core's PreviewGenerator for image processing.
+
 Key features:
 - Configurable repository location via core.config
 - Efficient 2-level directory structure for performance  
-- Automatic JPEG optimization and resizing
-- PIL-based image processing with error handling
+- imalink-core based image processing with error handling
 - Relative path storage for database references
 """
 import os
@@ -19,8 +20,10 @@ from pathlib import Path
 from typing import Optional, Tuple
 from PIL import Image as PILImage
 import io
+import tempfile
 
 from src.core.config import Config
+from imalink_core import PreviewGenerator
 
 
 class ColdpreviewRepository:
@@ -55,6 +58,8 @@ class ColdpreviewRepository:
         """
         Save coldpreview to filesystem with optional resizing
         
+        Uses imalink-core's PreviewGenerator for consistent image processing.
+        
         Args:
             hothash: Photo hash identifier
             image_data: Raw image bytes
@@ -68,38 +73,42 @@ class ColdpreviewRepository:
         if not image_data:
             raise ValueError("Image data is empty")
         
-        # Process image
+        # Save to temporary file for imalink-core processing
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+            tmp_file.write(image_data)
+        
         try:
-            img = PILImage.open(io.BytesIO(image_data))
-            # Verify the image can be read
-            img.load()
+            # Use imalink-core to generate coldpreview with EXIF-aware rotation
+            coldpreview = PreviewGenerator.generate_coldpreview(
+                tmp_path, 
+                max_size=max_size, 
+                quality=quality
+            )
+            
+            # Generate file path
+            file_path = self.get_file_path(hothash)
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            
+            # Save processed image
+            file_path.write_bytes(coldpreview.bytes)
+            
+            # Get dimensions and file size
+            width = coldpreview.width
+            height = coldpreview.height
+            file_size = file_path.stat().st_size
+            
+            # Return relative path for database storage (relative to base_path)
+            relative_path = str(file_path.relative_to(self.base_path))
+            
+            return relative_path, width, height, file_size
+            
         except Exception as e:
-            raise ValueError(f"Invalid image data: {str(e)}")
-        
-        # Convert to RGB if needed (for JPEG)
-        if img.mode in ('RGBA', 'LA', 'P'):
-            img = img.convert('RGB')
-        
-        # Resize if needed (maintain aspect ratio)
-        original_width, original_height = img.size
-        if max(original_width, original_height) > max_size:
-            img.thumbnail((max_size, max_size), PILImage.Resampling.LANCZOS)
-        
-        # Generate file path
-        file_path = self.get_file_path(hothash)
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        
-        # Save as JPEG
-        img.save(file_path, format='JPEG', quality=quality, optimize=True)
-        
-        # Get final dimensions and file size
-        width, height = img.size
-        file_size = file_path.stat().st_size
-        
-        # Return relative path for database storage (relative to base_path)
-        relative_path = str(file_path.relative_to(self.base_path))
-        
-        return relative_path, width, height, file_size
+            raise ValueError(f"Failed to process coldpreview: {str(e)}")
+        finally:
+            # Clean up temporary file
+            if tmp_path.exists():
+                tmp_path.unlink()
     
     def load_coldpreview(self, relative_path: str) -> Optional[bytes]:
         """
