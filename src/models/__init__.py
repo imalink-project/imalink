@@ -12,6 +12,7 @@ from .photo_stack import PhotoStack
 from .saved_photo_search import SavedPhotoSearch
 from .photo_collection import PhotoCollection
 from .tag import Tag, PhotoTag
+from .phototext_document import PhotoTextDocument
 
 __all__ = [
     "Base",
@@ -25,5 +26,6 @@ __all__ = [
     "SavedPhotoSearch",
     "PhotoCollection",
     "Tag",
-    "PhotoTag"
+    "PhotoTag",
+    "PhotoTextDocument"
 ]

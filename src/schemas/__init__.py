@@ -7,6 +7,15 @@ from .responses.author_responses import AuthorResponse, AuthorListResponse
 from .requests.author_requests import AuthorCreateRequest, AuthorUpdateRequest
 from .image_file_upload_schemas import ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 from .common import PaginatedResponse, SingleResponse
+from .phototext_document import (
+    DocumentType,
+    CoverImage,
+    PhotoTextDocumentCreate,
+    PhotoTextDocumentUpdate,
+    PhotoTextDocumentResponse,
+    PhotoTextDocumentSummary,
+    PhotoTextDocumentListResponse
+)
 
 __all__ = [
     "UserCreate",
@@ -23,5 +32,12 @@ __all__ = [
     "ImageFileAddToPhotoRequest", 
     "ImageFileUploadResponse",
     "PaginatedResponse",
-    "SingleResponse"
+    "SingleResponse",
+    "DocumentType",
+    "CoverImage",
+    "PhotoTextDocumentCreate",
+    "PhotoTextDocumentUpdate",
+    "PhotoTextDocumentResponse",
+    "PhotoTextDocumentSummary",
+    "PhotoTextDocumentListResponse"
 ]

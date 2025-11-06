@@ -24,6 +24,7 @@ from src.api.v1.database_stats import router as database_stats_router
 from src.api.v1.photo_searches import router as photo_searches_router
 from src.api.v1.photo_collections import router as photo_collections_router
 from src.api.photo_stacks import router as photo_stacks_router
+from src.api.phototext_documents import router as phototext_router
 from src.api.auth import router as auth_router
 from src.api.users import router as users_router
 from src.core.exceptions import APIException
@@ -69,6 +70,7 @@ app.include_router(photo_searches_router, prefix="/api/v1/photo-searches", tags=
 app.include_router(photo_collections_router, prefix="/api/v1")  # Photo collections endpoints
 app.include_router(tags_router, prefix="/api/v1")  # Tag endpoints
 app.include_router(photo_stacks_router, prefix="/api/v1")  # PhotoStack endpoints
+app.include_router(phototext_router, prefix="/api/v1")  # PhotoText document endpoints
 app.include_router(database_stats_router, prefix="/api/v1")  # Database statistics (no auth required)
 
 # Debug endpoint to list all routes

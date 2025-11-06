@@ -48,6 +48,7 @@ class User(Base, TimestampMixin):
     tags = relationship("Tag", back_populates="user", cascade="all, delete-orphan")
     saved_photo_searches = relationship("SavedPhotoSearch", back_populates="user", cascade="all, delete-orphan")
     photo_collections = relationship("PhotoCollection", back_populates="user", cascade="all, delete-orphan")
+    phototext_documents = relationship("PhotoTextDocument", back_populates="user", cascade="all, delete-orphan")
     
     def __repr__(self):
         return f"<User(id={self.id}, username='{self.username}', email='{self.email}', active={self.is_active})>"
