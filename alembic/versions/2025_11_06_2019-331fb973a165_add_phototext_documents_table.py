@@ -74,12 +74,10 @@ def upgrade() -> None:
         postgresql_using='gin'
     )
     
-    # JSON indexing for querying document content
-    op.create_index(
-        'ix_phototext_documents_content',
-        'phototext_documents',
-        ['content'],
-        postgresql_using='gin'
+    # JSON indexing for querying document content (using jsonb_path_ops operator class)
+    op.execute(
+        'CREATE INDEX ix_phototext_documents_content ON phototext_documents '
+        'USING gin (content jsonb_path_ops)'
     )
 
 
