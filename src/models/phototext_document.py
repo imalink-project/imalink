@@ -69,7 +69,7 @@ class PhotoTextDocument(Base, TimestampMixin):
     
     # Optional metadata (extracted for search/display)
     abstract = Column(Text, nullable=True)
-    cover_image_hash = Column(String(71), nullable=True)  # 'sha256_' + 64 hex chars
+    cover_image_hash = Column(String(64), nullable=True)  # Photo hothash (64-char SHA256)
     cover_image_alt = Column(String(500), nullable=True)
     
     # Publishing workflow

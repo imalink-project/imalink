@@ -30,7 +30,7 @@ def upgrade() -> None:
         sa.Column('document_type', sa.String(length=50), nullable=False),
         sa.Column('content', JSONB, nullable=False),
         sa.Column('abstract', sa.Text(), nullable=True),
-        sa.Column('cover_image_hash', sa.String(length=71), nullable=True),
+        sa.Column('cover_image_hash', sa.String(length=64), nullable=True),
         sa.Column('cover_image_alt', sa.String(length=500), nullable=True),
         sa.Column('is_published', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('published_at', sa.DateTime(timezone=True), nullable=True),

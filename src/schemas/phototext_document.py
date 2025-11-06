@@ -17,23 +17,8 @@ class DocumentType(str, Enum):
 
 class CoverImage(BaseModel):
     """Cover image reference"""
-    hash: str = Field(..., min_length=71, max_length=71, description="SHA256 hash (sha256_ + 64 hex chars)")
+    hash: str = Field(..., description="Photo hothash (64-char SHA256)")
     alt: str = Field(..., min_length=1, max_length=500, description="Alt text for cover image")
-    
-    @field_validator('hash')
-    @classmethod
-    def validate_hash_format(cls, v):
-        """Validate hash format: sha256_ + 64 hex chars"""
-        if not v.startswith('sha256_'):
-            raise ValueError('Hash must start with sha256_')
-        hex_part = v[7:]
-        if len(hex_part) != 64:
-            raise ValueError('Hash must have 64 hexadecimal characters after sha256_')
-        try:
-            int(hex_part, 16)
-        except ValueError:
-            raise ValueError('Hash must contain only hexadecimal characters after sha256_')
-        return v
 
 
 class PhotoTextDocumentCreate(BaseModel):
