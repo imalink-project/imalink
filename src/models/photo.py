@@ -4,7 +4,7 @@ Photo model - Primary display model for photo galleries and browsing
 from datetime import datetime
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import Column, Integer, String, DateTime, LargeBinary, Float, Text, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, DateTime, LargeBinary, Float, Text, ForeignKey, JSON, CheckConstraint
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -91,6 +91,10 @@ class Photo(Base, TimestampMixin):
     timeloc_correction = Column(JSON, nullable=True)  # Time/location corrections with metadata
     view_correction = Column(JSON, nullable=True)      # Display adjustments (rotation, crop, exposure)
     
+    # Sharing and visibility control (Fase 1)
+    visibility = Column(String(20), nullable=False, default='private', index=True)
+    # Values: 'private' (only owner), 'public' (everyone including anonymous)
+    
     # Relationships
     user = relationship("User", back_populates="photos")
     image_files = relationship("ImageFile", back_populates="photo", cascade="all, delete-orphan", 
@@ -99,6 +103,14 @@ class Photo(Base, TimestampMixin):
     import_session = relationship("ImportSession", back_populates="photos")
     stack = relationship("PhotoStack", back_populates="photos", foreign_keys=[stack_id])
     tags = relationship("Tag", secondary="photo_tags", back_populates="photos")
+    
+    # Table constraints
+    __table_args__ = (
+        CheckConstraint(
+            "visibility IN ('private', 'public')",
+            name='valid_photo_visibility'
+        ),
+    )
     
     def __repr__(self):
         return f"<Photo(hash={self.hothash[:8]}..., rating={self.rating}, files={len(self.image_files) if self.image_files else 0})>"

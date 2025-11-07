@@ -6,7 +6,7 @@ Provides REST API for managing PhotoText documents - structured photo storytelli
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from src.core.dependencies import get_current_user
+from src.core.dependencies import get_current_user, get_current_user_optional
 from src.models.user import User
 from src.services.phototext_document_service import PhotoTextDocumentService
 from src.database.connection import get_db
@@ -60,38 +60,26 @@ def create_document(
 def list_documents(
     document_type: Optional[str] = Query(None, description="Filter by document type (general/album/slideshow)"),
     is_published: Optional[bool] = Query(None, description="Filter by publication status"),
-    limit: int = Query(20, ge=1, le=100, description="Page size"),
-    offset: int = Query(0, ge=0, description="Page offset"),
-    sort_by: str = Query("created_at", description="Sort field (created_at/updated_at/title)"),
-    sort_order: str = Query("desc", description="Sort order (asc/desc)"),
-    current_user: User = Depends(get_current_user),
+    limit: int = Query(20, ge=1, le=100, description="Number of documents per page"),
+    offset: int = Query(0, ge=0, description="Number of documents to skip"),
+    sort_by: str = Query("created_at", description="Sort field (created_at, updated_at, title)"),
+    sort_order: str = Query("desc", description="Sort order (asc, desc)"),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     service: PhotoTextDocumentService = Depends(get_phototext_service)
 ):
     """
-    List PhotoText documents for the current user.
+    List PhotoText documents with optional filtering and sorting.
     
-    Supports filtering by:
-    - document_type: 'general', 'album', or 'slideshow'
-    - is_published: true/false
+    Access rules (Phase 1):
+    - Anonymous users: Only public documents
+    - Authenticated users: Own documents + public documents
     
-    Results can be sorted by:
-    - created_at (default): Timeline/blog order
-    - updated_at: Recently modified
-    - title: Alphabetical
+    Supports filtering by document_type and publication status.
+    Returns paginated results with total count.
     """
     try:
-        # Validate sort parameters
-        if sort_by not in ['created_at', 'updated_at', 'title']:
-            raise ValidationError(f"Invalid sort_by: {sort_by}")
-        if sort_order not in ['asc', 'desc']:
-            raise ValidationError(f"Invalid sort_order: {sort_order}")
-        
-        # Validate document_type if provided
-        if document_type and document_type not in ['general', 'album', 'slideshow']:
-            raise ValidationError(f"Invalid document_type: {document_type}")
-        
-        documents = service.list_documents(
-            user_id=current_user.id,  # type: ignore
+        result = service.list_documents(
+            user_id=current_user.id if current_user else None,  # type: ignore
             document_type=document_type,
             is_published=is_published,
             limit=limit,
@@ -99,7 +87,7 @@ def list_documents(
             sort_by=sort_by,
             sort_order=sort_order
         )
-        return documents
+        return result
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
@@ -109,19 +97,22 @@ def list_documents(
 @router.get("/{document_id}", response_model=PhotoTextDocumentResponse)
 def get_document(
     document_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_current_user_optional),
     service: PhotoTextDocumentService = Depends(get_phototext_service)
 ):
     """
     Get a single PhotoText document by ID.
     
+    Access rules (Phase 1):
+    - Anonymous users: Only public documents
+    - Authenticated users: Own documents + public documents
+    
     Returns the complete document including content JSON.
-    User can only access their own documents.
     """
     try:
         document = service.get_document(
             document_id=document_id,
-            user_id=current_user.id  # type: ignore
+            user_id=current_user.id if current_user else None  # type: ignore
         )
         return document
     except NotFoundError as e:

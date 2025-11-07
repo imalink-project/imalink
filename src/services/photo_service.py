@@ -393,6 +393,7 @@ class PhotoService:
             gps_longitude=getattr(photo, 'gps_longitude', None),
             exif_dict=getattr(photo, 'exif_dict', None),
             rating=getattr(photo, 'rating', 0),
+            visibility=getattr(photo, 'visibility', 'private'),  # Phase 1: Include visibility
             created_at=getattr(photo, 'created_at'),
             updated_at=getattr(photo, 'updated_at'),
             author=author,

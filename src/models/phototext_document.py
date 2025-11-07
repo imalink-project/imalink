@@ -76,6 +76,10 @@ class PhotoTextDocument(Base, TimestampMixin):
     is_published = Column(Boolean, default=False, nullable=False, index=True)
     published_at = Column(DateTime(timezone=True), nullable=True)
     
+    # Sharing and visibility control (Fase 1)
+    visibility = Column(String(20), nullable=False, default='private', index=True)
+    # Values: 'private' (only owner), 'public' (everyone including anonymous)
+    
     # Version tracking
     version = Column(String(10), default='1.0', nullable=False)
     
@@ -94,6 +98,11 @@ class PhotoTextDocument(Base, TimestampMixin):
             "(cover_image_hash IS NULL AND cover_image_alt IS NULL) OR "
             "(cover_image_hash IS NOT NULL AND cover_image_alt IS NOT NULL)",
             name='valid_cover_image'
+        ),
+        # Validate visibility enum
+        CheckConstraint(
+            "visibility IN ('private', 'public')",
+            name='valid_document_visibility'
         ),
     )
     

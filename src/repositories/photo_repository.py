@@ -31,8 +31,14 @@ class PhotoRepository:
         
         return query.first()
     
-    def get_by_hash(self, hothash: str, user_id: int) -> Optional[Photo]:
-        """Get photo by hothash with relationships loaded (user-scoped)"""
+    def get_by_hash(self, hothash: str, user_id: Optional[int] = None) -> Optional[Photo]:
+        """
+        Get photo by hothash with relationships loaded
+        
+        Access rules (Phase 1):
+        - If user_id is None (anonymous): Only public photos
+        - If user_id is provided: Own photos + public photos
+        """
         query = (
             self.db.query(Photo)
             .options(
@@ -40,8 +46,20 @@ class PhotoRepository:
                 joinedload(Photo.image_files)
             )
             .filter(Photo.hothash == hothash)
-            .filter(Photo.user_id == user_id)
         )
+        
+        # Apply visibility filtering
+        if user_id is None:
+            # Anonymous user: only public photos
+            query = query.filter(Photo.visibility == 'public')
+        else:
+            # Authenticated user: own photos OR public photos
+            query = query.filter(
+                or_(
+                    Photo.user_id == user_id,
+                    Photo.visibility == 'public'
+                )
+            )
         
         return query.first()
     
@@ -75,13 +93,19 @@ class PhotoRepository:
     
     def get_photos(
         self, 
-        user_id: int,
+        user_id: Optional[int] = None,
         offset: int = 0, 
         limit: int = 100,
         author_id: Optional[int] = None,
         search_params: Optional[PhotoSearchRequest] = None
     ) -> List[Photo]:
-        """Get photos with optional filtering and pagination (user-scoped)"""
+        """
+        Get photos with optional filtering and pagination
+        
+        Access rules (Phase 1):
+        - If user_id is None (anonymous): Only public photos
+        - If user_id is provided: Own photos + public photos
+        """
         query = self.db.query(Photo).options(
             joinedload(Photo.author),
             joinedload(Photo.image_files)
@@ -101,11 +125,17 @@ class PhotoRepository:
     
     def count_photos(
         self, 
-        user_id: int,
+        user_id: Optional[int] = None,
         author_id: Optional[int] = None,
         search_params: Optional[PhotoSearchRequest] = None
     ) -> int:
-        """Count photos matching criteria (user-scoped)"""
+        """
+        Count photos matching criteria
+        
+        Access rules (Phase 1):
+        - If user_id is None (anonymous): Only public photos
+        - If user_id is provided: Own photos + public photos
+        """
         query = self.db.query(Photo)
         
         # Apply same filters as get_photos
@@ -123,6 +153,7 @@ class PhotoRepository:
         - GPS, dimensions, taken_at: Extracted metadata for fast queries
         - rating, author: User-editable metadata
         - import_session_id: Which import session created this photo
+        - visibility: 'private' or 'public' (defaults to 'private')
         """
         photo = Photo(
             hothash=photo_data.hothash,
@@ -135,6 +166,7 @@ class PhotoRepository:
             gps_latitude=photo_data.gps_latitude,
             gps_longitude=photo_data.gps_longitude,
             rating=photo_data.rating or 0,
+            visibility=photo_data.visibility or 'private',  # Default to private for backwards compatibility
             author_id=photo_data.author_id,
             import_session_id=photo_data.import_session_id
         )
@@ -145,8 +177,13 @@ class PhotoRepository:
         return photo
     
     def update(self, hothash: str, photo_data: PhotoUpdateRequest, user_id: int) -> Optional[Photo]:
-        """Update existing photo (user-scoped)"""
-        photo = self.get_by_hash(hothash, user_id)
+        """Update existing photo (user-scoped - only owner can update)"""
+        # For updates, we MUST be the owner (no public access)
+        photo = self.db.query(Photo).filter(
+            Photo.hothash == hothash,
+            Photo.user_id == user_id
+        ).first()
+        
         if not photo:
             return None
         
@@ -155,13 +192,20 @@ class PhotoRepository:
             setattr(photo, 'rating', photo_data.rating)
         if photo_data.author_id is not None:
             setattr(photo, 'author_id', photo_data.author_id)
+        if photo_data.visibility is not None:
+            setattr(photo, 'visibility', photo_data.visibility)
         
         self.db.flush()
         return photo
     
     def delete(self, hothash: str, user_id: int) -> bool:
-        """Delete photo and associated files (user-scoped)"""
-        photo = self.get_by_hash(hothash, user_id)
+        """Delete photo and associated files (user-scoped - only owner can delete)"""
+        # For deletes, we MUST be the owner (no public access)
+        photo = self.db.query(Photo).filter(
+            Photo.hothash == hothash,
+            Photo.user_id == user_id
+        ).first()
+        
         if not photo:
             return False
         
@@ -185,7 +229,7 @@ class PhotoRepository:
         author_id: Optional[int] = None,
         search_params: Optional[PhotoSearchRequest] = None,
         *,
-        user_id: int
+        user_id: Optional[int] = None
     ):
         """
         Apply filters to photo query
@@ -194,12 +238,22 @@ class PhotoRepository:
         - All filters are optional (None = ignore)
         - Multiple filters use AND logic
         - tag_ids uses OR logic (photos with ANY of the tags)
-        - Empty search returns all user's photos
-        - user_id is now REQUIRED for security
+        - user_id=None: Only public photos (anonymous access)
+        - user_id provided: Own photos OR public photos
         """
         
-        # Filter by user (data isolation) - REQUIRED
-        query = query.filter(Photo.user_id == user_id)
+        # Apply visibility filtering (Phase 1)
+        if user_id is None:
+            # Anonymous user: only public photos
+            query = query.filter(Photo.visibility == 'public')
+        else:
+            # Authenticated user: own photos OR public photos
+            query = query.filter(
+                or_(
+                    Photo.user_id == user_id,
+                    Photo.visibility == 'public'
+                )
+            )
         
         # Filter by author
         if author_id:

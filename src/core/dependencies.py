@@ -2,8 +2,9 @@
 Dependency injection setup for ImaLink services
 Provides clean dependency management for controllers
 """
+from typing import Optional, Any
 from sqlalchemy.orm import Session
-from fastapi import Depends
+from fastapi import Depends, Header
 from fastapi.security import OAuth2PasswordBearer
 
 # Database dependency (reuse existing)
@@ -75,6 +76,40 @@ def get_current_user(
     if not user:
         raise AuthenticationError("User not found")
     
+    return user
+
+
+def get_current_user_optional(
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+) -> Optional[Any]:
+    """
+    Get current user if authenticated, None if anonymous
+    
+    Used for endpoints that support both authenticated and anonymous access
+    (e.g., viewing public photos/documents)
+    """
+    from src.utils.security import get_user_id_from_token
+    from src.repositories.user_repository import UserRepository
+    
+    # No authorization header - anonymous user
+    if not authorization:
+        return None
+    
+    # Extract token from "Bearer <token>" format
+    if not authorization.startswith("Bearer "):
+        return None
+    
+    token = authorization.replace("Bearer ", "")
+    
+    # Try to extract user ID from token
+    user_id = get_user_id_from_token(token)
+    if not user_id:
+        return None
+    
+    # Fetch user from database
+    user_repo = UserRepository(db)
+    user = user_repo.get_by_id(user_id)
     return user
 
 

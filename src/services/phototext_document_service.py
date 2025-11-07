@@ -60,7 +60,8 @@ class PhotoTextDocumentService:
             cover_image_hash=cover_image_hash,
             cover_image_alt=cover_image_alt,
             is_published=document_data.is_published,
-            published_at=published_at
+            published_at=published_at,
+            visibility=document_data.visibility or 'private'  # Default to private for backwards compatibility
         )
         
         return PhotoTextDocumentResponse.model_validate(document)
@@ -68,14 +69,18 @@ class PhotoTextDocumentService:
     def get_document(
         self,
         document_id: int,
-        user_id: int
+        user_id: Optional[int]
     ) -> PhotoTextDocumentResponse:
         """
-        Get single document by ID (user-scoped)
+        Get single document by ID
+        
+        Access rules (Phase 1):
+        - If user_id is None (anonymous): Only public documents
+        - If user_id is provided: Own documents + public documents
         
         Args:
             document_id: Document ID
-            user_id: Owner user ID
+            user_id: Owner user ID (None for anonymous access)
             
         Returns:
             Document response
@@ -91,7 +96,7 @@ class PhotoTextDocumentService:
     
     def list_documents(
         self,
-        user_id: int,
+        user_id: Optional[int],
         document_type: Optional[str] = None,
         is_published: Optional[bool] = None,
         limit: int = 20,
@@ -100,10 +105,14 @@ class PhotoTextDocumentService:
         sort_order: str = "desc"
     ) -> PhotoTextDocumentListResponse:
         """
-        List documents with filtering and pagination (user-scoped)
+        List documents with filtering and pagination
+        
+        Access rules (Phase 1):
+        - If user_id is None (anonymous): Only public documents
+        - If user_id is provided: Own documents + public documents
         
         Args:
-            user_id: Owner user ID
+            user_id: Owner user ID (None for anonymous access)
             document_type: Filter by document type ('general', 'album', 'slideshow')
             is_published: Filter by publication status
             limit: Page size

@@ -29,6 +29,7 @@ class PhotoTextDocumentCreate(BaseModel):
     abstract: Optional[str] = Field(None, max_length=5000, description="Short description/summary")
     cover_image: Optional[CoverImage] = Field(None, description="Cover image reference")
     is_published: bool = Field(default=False, description="Publication status")
+    visibility: Optional[str] = Field('private', description="Document visibility: 'private' or 'public' (optional, defaults to 'private' for backwards compatibility)")
     
     @field_validator('content')
     @classmethod
@@ -57,6 +58,7 @@ class PhotoTextDocumentUpdate(BaseModel):
     abstract: Optional[str] = Field(None, max_length=5000, description="Short description/summary")
     cover_image: Optional[CoverImage] = Field(None, description="Cover image reference")
     is_published: Optional[bool] = Field(None, description="Publication status")
+    visibility: Optional[str] = Field(None, description="Document visibility: 'private' or 'public' (optional, backwards compatible)")
     
     @field_validator('content')
     @classmethod
@@ -93,6 +95,7 @@ class PhotoTextDocumentResponse(BaseModel):
     cover_image_alt: Optional[str] = Field(None, description="Cover image alt text")
     is_published: bool = Field(..., description="Publication status")
     published_at: Optional[datetime] = Field(None, description="Publication timestamp")
+    visibility: str = Field('private', description="Document visibility: 'private' or 'public'")
     version: str = Field(..., description="Document version")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
@@ -110,6 +113,7 @@ class PhotoTextDocumentSummary(BaseModel):
     cover_image_alt: Optional[str] = Field(None, description="Cover image alt text")
     is_published: bool = Field(..., description="Publication status")
     published_at: Optional[datetime] = Field(None, description="Publication timestamp")
+    visibility: str = Field('private', description="Document visibility: 'private' or 'public'")
     created_at: datetime = Field(..., description="Creation timestamp")
     updated_at: datetime = Field(..., description="Last update timestamp")
     

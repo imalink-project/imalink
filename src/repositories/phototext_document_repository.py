@@ -3,7 +3,7 @@ PhotoTextDocument Repository - Data Access Layer for PhotoTextDocument operation
 """
 from typing import List, Optional, Dict, Any
 from sqlalchemy.orm import Session
-from sqlalchemy import desc, asc
+from sqlalchemy import desc, asc, or_
 
 from src.models import PhotoTextDocument
 
@@ -14,18 +14,34 @@ class PhotoTextDocumentRepository:
     def __init__(self, db: Session):
         self.db = db
     
-    def get_by_id(self, document_id: int, user_id: int) -> Optional[PhotoTextDocument]:
-        """Get document by ID (user-scoped)"""
-        return (
-            self.db.query(PhotoTextDocument)
-            .filter(PhotoTextDocument.id == document_id)
-            .filter(PhotoTextDocument.user_id == user_id)
-            .first()
-        )
+    def get_by_id(self, document_id: int, user_id: Optional[int] = None) -> Optional[PhotoTextDocument]:
+        """
+        Get document by ID
+        
+        Access rules (Phase 1):
+        - If user_id is None (anonymous): Only public documents
+        - If user_id is provided: Own documents + public documents
+        """
+        query = self.db.query(PhotoTextDocument).filter(PhotoTextDocument.id == document_id)
+        
+        # Apply visibility filtering
+        if user_id is None:
+            # Anonymous user: only public documents
+            query = query.filter(PhotoTextDocument.visibility == 'public')
+        else:
+            # Authenticated user: own documents OR public documents
+            query = query.filter(
+                or_(
+                    PhotoTextDocument.user_id == user_id,
+                    PhotoTextDocument.visibility == 'public'
+                )
+            )
+        
+        return query.first()
     
     def list_documents(
         self,
-        user_id: int,
+        user_id: Optional[int] = None,
         document_type: Optional[str] = None,
         is_published: Optional[bool] = None,
         limit: int = 20,
@@ -34,10 +50,14 @@ class PhotoTextDocumentRepository:
         sort_order: str = "desc"
     ) -> List[PhotoTextDocument]:
         """
-        List documents with filtering and sorting (user-scoped)
+        List documents with filtering and sorting
+        
+        Access rules (Phase 1):
+        - If user_id is None (anonymous): Only public documents
+        - If user_id is provided: Own documents + public documents
         
         Args:
-            user_id: Owner user ID
+            user_id: Owner user ID (None for anonymous access)
             document_type: Filter by document type
             is_published: Filter by publication status
             limit: Page size
@@ -48,7 +68,20 @@ class PhotoTextDocumentRepository:
         Returns:
             List of documents
         """
-        query = self.db.query(PhotoTextDocument).filter(PhotoTextDocument.user_id == user_id)
+        query = self.db.query(PhotoTextDocument)
+        
+        # Apply visibility filtering (Phase 1)
+        if user_id is None:
+            # Anonymous user: only public documents
+            query = query.filter(PhotoTextDocument.visibility == 'public')
+        else:
+            # Authenticated user: own documents OR public documents
+            query = query.filter(
+                or_(
+                    PhotoTextDocument.user_id == user_id,
+                    PhotoTextDocument.visibility == 'public'
+                )
+            )
         
         # Apply filters
         if document_type:
@@ -69,12 +102,31 @@ class PhotoTextDocumentRepository:
     
     def count_documents(
         self,
-        user_id: int,
+        user_id: Optional[int] = None,
         document_type: Optional[str] = None,
         is_published: Optional[bool] = None
     ) -> int:
-        """Count documents with filters (user-scoped)"""
-        query = self.db.query(PhotoTextDocument).filter(PhotoTextDocument.user_id == user_id)
+        """
+        Count documents with filters
+        
+        Access rules (Phase 1):
+        - If user_id is None (anonymous): Only public documents
+        - If user_id is provided: Own documents + public documents
+        """
+        query = self.db.query(PhotoTextDocument)
+        
+        # Apply visibility filtering (Phase 1)
+        if user_id is None:
+            # Anonymous user: only public documents
+            query = query.filter(PhotoTextDocument.visibility == 'public')
+        else:
+            # Authenticated user: own documents OR public documents
+            query = query.filter(
+                or_(
+                    PhotoTextDocument.user_id == user_id,
+                    PhotoTextDocument.visibility == 'public'
+                )
+            )
         
         # Apply filters
         if document_type:
@@ -95,7 +147,8 @@ class PhotoTextDocumentRepository:
         cover_image_hash: Optional[str] = None,
         cover_image_alt: Optional[str] = None,
         is_published: bool = False,
-        published_at: Optional[Any] = None
+        published_at: Optional[Any] = None,
+        visibility: str = 'private'
     ) -> PhotoTextDocument:
         """Create new document (user-scoped)"""
         document = PhotoTextDocument(
@@ -107,7 +160,8 @@ class PhotoTextDocumentRepository:
             cover_image_hash=cover_image_hash,
             cover_image_alt=cover_image_alt,
             is_published=is_published,
-            published_at=published_at
+            published_at=published_at,
+            visibility=visibility
         )
         self.db.add(document)
         self.db.commit()
