@@ -229,12 +229,14 @@ async def get_photos(
 ### Alternativ 1: User-Scoped (Omfattende)
 
 #### Affected Models
-- ✏️ `Photo` → Legg til `user_id`
-- ✏️ `ImageFile` → Legg til `user_id`  
-- ✏️ `ImportSession` → Legg til `user_id`
-- ✏️ `FileStorage` → Legg til `user_id`
-- ✏️ `Author` → Kan beholdes global eller per-user
-- ➕ Ny `User` modell
+- ✅ `Photo` → Has `user_id` (owner)
+- ✅ `ImageFile` → Has `user_id` (owner)
+- ✅ `ImportSession` → Has `user_id` (owner)
+- ✅ `FileStorage` → Has `user_id` (owner)
+- ✅ `Author` → Has `user_id` (audit trail only - authors are SHARED across users)
+- ✅ `User` model exists
+
+**Note:** Author is the exception - while it has `user_id` for audit purposes, authors are shared metadata tags visible to all users. Photo ownership is via `Photo.user_id`.
 
 #### Service Layer Changes
 ```python

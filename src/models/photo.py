@@ -93,7 +93,8 @@ class Photo(Base, TimestampMixin):
     
     # Sharing and visibility control (Fase 1)
     visibility = Column(String(20), nullable=False, default='private', index=True)
-    # Values: 'private' (only owner), 'public' (everyone including anonymous)
+    # Values: 'private' (only owner), 'space' (space members - Phase 2), 
+    #         'authenticated' (all logged-in users), 'public' (everyone including anonymous)
     
     # Relationships
     user = relationship("User", back_populates="photos")
@@ -107,7 +108,7 @@ class Photo(Base, TimestampMixin):
     # Table constraints
     __table_args__ = (
         CheckConstraint(
-            "visibility IN ('private', 'public')",
+            "visibility IN ('private', 'space', 'authenticated', 'public')",
             name='valid_photo_visibility'
         ),
     )

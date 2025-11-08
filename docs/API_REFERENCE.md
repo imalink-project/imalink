@@ -1,9 +1,35 @@
-# ImaLink API Reference v2.1 (Photo-Centric)
+# ImaLink API Reference v2.2 (Photo-Centric + Visibility)
 
 **Base URL**: `http://localhost:8000/api/v1`  
-**Authentication**: JWT Bearer tokens required for all endpoints except auth/register and auth/login
+**Authentication**: JWT Bearer tokens required for most endpoints (see individual endpoints for details)
+
+**What's New in v2.2:**
+- **Visibility Control**: Photos and PhotoText documents now support four visibility levels: `private`, `space`, `authenticated`, `public`
+- **Anonymous Access**: Public content can be viewed without authentication
+- **Authenticated Community**: Share content with all logged-in users via `authenticated` visibility
+- **Spaces (Phase 2)**: `space` visibility planned for group collaboration (not yet functional)
 
 **Important Change in v2.1:** The ImageFiles API has been removed. All ImageFile operations are now performed through the Photos API for a cleaner, more intuitive interface. See the [ImageFiles section](#️-imagefiles) for migration details.
+
+---
+
+## 🔓 Visibility Levels
+
+All photos and PhotoText documents have a `visibility` field with four possible values:
+
+| Value | Who Can View | Use Case | Requires Auth |
+|-------|-------------|----------|---------------|
+| `private` | Owner only | Default, personal content | Yes |
+| `space` | Space members | Shared workspaces (Phase 2 - not yet functional) | Yes |
+| `authenticated` | All logged-in users | Community sharing, portfolio | Yes |
+| `public` | Everyone including anonymous | Marketing, SEO, public gallery | No |
+
+**Important Notes:**
+- Default visibility for all new content: `private`
+- `space` visibility is accepted by the API but treated as `private` in Phase 1
+- Anonymous users can only access `public` content
+- Authenticated users see: own content + `authenticated` content + `public` content
+- Only the owner can change visibility or delete content
 
 ---
 
@@ -117,13 +143,14 @@ Authorization: Bearer <token>
 
 ## 📸 Photos
 
-All photo operations are scoped to the authenticated user.
+All photo operations respect visibility settings. Authenticated users see their own photos plus `authenticated` and `public` photos from others. Anonymous users see only `public` photos.
 
 **IMPORTANT for Frontend Integration:**
 - All POST/PUT requests must include: `Content-Type: application/json`
-- All requests (except login/register) must include: `Authorization: Bearer <token>`
+- Most requests require: `Authorization: Bearer <token>` (except viewing public photos)
 - Dates must be in ISO 8601 format: `"2025-10-15T14:30:00Z"`
 - Base64 data can include data URL prefix or be raw: `"data:image/jpeg;base64,..."` or just the Base64 string
+- New photos default to `visibility: "private"`
 
 **Quick Start - Upload Your First Photo:**
 ```javascript
@@ -154,6 +181,7 @@ const response = await fetch('http://localhost:8000/api/v1/photos/new-photo', {
     filename: 'my_photo.jpg',
     hotpreview: hotpreview,  // Can include "data:image/jpeg;base64," prefix
     file_size: 2048576,
+    visibility: 'private',   // Optional: 'private' (default), 'space', 'authenticated', 'public'
     exif_dict: { Make: 'Canon', Model: 'EOS R5' }  // Optional
   })
 });
@@ -165,12 +193,16 @@ console.log('Photo created:', result.photo_hothash);
 ### List Photos
 ```http
 GET /api/v1/photos?offset=0&limit=100
-Authorization: Bearer <token>
+Authorization: Bearer <token>  # Optional - omit for anonymous access to public photos
 ```
 
 **Query Parameters:**
 - `offset` (int, default=0): Skip N photos
 - `limit` (int, default=100, max=1000): Number of photos to return
+
+**Access Control:**
+- **Anonymous (no auth header)**: Only `public` photos returned
+- **Authenticated**: Own photos + `authenticated` photos + `public` photos returned
 
 **Response:**
 ```json
@@ -184,6 +216,7 @@ Authorization: Bearer <token>
       "gps_latitude": 59.9139,
       "gps_longitude": 10.7522,
       "rating": 4,
+      "visibility": "private",
       "author_id": 1,
       "stack_id": null,
       "created_at": "2025-10-20T10:00:00Z",
@@ -221,8 +254,13 @@ Content-Type: application/json
 ### Get Photo by Hash
 ```http
 GET /api/v1/photos/{hothash}
-Authorization: Bearer <token>
+Authorization: Bearer <token>  # Optional - omit for anonymous access to public photos
 ```
+
+**Access Control:**
+- **Anonymous**: Only `public` photos accessible (404 for others)
+- **Authenticated**: Own photos + `authenticated` photos + `public` photos accessible
+- **Owner**: Always can access own photos regardless of visibility
 
 **Response:**
 ```json
@@ -234,6 +272,7 @@ Authorization: Bearer <token>
   "gps_latitude": 59.9139,
   "gps_longitude": 10.7522,
   "rating": 4,
+  "visibility": "authenticated",
   "author_id": 1,
   "author": {
     "id": 1,
@@ -257,16 +296,28 @@ Authorization: Bearer <token>
 ### Update Photo Metadata
 ```http
 PUT /api/v1/photos/{hothash}
-Authorization: Bearer <token>
+Authorization: Bearer <token>  # Required - owner only
 Content-Type: application/json
 
 {
   "rating": 5,
+  "visibility": "public",
   "author_id": 2,
   "gps_latitude": 60.0,
   "gps_longitude": 11.0
 }
 ```
+
+**Access Control:**
+- Only the photo owner can update metadata
+- All fields are optional
+- Changing `visibility` immediately affects who can view the photo
+
+**Visibility Field:**
+- `"private"` - Only you can see it
+- `"space"` - Space members (Phase 2 - not yet functional, treated as private)
+- `"authenticated"` - All logged-in users can see it
+- `"public"` - Everyone including anonymous users can see it
 ### Update Photo Time/Location Correction
 
 **Endpoint:** `PATCH /api/v1/photos/{hothash}/timeloc-correction`
@@ -1261,7 +1312,165 @@ This indicates a server-side issue. Check:
 
 ---
 
-## 🗂️ ImageFiles
+## � PhotoText Documents
+
+PhotoText documents are structured visual storytelling documents that combine photos with narrative text. They support visibility control just like photos.
+
+**Document Types:**
+- `general` - Free-form story with photos and text
+- `album` - Photo album with captions
+- `slideshow` - Presentation-style document
+
+### List PhotoText Documents
+```http
+GET /api/v1/phototext?offset=0&limit=100
+Authorization: Bearer <token>  # Optional - omit for anonymous access to public documents
+```
+
+**Query Parameters:**
+- `offset` (int, default=0): Skip N documents
+- `limit` (int, default=100): Number of documents to return
+- `document_type` (string, optional): Filter by type (`general`, `album`, `slideshow`)
+
+**Access Control:**
+- **Anonymous (no auth header)**: Only `public` documents returned
+- **Authenticated**: Own documents + `authenticated` documents + `public` documents returned
+
+**Response:**
+```json
+{
+  "documents": [
+    {
+      "id": 123,
+      "title": "Summer Vacation 2024",
+      "document_type": "album",
+      "visibility": "authenticated",
+      "is_published": true,
+      "user_id": 1,
+      "created_at": "2025-10-20T10:00:00Z",
+      "updated_at": "2025-10-20T15:30:00Z"
+    }
+  ],
+  "total": 42,
+  "offset": 0,
+  "limit": 100
+}
+```
+
+### Get PhotoText Document by ID
+```http
+GET /api/v1/phototext/{document_id}
+Authorization: Bearer <token>  # Optional - omit for anonymous access to public documents
+```
+
+**Access Control:**
+- **Anonymous**: Only `public` documents accessible (404 for others)
+- **Authenticated**: Own documents + `authenticated` documents + `public` documents accessible
+- **Owner**: Always can access own documents regardless of visibility
+
+**Response:**
+```json
+{
+  "id": 123,
+  "title": "Summer Vacation 2024",
+  "document_type": "album",
+  "visibility": "authenticated",
+  "is_published": true,
+  "content": {
+    "sections": [
+      {
+        "type": "text",
+        "content": "Our amazing summer vacation..."
+      },
+      {
+        "type": "photo",
+        "hothash": "abc123def456...",
+        "caption": "Beach sunset"
+      }
+    ]
+  },
+  "user_id": 1,
+  "created_at": "2025-10-20T10:00:00Z",
+  "updated_at": "2025-10-20T15:30:00Z"
+}
+```
+
+### Create PhotoText Document
+```http
+POST /api/v1/phototext
+Authorization: Bearer <token>  # Required
+Content-Type: application/json
+
+{
+  "title": "My New Story",
+  "document_type": "general",
+  "visibility": "private",
+  "is_published": false,
+  "content": {
+    "sections": [
+      {
+        "type": "text",
+        "content": "Introduction text..."
+      }
+    ]
+  }
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": 124,
+  "title": "My New Story",
+  "document_type": "general",
+  "visibility": "private",
+  "is_published": false,
+  "content": { ... },
+  "user_id": 1,
+  "created_at": "2025-11-08T10:00:00Z",
+  "updated_at": "2025-11-08T10:00:00Z"
+}
+```
+
+### Update PhotoText Document
+```http
+PUT /api/v1/phototext/{document_id}
+Authorization: Bearer <token>  # Required - owner only
+Content-Type: application/json
+
+{
+  "title": "Updated Title",
+  "visibility": "public",
+  "is_published": true,
+  "content": { ... }
+}
+```
+
+**Access Control:**
+- Only the document owner can update
+- All fields are optional
+- Changing `visibility` immediately affects who can view the document
+
+**Visibility Field:**
+- `"private"` - Only you can see it (default)
+- `"space"` - Space members (Phase 2 - not yet functional, treated as private)
+- `"authenticated"` - All logged-in users can see it
+- `"public"` - Everyone including anonymous users can see it
+
+### Delete PhotoText Document
+```http
+DELETE /api/v1/phototext/{document_id}
+Authorization: Bearer <token>  # Required - owner only
+```
+
+**Access Control:**
+- Only the document owner can delete
+
+**Response (204 No Content)**
+
+---
+
+## �🗂️ ImageFiles
 
 **⚠️ IMPORTANT:** As of API v2.1, the ImageFiles API has been removed. All ImageFile operations are now performed through the Photos API.
 
@@ -1331,19 +1540,42 @@ The following endpoints were removed in API v2.1. All functionality has been mov
 
 ## 📚 Authors
 
-Manage photographers/creators (can be different from system users).
+Manage photographers/creators. Authors are **shared metadata tags** used to identify who took a photo - they are NOT user-scoped resources. All users can view all authors.
+
+**Important:** Photo ownership and visibility is controlled via `Photo.user_id`, not Author. Authors are simply metadata for tagging the photographer.
 
 ### List Authors
 ```http
 GET /api/v1/authors?offset=0&limit=100
-Authorization: Bearer <token>
+```
+
+**No authentication required** - all users can view all authors.
+
+**Response** (`200 OK`):
+```json
+{
+  "data": [
+    {
+      "id": 1,
+      "name": "Jane Smith",
+      "email": "jane@example.com",
+      "bio": "Professional landscape photographer",
+      "created_at": "2025-10-20T10:00:00Z",
+      "image_count": 42
+    }
+  ],
+  "total": 1,
+  "offset": 0,
+  "limit": 100
+}
 ```
 
 ### Get Author
 ```http
 GET /api/v1/authors/{author_id}
-Authorization: Bearer <token>
 ```
+
+**No authentication required** - all users can view any author.
 
 ### Create Author
 ```http
@@ -1358,6 +1590,8 @@ Content-Type: application/json
 }
 ```
 
+**Authentication required** - Creating authors requires a logged-in user (for audit trail).
+
 **Response** (`201 Created`):
 ```json
 {
@@ -1366,7 +1600,7 @@ Content-Type: application/json
   "email": "jane@example.com",
   "bio": "Professional landscape photographer",
   "created_at": "2025-10-20T10:00:00Z",
-  "updated_at": "2025-10-20T10:00:00Z"
+  "image_count": 0
 }
 ```
 
@@ -1382,11 +1616,15 @@ Content-Type: application/json
 }
 ```
 
+**Authentication required** - Updating authors requires authentication.
+
 ### Delete Author
 ```http
 DELETE /api/v1/authors/{author_id}
 Authorization: Bearer <token>
 ```
+
+**Authentication required** - Deleting authors requires authentication.
 
 ---
 
@@ -1737,6 +1975,35 @@ As of v2.1, the API is 100% photo-centric:
 ---
 
 ## 📋 Changelog
+
+### v2.2 (November 8, 2025) - Visibility & Sharing
+**New Features:**
+- ✅ **Added:** Four-level visibility system (`private`, `space`, `authenticated`, `public`)
+- ✅ **Added:** `visibility` field to Photo model (default: `private`)
+- ✅ **Added:** `visibility` field to PhotoTextDocument model (default: `private`)
+- ✅ **Added:** Anonymous access to `public` photos and documents
+- ✅ **Added:** Authenticated community sharing via `authenticated` visibility
+- ✅ **Added:** PhotoText Documents API (`/api/v1/phototext`)
+- ✅ **Added:** Complete PhotoText CRUD operations with visibility control
+
+**API Changes:**
+- 📝 **Modified:** `GET /api/v1/photos` - Now supports anonymous access (returns only public photos)
+- 📝 **Modified:** `GET /api/v1/photos/{hothash}` - Now supports anonymous access
+- 📝 **Modified:** `POST /api/v1/photos/new-photo` - Accepts optional `visibility` field
+- 📝 **Modified:** `PUT /api/v1/photos/{hothash}` - Can update `visibility` field
+- 📝 **Modified:** All photo responses now include `visibility` field
+- 📝 **Modified:** `GET /api/v1/phototext` - Now supports anonymous access
+- 📝 **Modified:** `GET /api/v1/phototext/{id}` - Now supports anonymous access
+
+**Future (Phase 2):**
+- 🚧 **Planned:** `space` visibility will become functional with Spaces infrastructure
+- 🚧 **Planned:** Create and manage shared workspaces
+- 🚧 **Planned:** Share photos/documents to multiple spaces
+
+**Breaking Changes:**
+- None - All changes are backwards compatible. Existing photos/documents default to `private`.
+
+---
 
 ### v2.1 (October 21, 2025) - 100% Photo-Centric API
 **Breaking Changes:**

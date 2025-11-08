@@ -78,7 +78,8 @@ class PhotoTextDocument(Base, TimestampMixin):
     
     # Sharing and visibility control (Fase 1)
     visibility = Column(String(20), nullable=False, default='private', index=True)
-    # Values: 'private' (only owner), 'public' (everyone including anonymous)
+    # Values: 'private' (only owner), 'space' (space members - Phase 2), 
+    #         'authenticated' (all logged-in users), 'public' (everyone including anonymous)
     
     # Version tracking
     version = Column(String(10), default='1.0', nullable=False)
@@ -101,7 +102,7 @@ class PhotoTextDocument(Base, TimestampMixin):
         ),
         # Validate visibility enum
         CheckConstraint(
-            "visibility IN ('private', 'public')",
+            "visibility IN ('private', 'space', 'authenticated', 'public')",
             name='valid_document_visibility'
         ),
     )

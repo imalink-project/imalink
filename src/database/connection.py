@@ -13,7 +13,12 @@ from src.core.config import Config
 # Database configuration
 # Use configuration from config.py
 config = Config()
-DATABASE_URL = config.DATABASE_URL
+
+# Override with test database if TESTING environment variable is set
+if os.getenv("TESTING") == "1":
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///:memory:")
+else:
+    DATABASE_URL = config.DATABASE_URL
 
 # Determine database type and configure accordingly
 is_sqlite = DATABASE_URL.startswith("sqlite")

@@ -37,6 +37,9 @@ class ImageFileNewPhotoRequest(BaseModel):
     gps_latitude: Optional[float] = Field(None, ge=-90, le=90, description="GPS latitude (from EXIF)")
     gps_longitude: Optional[float] = Field(None, ge=-180, le=180, description="GPS longitude (from EXIF)")
     
+    # Visibility control
+    visibility: Optional[str] = Field(default="private", description="Visibility level: private, space, authenticated, or public")
+    
     # Import context
     import_session_id: Optional[int] = Field(None, description="Import session ID")
     imported_info: Optional[Dict[str, Any]] = Field(None, description="Import context and original location")

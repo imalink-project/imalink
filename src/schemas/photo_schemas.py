@@ -113,7 +113,7 @@ class PhotoResponse(BaseModel):
     rating: int = Field(0, ge=0, le=5, description="User rating (0-5 stars)")
     
     # Sharing and visibility (Fase 1)
-    visibility: str = Field('private', description="Photo visibility: 'private' or 'public'")
+    visibility: str = Field('private', description="Photo visibility: 'private', 'space', 'authenticated', or 'public'")
     
     # Timestamps
     created_at: datetime = Field(..., description="When photo was imported")
@@ -180,7 +180,7 @@ class PhotoCreateRequest(BaseModel):
     
     # User metadata
     rating: Optional[int] = Field(0, ge=0, le=5, description="User rating")
-    visibility: Optional[str] = Field('private', description="Photo visibility: 'private' or 'public' (optional, defaults to 'private' for backwards compatibility)")
+    visibility: Optional[str] = Field('private', pattern=r'^(private|space|authenticated|public)$', description="Photo visibility (optional, defaults to 'private' for backwards compatibility)")
     
     # Relationships
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
@@ -194,7 +194,7 @@ class PhotoUpdateRequest(BaseModel):
     # User editable fields only
     rating: Optional[int] = Field(None, ge=0, le=5, description="User rating")
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
-    visibility: Optional[str] = Field(None, description="Photo visibility: 'private' or 'public' (optional, backwards compatible)")
+    visibility: Optional[str] = Field(None, pattern=r'^(private|space|authenticated|public)$', description="Photo visibility (optional, backwards compatible)")
 
 
 class PhotoSearchRequest(BaseModel):

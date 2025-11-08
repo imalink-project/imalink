@@ -1,12 +1,13 @@
 """
 PhotoTextDocument Service - Business logic for PhotoText document operations
 """
-from typing import Optional, List
+from typing import Optional, List, Set
 from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc
 
 from src.repositories.phototext_document_repository import PhotoTextDocumentRepository
+from src.repositories.photo_repository import PhotoRepository
 from src.schemas.phototext_document import (
     PhotoTextDocumentCreate,
     PhotoTextDocumentUpdate,
@@ -24,6 +25,63 @@ class PhotoTextDocumentService:
     def __init__(self, db: Session):
         self.db = db
         self.repo = PhotoTextDocumentRepository(db)
+        self.photo_repo = PhotoRepository(db)
+    
+    def _extract_photo_hashes(self, content: dict) -> Set[str]:
+        """
+        Extract all photo hothashes referenced in PhotoText content
+        
+        Args:
+            content: PhotoText JSON document structure
+            
+        Returns:
+            Set of photo hothashes
+        """
+        hashes = set()
+        
+        # Check blocks for image references
+        blocks = content.get('blocks', [])
+        for block in blocks:
+            block_type = block.get('type')
+            
+            # Single image block
+            if block_type == 'image' and 'hash' in block:
+                hashes.add(block['hash'])
+            
+            # Collage block (multiple images)
+            elif block_type == 'collage' and 'images' in block:
+                for image in block['images']:
+                    if 'hash' in image:
+                        hashes.add(image['hash'])
+        
+        return hashes
+    
+    def _update_photo_visibility(self, photo_hashes: Set[str], visibility: str, user_id: int) -> None:
+        """
+        Update visibility for all referenced photos
+        
+        Args:
+            photo_hashes: Set of photo hothashes to update
+            visibility: New visibility level
+            user_id: Owner user ID (to verify ownership)
+        """
+        from src.schemas.photo_schemas import PhotoUpdateRequest
+        
+        for hothash in photo_hashes:
+            try:
+                # Get photo to verify ownership
+                photo = self.photo_repo.get_by_hash(hothash, user_id)
+                if photo is not None:
+                    current_visibility = getattr(photo, 'visibility', 'private')
+                    if current_visibility != visibility:
+                        # Only update if photo belongs to user and has different visibility
+                        # We update to document's visibility to ensure consistency
+                        update_data = PhotoUpdateRequest(visibility=visibility, rating=None, author_id=None)
+                        self.photo_repo.update(hothash, update_data, user_id)
+            except Exception:
+                # Skip photos that don't exist or user doesn't own
+                # This prevents breaking document creation/update if a photo is missing
+                pass
     
     def create_document(
         self,
@@ -32,6 +90,9 @@ class PhotoTextDocumentService:
     ) -> PhotoTextDocumentResponse:
         """
         Create new PhotoText document
+        
+        When a document is created, all referenced photos are automatically
+        updated to match the document's visibility level to ensure consistency.
         
         Args:
             document_data: Document creation request
@@ -50,6 +111,9 @@ class PhotoTextDocumentService:
         # Set published_at if document is being published
         published_at = datetime.utcnow() if document_data.is_published else None
         
+        # Determine visibility (default to private)
+        visibility = document_data.visibility or 'private'
+        
         # Create document
         document = self.repo.create(
             user_id=user_id,
@@ -61,8 +125,16 @@ class PhotoTextDocumentService:
             cover_image_alt=cover_image_alt,
             is_published=document_data.is_published,
             published_at=published_at,
-            visibility=document_data.visibility or 'private'  # Default to private for backwards compatibility
+            visibility=visibility
         )
+        
+        # Update visibility of all referenced photos to match document
+        photo_hashes = self._extract_photo_hashes(document_data.content)
+        if photo_hashes:
+            self._update_photo_visibility(photo_hashes, visibility, user_id)
+        
+        # Commit changes
+        self.db.commit()
         
         return PhotoTextDocumentResponse.model_validate(document)
     
@@ -160,6 +232,9 @@ class PhotoTextDocumentService:
         """
         Update existing document (user-scoped)
         
+        When a document's visibility is updated, all referenced photos are
+        automatically updated to match the document's new visibility level.
+        
         Args:
             document_id: Document ID
             user_id: Owner user ID
@@ -203,8 +278,26 @@ class PhotoTextDocumentService:
             elif not document_data.is_published and bool(document.is_published):
                 update_data['published_at'] = None
         
+        # Handle visibility change
+        new_visibility = None
+        if document_data.visibility is not None:
+            update_data['visibility'] = document_data.visibility
+            new_visibility = document_data.visibility
+        
         # Update document
         updated_document = self.repo.update(document, update_data)
+        
+        # If visibility changed, update all referenced photos
+        if new_visibility is not None:
+            # Use updated content if provided, otherwise use existing content
+            content = document_data.content if document_data.content is not None else getattr(document, 'content', {})
+            if isinstance(content, dict):
+                photo_hashes = self._extract_photo_hashes(content)
+                if photo_hashes:
+                    self._update_photo_visibility(photo_hashes, new_visibility, user_id)
+        
+        # Commit changes
+        self.db.commit()
         
         return PhotoTextDocumentResponse.model_validate(updated_document)
     

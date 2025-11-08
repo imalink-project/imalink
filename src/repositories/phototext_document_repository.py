@@ -20,7 +20,7 @@ class PhotoTextDocumentRepository:
         
         Access rules (Phase 1):
         - If user_id is None (anonymous): Only public documents
-        - If user_id is provided: Own documents + public documents
+        - If user_id is provided: Own documents + public/authenticated documents
         """
         query = self.db.query(PhotoTextDocument).filter(PhotoTextDocument.id == document_id)
         
@@ -29,11 +29,13 @@ class PhotoTextDocumentRepository:
             # Anonymous user: only public documents
             query = query.filter(PhotoTextDocument.visibility == 'public')
         else:
-            # Authenticated user: own documents OR public documents
+            # Authenticated user: own documents OR public OR authenticated
+            # Note: 'space' treated as private in Phase 1
             query = query.filter(
                 or_(
                     PhotoTextDocument.user_id == user_id,
-                    PhotoTextDocument.visibility == 'public'
+                    PhotoTextDocument.visibility == 'public',
+                    PhotoTextDocument.visibility == 'authenticated'
                 )
             )
         
@@ -54,7 +56,7 @@ class PhotoTextDocumentRepository:
         
         Access rules (Phase 1):
         - If user_id is None (anonymous): Only public documents
-        - If user_id is provided: Own documents + public documents
+        - If user_id is provided: Own documents + public/authenticated documents
         
         Args:
             user_id: Owner user ID (None for anonymous access)
@@ -75,11 +77,13 @@ class PhotoTextDocumentRepository:
             # Anonymous user: only public documents
             query = query.filter(PhotoTextDocument.visibility == 'public')
         else:
-            # Authenticated user: own documents OR public documents
+            # Authenticated user: own documents OR public OR authenticated
+            # Note: 'space' treated as private in Phase 1
             query = query.filter(
                 or_(
                     PhotoTextDocument.user_id == user_id,
-                    PhotoTextDocument.visibility == 'public'
+                    PhotoTextDocument.visibility == 'public',
+                    PhotoTextDocument.visibility == 'authenticated'
                 )
             )
         
@@ -111,7 +115,7 @@ class PhotoTextDocumentRepository:
         
         Access rules (Phase 1):
         - If user_id is None (anonymous): Only public documents
-        - If user_id is provided: Own documents + public documents
+        - If user_id is provided: Own documents + public/authenticated documents
         """
         query = self.db.query(PhotoTextDocument)
         
@@ -120,11 +124,13 @@ class PhotoTextDocumentRepository:
             # Anonymous user: only public documents
             query = query.filter(PhotoTextDocument.visibility == 'public')
         else:
-            # Authenticated user: own documents OR public documents
+            # Authenticated user: own documents OR public OR authenticated
+            # Note: 'space' treated as private in Phase 1
             query = query.filter(
                 or_(
                     PhotoTextDocument.user_id == user_id,
-                    PhotoTextDocument.visibility == 'public'
+                    PhotoTextDocument.visibility == 'public',
+                    PhotoTextDocument.visibility == 'authenticated'
                 )
             )
         

@@ -1,32 +1,39 @@
 """
 Access control utilities for visibility-based permissions
 
-Phase 1: Private vs Public
+Phase 1: 4-level visibility
 - Private: Only owner can view/edit
+- Space: Space members can view (Phase 2 - treated as private in Phase 1)
+- Authenticated: All logged-in users can view, only owner can edit
 - Public: Everyone can view (including anonymous), only owner can edit
 
 Future phases will add:
-- Collaborators: Invited users with view or edit permissions
-- Space: All members of a shared workspace
+- Phase 2: Space infrastructure (PhotoSpaceMembership many-to-many relationships)
 """
-from typing import Optional
+from typing import Optional, List
 from src.models.photo import Photo
 from src.models.phototext_document import PhotoTextDocument
 from src.models.user import User
 
 
-def can_view_photo(photo: Photo, user: Optional[User]) -> bool:
+def can_view_photo(photo: Photo, user: Optional[User], user_space_ids: Optional[List[int]] = None) -> bool:
     """
     Determine if user can view photo
     
     Phase 1 Rules:
     1. Public photos visible to everyone (including anonymous)
-    2. Owner can always see own photos
-    3. Private photos only visible to owner
+    2. Authenticated photos visible to all logged-in users
+    3. Space photos treated as private in Phase 1 (space infrastructure not ready)
+    4. Owner can always see own photos
+    5. Private photos only visible to owner
+    
+    Phase 2 will add:
+    - Space visibility: Check user_space_ids for membership
     
     Args:
         photo: Photo to check access for
         user: Current user (None if anonymous)
+        user_space_ids: List of space IDs the user belongs to (for Phase 2)
         
     Returns:
         True if user can view the photo, False otherwise
@@ -35,7 +42,11 @@ def can_view_photo(photo: Photo, user: Optional[User]) -> bool:
     if photo.visibility == "public":
         return True
     
-    # Must be authenticated for non-public
+    # Authenticated - any logged-in user can see
+    if photo.visibility == "authenticated":
+        return user is not None
+    
+    # Must be authenticated for space/private
     if user is None:
         return False
     
@@ -43,7 +54,10 @@ def can_view_photo(photo: Photo, user: Optional[User]) -> bool:
     if photo.user_id == user.id:
         return True
     
-    # Phase 1: Only public or owner access
+    # Phase 1: Space treated as private (no space infrastructure yet)
+    # Phase 2 will check: if photo.visibility == "space" and user_space_ids...
+    
+    # Private - only owner
     return False
 
 
@@ -69,18 +83,24 @@ def can_edit_photo(photo: Photo, user: Optional[User]) -> bool:
     return photo.user_id == user.id
 
 
-def can_view_document(document: PhotoTextDocument, user: Optional[User]) -> bool:
+def can_view_document(document: PhotoTextDocument, user: Optional[User], user_space_ids: Optional[List[int]] = None) -> bool:
     """
     Determine if user can view PhotoText document
     
     Phase 1 Rules:
     1. Public documents visible to everyone (including anonymous)
-    2. Owner can always see own documents
-    3. Private documents only visible to owner
+    2. Authenticated documents visible to all logged-in users
+    3. Space documents treated as private in Phase 1 (space infrastructure not ready)
+    4. Owner can always see own documents
+    5. Private documents only visible to owner
+    
+    Phase 2 will add:
+    - Space visibility: Check user_space_ids for membership
     
     Args:
         document: PhotoTextDocument to check access for
         user: Current user (None if anonymous)
+        user_space_ids: List of space IDs the user belongs to (for Phase 2)
         
     Returns:
         True if user can view the document, False otherwise
@@ -89,7 +109,11 @@ def can_view_document(document: PhotoTextDocument, user: Optional[User]) -> bool
     if document.visibility == "public":
         return True
     
-    # Must be authenticated for non-public
+    # Authenticated - any logged-in user can see
+    if document.visibility == "authenticated":
+        return user is not None
+    
+    # Must be authenticated for space/private
     if user is None:
         return False
     
@@ -97,7 +121,10 @@ def can_view_document(document: PhotoTextDocument, user: Optional[User]) -> bool
     if document.user_id == user.id:
         return True
     
-    # Phase 1: Only public or owner access
+    # Phase 1: Space treated as private (no space infrastructure yet)
+    # Phase 2 will check: if document.visibility == "space" and user_space_ids...
+    
+    # Private - only owner
     return False
 
 

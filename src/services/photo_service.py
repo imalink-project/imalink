@@ -40,13 +40,13 @@ class PhotoService:
     
     def get_photos(
         self,
-        user_id: int,
+        user_id: Optional[int],
         offset: int = 0,
         limit: int = 100,
         author_id: Optional[int] = None,
         search_params: Optional[PhotoSearchRequest] = None
     ) -> PaginatedResponse[PhotoResponse]:
-        """Get paginated list of photos (user-scoped)"""
+        """Get paginated list of photos (supports anonymous access for public photos)"""
         
         # Get photos from repository
         photos = self.photo_repo.get_photos(
@@ -74,8 +74,8 @@ class PhotoService:
             limit=limit
         )
     
-    def get_photo_by_hash(self, hothash: str, user_id: int) -> PhotoResponse:
-        """Get single photo by hash (user-scoped)"""
+    def get_photo_by_hash(self, hothash: str, user_id: Optional[int]) -> PhotoResponse:
+        """Get single photo by hash (supports anonymous access for public photos)"""
         photo = self.photo_repo.get_by_hash(hothash, user_id)
         if not photo:
             raise NotFoundError("Photo", hothash)
@@ -554,6 +554,7 @@ class PhotoService:
             'taken_at': image_data.taken_at,
             'gps_latitude': image_data.gps_latitude,
             'gps_longitude': image_data.gps_longitude,
+            'visibility': image_data.visibility,  # Visibility control
             'import_session_id': image_data.import_session_id,  # Track which import session created this Photo
             # Try to extract dimensions from EXIF metadata
             # Common EXIF fields: ImageWidth, ImageHeight, ExifImageWidth, ExifImageHeight

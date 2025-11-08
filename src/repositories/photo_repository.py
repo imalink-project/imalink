@@ -239,19 +239,21 @@ class PhotoRepository:
         - Multiple filters use AND logic
         - tag_ids uses OR logic (photos with ANY of the tags)
         - user_id=None: Only public photos (anonymous access)
-        - user_id provided: Own photos OR public photos
+        - user_id provided: Own photos OR public/authenticated photos
         """
         
-        # Apply visibility filtering (Phase 1)
+        # Apply visibility filtering (Phase 1 - 4 levels)
         if user_id is None:
             # Anonymous user: only public photos
             query = query.filter(Photo.visibility == 'public')
         else:
-            # Authenticated user: own photos OR public photos
+            # Authenticated user: own photos OR public OR authenticated
+            # Note: 'space' treated as private in Phase 1
             query = query.filter(
                 or_(
                     Photo.user_id == user_id,
-                    Photo.visibility == 'public'
+                    Photo.visibility == 'public',
+                    Photo.visibility == 'authenticated'
                 )
             )
         

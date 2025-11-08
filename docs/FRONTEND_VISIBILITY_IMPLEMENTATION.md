@@ -1,7 +1,7 @@
 # Frontend Implementation Guide - Phase 1 Visibility
 
 **Status:** ✅ Backend deployed and ready  
-**Date:** November 7, 2025  
+**Date:** November 8, 2025  
 **For:** imalink-web frontend developers
 
 ---
@@ -10,7 +10,11 @@
 
 Phase 1 adds **visibility control** to photos and PhotoText documents. Users can now choose whether content is:
 - **Private** (default) - Only visible to the owner
+- **Space** (Phase 2) - Visible to members of specific spaces (NOT YET IMPLEMENTED)
+- **Authenticated** - Visible to all logged-in users
 - **Public** - Visible to everyone, including anonymous users
+
+**Important:** Phase 1 implements the database schema and API for all four levels, but **Space functionality is not yet available**. The UI should show all four options, but Space should be disabled with a tooltip "Coming in Phase 2".
 
 ---
 
@@ -28,11 +32,13 @@ Authorization: Bearer {token}  # Optional - anonymous users can view public phot
 ```json
 {
   "hothash": "abc123...",
-  "visibility": "private",  // or "public"
+  "visibility": "private",  // "private", "space", "authenticated", or "public"
   "rating": 3,
   // ... other fields
 }
 ```
+
+**Note:** `visibility="space"` is accepted by the API but has no effect in Phase 1 (treated as private).
 
 #### Update Photo Visibility
 ```http
@@ -41,9 +47,11 @@ Authorization: Bearer {token}  # Required
 Content-Type: application/json
 
 {
-  "visibility": "public"  // or "private"
+  "visibility": "authenticated"  // "private", "space", "authenticated", or "public"
 }
 ```
+
+**Note:** Setting `visibility="space"` is accepted but not functional in Phase 1.
 
 #### List Photos (supports anonymous access)
 ```http
@@ -52,8 +60,9 @@ Authorization: Bearer {token}  # Optional
 ```
 
 **Behavior:**
-- **Anonymous users:** Only see public photos
-- **Authenticated users:** See own photos + public photos from others
+- **Anonymous users:** Only see `public` photos
+- **Authenticated users:** See own photos + `authenticated` photos + `public` photos
+- **Note:** `space` visibility is not yet functional (treated as private)
 
 ---
 
@@ -70,12 +79,14 @@ Authorization: Bearer {token}  # Optional
 {
   "id": 123,
   "title": "My Story",
-  "visibility": "private",  // or "public"
+  "visibility": "private",  // "private", "space", "authenticated", or "public"
   "is_published": true,
   "content": { ... },
   // ... other fields
 }
 ```
+
+**Note:** `visibility="space"` accepted but not functional in Phase 1.
 
 #### Create Document with Visibility
 ```http
@@ -98,9 +109,11 @@ Authorization: Bearer {token}  # Required
 Content-Type: application/json
 
 {
-  "visibility": "public"  // or "private"
+  "visibility": "authenticated"  // "private", "space", "authenticated", or "public"
 }
 ```
+
+**Note:** `visibility="space"` accepted but not functional in Phase 1.
 
 #### List Documents (supports anonymous access)
 ```http
@@ -109,8 +122,9 @@ Authorization: Bearer {token}  # Optional
 ```
 
 **Behavior:**
-- **Anonymous users:** Only see public documents
-- **Authenticated users:** See own documents + public documents from others
+- **Anonymous users:** Only see `public` documents
+- **Authenticated users:** See own documents + `authenticated` documents + `public` documents
+- **Note:** `space` visibility is not yet functional (treated as private)
 
 ---
 
@@ -130,11 +144,19 @@ Add a visibility toggle:
       <label>Visibility:</label>
       <select v-model="photo.visibility" @change="updateVisibility">
         <option value="private">🔒 Private (Only You)</option>
-        <option value="public">🌍 Public (Everyone)</option>
+        <option value="space" disabled>👥 Space (Coming in Phase 2)</option>
+        <option value="authenticated">🌍 Authenticated (All Users)</option>
+        <option value="public">� Public (Everyone)</option>
       </select>
       
       <p v-if="photo.visibility === 'public'" class="warning">
         ⚠️ This photo is visible to everyone, including anonymous users
+      </p>
+      <p v-else-if="photo.visibility === 'authenticated'" class="info">
+        👥 This photo is visible to all logged-in users
+      </p>
+      <p v-else-if="photo.visibility === 'space'" class="info">
+        🚧 Space functionality coming in Phase 2
       </p>
     </div>
     
@@ -183,7 +205,13 @@ Add visual indicator for public photos:
       
       <!-- NEW: Show visibility badge -->
       <span v-if="photo.visibility === 'public'" class="badge badge-public">
-        🌍 Public
+        � Public
+      </span>
+      <span v-else-if="photo.visibility === 'authenticated'" class="badge badge-authenticated">
+        👥 Users
+      </span>
+      <span v-else-if="photo.visibility === 'space'" class="badge badge-space">
+        👥 Space
       </span>
       <span v-else class="badge badge-private">
         🔒 Private
@@ -205,6 +233,16 @@ Add visual indicator for public photos:
 
 .badge-public {
   background: rgba(34, 197, 94, 0.9);
+  color: white;
+}
+
+.badge-authenticated {
+  background: rgba(59, 130, 246, 0.9);
+  color: white;
+}
+
+.badge-space {
+  background: rgba(139, 92, 246, 0.9);
   color: white;
 }
 
@@ -232,7 +270,9 @@ Add visibility control to document settings:
         <label>Visibility</label>
         <select v-model="document.visibility">
           <option value="private">🔒 Private</option>
-          <option value="public">🌍 Public</option>
+          <option value="space" disabled>👥 Space (Phase 2)</option>
+          <option value="authenticated">🌍 Authenticated</option>
+          <option value="public">� Public</option>
         </select>
       </div>
       
@@ -246,6 +286,12 @@ Add visibility control to document settings:
       <p v-if="document.visibility === 'public'" class="info">
         💡 Public documents can be viewed by anyone, even without logging in
       </p>
+      <p v-else-if="document.visibility === 'authenticated'" class="info">
+        💡 Authenticated documents can be viewed by all logged-in users
+      </p>
+      <p v-else-if="document.visibility === 'space'" class="info">
+        🚧 Space functionality coming in Phase 2
+      </p>
     </div>
   </div>
 </template>
@@ -253,7 +299,127 @@ Add visibility control to document settings:
 
 ---
 
+## PhotoText Document and Photo Synchronization
+
+**⚠️ IMPORTANT:** When a PhotoText document's visibility is set or changed, all photos referenced in the document are **automatically updated** to match the document's visibility level.
+
+### Synchronization Behavior
+
+1. **Creating a document:**
+   - Document created with `visibility: "public"`
+   - All photos referenced in the document are **automatically set to `public`**
+   - Applies to:
+     - Photos in `image` blocks
+     - Photos in `collage` blocks (all images in the collage)
+     - Cover image (if specified)
+
+2. **Updating document visibility:**
+   - Document visibility changed from `private` → `authenticated`
+   - All referenced photos are **automatically updated to `authenticated`**
+
+3. **Why this matters:**
+   - Ensures consistency: A public document should not reference private photos
+   - Prevents broken images: Anonymous users can view all photos in a public document
+   - Simplifies UX: Users don't need to manually update each photo
+
+### Example Workflow
+
+```javascript
+// User creates a public PhotoText document
+const doc = {
+  title: "My Public Story",
+  visibility: "public",
+  content: {
+    version: "1.0",
+    documentType: "general",
+    title: "My Public Story",
+    blocks: [
+      {
+        type: "image",
+        hash: "abc123...",  // This photo was private
+        alt: "Beautiful sunset"
+      },
+      {
+        type: "collage",
+        layout: "grid",
+        images: [
+          { hash: "def456...", alt: "Photo 1" },  // These were private too
+          { hash: "ghi789...", alt: "Photo 2" }
+        ]
+      }
+    ]
+  }
+}
+
+// Backend automatically updates ALL referenced photos to "public"
+await fetch('/api/v1/phototext', {
+  method: 'POST',
+  body: JSON.stringify(doc)
+})
+
+// After this call:
+// - Document visibility = "public"
+// - Photo abc123... visibility = "public" (was private)
+// - Photo def456... visibility = "public" (was private)
+// - Photo ghi789... visibility = "public" (was private)
+```
+
+### UI Recommendations
+
+**Warning when changing document visibility:**
+
+```vue
+<template>
+  <div class="visibility-warning" v-if="willAffectPhotos">
+    <h3>⚠️ This will update {{ photoCount }} photos</h3>
+    <p>
+      Changing this document's visibility to <strong>{{ newVisibility }}</strong>
+      will automatically update all {{ photoCount }} referenced photos to
+      match this visibility level.
+    </p>
+    
+    <ul>
+      <li v-for="hash in affectedPhotoHashes" :key="hash">
+        Photo {{ hash.substring(0, 8) }}... will become {{ newVisibility }}
+      </li>
+    </ul>
+    
+    <button @click="confirmUpdate">Continue</button>
+    <button @click="cancelUpdate">Cancel</button>
+  </div>
+</template>
+```
+
+**Explanation in document editor:**
+
+```vue
+<div class="visibility-explainer">
+  <p class="info-text">
+    💡 <strong>Tip:</strong> When you set a document's visibility, all photos
+    in the document will automatically be updated to match. This ensures
+    that viewers can see all content consistently.
+  </p>
+</div>
+```
+
+### Edge Cases
+
+1. **Photo not owned by user:**
+   - Photos not owned by the document creator are **skipped**
+   - Only the user's own photos are updated
+
+2. **Photo doesn't exist:**
+   - Missing photo hashes are **silently ignored**
+   - Document creation/update continues normally
+
+3. **Multiple documents referencing same photo:**
+   - Photo visibility reflects the **most recent** document update
+   - Users should be aware that editing one document may affect photos in other documents
+
+---
+
 ## Backwards Compatibility
+````
 
 **All existing code will continue to work:**
 
@@ -330,7 +496,7 @@ const response = await fetch('/api/v1/photos', {
 
 ## Example API Flows
 
-### Flow 1: User Makes Photo Public
+### Flow 1: User Makes Photo Authenticated
 
 ```javascript
 // 1. Get current photo
@@ -340,19 +506,18 @@ const photoResponse = await fetch('/api/v1/photos/abc123', {
 const photo = await photoResponse.json()
 // { hothash: "abc123", visibility: "private", ... }
 
-// 2. Update visibility
+// 2. Update visibility to authenticated (all users)
 const updateResponse = await fetch('/api/v1/photos/abc123', {
   method: 'PUT',
   headers: {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
   },
-  body: JSON.stringify({ visibility: 'public' })
+  body: JSON.stringify({ visibility: 'authenticated' })
 })
 
-// 3. Photo is now public - anyone can view it
-const publicView = await fetch('/api/v1/photos/abc123')
-// No auth needed - returns photo data
+// 3. Photo is now visible to all logged-in users
+// Anonymous users CANNOT see it
 ```
 
 ### Flow 2: Anonymous User Browses Public Gallery
@@ -362,7 +527,7 @@ const publicView = await fetch('/api/v1/photos/abc123')
 const response = await fetch('/api/v1/photos')
 const data = await response.json()
 
-// Only public photos returned
+// Only PUBLIC photos returned (not authenticated or private)
 data.photos.forEach(photo => {
   console.log(photo.visibility) // Always "public"
 })
@@ -371,9 +536,28 @@ data.photos.forEach(photo => {
 const photoResponse = await fetch(`/api/v1/photos/${photo.hothash}`)
 const publicPhoto = await photoResponse.json()
 // Works without authentication
+
+// 3. Try to view authenticated photo - fails
+const authPhoto = await fetch('/api/v1/photos/auth-only-hash')
+// Returns 404 - requires login
 ```
 
-### Flow 3: User Creates Public PhotoText Story
+### Flow 3: Logged-in User Browses Community Content
+
+```javascript
+// User sees: own photos + authenticated photos + public photos
+const response = await fetch('/api/v1/photos', {
+  headers: { 'Authorization': `Bearer ${token}` }
+})
+const data = await response.json()
+
+data.photos.forEach(photo => {
+  // Can be "private" (own), "authenticated", or "public"
+  console.log(photo.visibility, photo.user_id)
+})
+```
+
+### Flow 4: Create Public PhotoText Story
 
 ```javascript
 const response = await fetch('/api/v1/phototext', {
@@ -386,7 +570,7 @@ const response = await fetch('/api/v1/phototext', {
     title: "Summer Vacation 2024",
     document_type: "album",
     content: photoTextContent,
-    visibility: "public",  // Make it public from the start
+    visibility: "public",  // Completely public
     is_published: true
   })
 })
@@ -441,15 +625,17 @@ if (response.status === 404) {
 
 | Endpoint | Anonymous Access | Authenticated Access | Notes |
 |----------|------------------|---------------------|-------|
-| `GET /api/v1/photos` | ✅ Public only | ✅ Own + Public | List photos |
-| `GET /api/v1/photos/{hash}` | ✅ Public only | ✅ Own + Public | Get single photo |
+| `GET /api/v1/photos` | ✅ Public only | ✅ Own + Authenticated + Public | List photos (space N/A in Phase 1) |
+| `GET /api/v1/photos/{hash}` | ✅ Public only | ✅ Own + Authenticated + Public | Get single photo |
 | `PUT /api/v1/photos/{hash}` | ❌ | ✅ Own only | Update (including visibility) |
 | `DELETE /api/v1/photos/{hash}` | ❌ | ✅ Own only | Delete photo |
-| `GET /api/v1/phototext` | ✅ Public only | ✅ Own + Public | List documents |
-| `GET /api/v1/phototext/{id}` | ✅ Public only | ✅ Own + Public | Get document |
+| `GET /api/v1/phototext` | ✅ Public only | ✅ Own + Authenticated + Public | List documents (space N/A in Phase 1) |
+| `GET /api/v1/phototext/{id}` | ✅ Public only | ✅ Own + Authenticated + Public | Get document |
 | `POST /api/v1/phototext` | ❌ | ✅ Own only | Create document |
 | `PUT /api/v1/phototext/{id}` | ❌ | ✅ Own only | Update (including visibility) |
 | `DELETE /api/v1/phototext/{id}` | ❌ | ✅ Own only | Delete document |
+
+**Note:** `visibility="space"` is accepted by all endpoints but treated as `private` until Phase 2 implements Space infrastructure.
 
 ---
 
@@ -463,16 +649,13 @@ Migration: `2025_11_07_1859-106636619401_add_visibility_to_photos_and_documents`
 
 ## Future Phases
 
-This is **Phase 1** - Basic Visibility only.
+This is **Phase 1** - Basic Visibility with four levels defined.
 
-**Phase 2 (Future):** Collaborators
-- Share specific photos/documents with specific users
-- View vs Edit permissions
-- Email invitations
+**Phase 2 (Future):** Spaces Infrastructure
+- Create and manage shared workspaces
+- Invite members to spaces
+- Share photos/documents to multiple spaces
+- `visibility="space"` becomes functional
+- Space-based content discovery
 
-**Phase 3 (Future):** Spaces
-- Shared workspaces for teams
-- All members see space content
-- Space-level permissions
-
-For now, implement Phase 1 only. Backend is ready for Phase 2/3 when needed.
+For now, implement Phase 1 with Space option visible but disabled. Backend accepts `visibility="space"` for forward compatibility.

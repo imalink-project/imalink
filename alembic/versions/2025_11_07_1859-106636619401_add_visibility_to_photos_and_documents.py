@@ -30,7 +30,7 @@ def upgrade() -> None:
     op.create_check_constraint(
         'valid_photo_visibility',
         'photos',
-        "visibility IN ('private', 'public')"
+        "visibility IN ('private', 'space', 'authenticated', 'public')"
     )
     
     # Add visibility column to phototext_documents table
@@ -43,7 +43,7 @@ def upgrade() -> None:
     op.create_check_constraint(
         'valid_document_visibility',
         'phototext_documents',
-        "visibility IN ('private', 'public')"
+        "visibility IN ('private', 'space', 'authenticated', 'public')"
     )
 
 

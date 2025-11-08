@@ -18,16 +18,19 @@ if TYPE_CHECKING:
 
 class Author(Base, TimestampMixin):
     """
-    Author/photographer model - who took the photo
+    Author/photographer model - metadata tag for identifying who took a photo
     
-    Each user maintains their own list of photographers/authors.
-    This allows users to have personal author lists without conflicts.
+    Authors are SHARED across all users - they are NOT user-scoped resources.
+    The user_id field tracks who created the author (for audit purposes),
+    but all users can see and use all authors when tagging photos.
+    
+    Photo ownership and visibility is controlled via Photo.user_id, not Author.
     """
     __tablename__ = "authors"
     
     id = Column(Integer, primary_key=True, index=True)
     
-    # Data ownership - each author belongs to a user
+    # Audit trail - tracks who created this author
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False, index=True)
     
     name = Column(String(255), nullable=False, index=True)

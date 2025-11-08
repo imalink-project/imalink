@@ -261,18 +261,20 @@ const fetchUserStats = async () => {
 };
 ```
 
-## 🎯 Symmetric Architecture Benefits
+## 🎯 Data Ownership Architecture
 
-All major data models now follow the same user ownership pattern:
-- `Photo.user_id` → User's photos
-- `Author.user_id` → User's photographers  
+Most data models follow user ownership pattern:
+- `Photo.user_id` → User owns the photo
 - `ImportSession.user_id` → User's import sessions
 - `ImageFile.user_id` → User's image files
+- `PhotoText.user_id` → User's documents
+
+**Exception:** `Author.user_id` → Tracks who created the author (for audit), but authors are **shared across all users**. Photo ownership is via `Photo.user_id`, not Author.
 
 This provides:
-- **Consistent API patterns** across all endpoints
-- **Complete data isolation** between users
-- **Simplified frontend logic** with predictable user scoping
+- **Consistent API patterns** across most endpoints
+- **Complete data isolation** for user content
+- **Shared metadata** (Authors) for collaborative tagging
 
 ## 🚦 Error Handling Strategy
 
@@ -481,17 +483,16 @@ const fetchPhotoImages = async (hothash: string) => {
 
 ### Authors API
 
+**Important:** Authors are **shared metadata tags** across all users. Anyone can view all authors, but creating/updating requires authentication.
+
 ```typescript
-// Get user's authors
+// Get all authors (no authentication required for viewing)
 const fetchAuthors = async () => {
-  const response = await fetch('/api/v1/authors/', {
-    headers: getAuthHeaders()
-  });
-  
+  const response = await fetch('/api/v1/authors/');
   return handleAPIResponse(response);
 };
 
-// Create new author
+// Create new author (requires authentication)
 const createAuthor = async (authorData: {
   name: string;
   email?: string;
@@ -499,7 +500,7 @@ const createAuthor = async (authorData: {
 }) => {
   const response = await fetch('/api/v1/authors/', {
     method: 'POST',
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(),  // Authentication required
     body: JSON.stringify(authorData),
   });
   

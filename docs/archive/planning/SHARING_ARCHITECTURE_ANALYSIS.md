@@ -9,7 +9,7 @@
 
 Imalink posisjonerer seg som et **forfatter-sentrert visual storytelling verktøy** med kontrollert deling og samarbeid. Analysen viser at det finnes et gap mellom sosiale medieplattformer (500px, Behance) og klient-fokuserte verktøy (SmugMug, Pixieset). Imalinks unike kombinasjon av PhotoText-narrativer, content-addressable storage og workspace-basert samarbeid kan fylle denne nisjen.
 
-**Anbefaling:** Implementer i tre faser - Basic Visibility → Collaborators → Spaces
+**Anbefaling:** Implementer i to faser - Basic Visibility → Spaces
 
 ---
 
@@ -78,7 +78,7 @@ Imalink posisjonerer seg som et **forfatter-sentrert visual storytelling verktø
 **Imalink differensiering:**
 - **Null sosiale features** - rent forfatter-verktøy
 - Fotografen kontrollerer alt (ikke algoritme)
-- Granulær tilgang (private/collaborators/space/public)
+- Granulær tilgang (private/space/authenticated/public)
 - PhotoText for visuell storytelling
 
 ---
@@ -100,8 +100,8 @@ Imalink posisjonerer seg som et **forfatter-sentrert visual storytelling verktø
 ```
 Notion Page         → Imalink Photo/PhotoText
 Workspace           → Space
-Shared with user    → Collaborator
 Public publishing   → Public visibility
+Team access         → Authenticated visibility
 ```
 
 **Styrker:**
@@ -231,7 +231,7 @@ Public publishing   → Public visibility
 |----------|--------------|-------------------|
 | **Fotograf → Klient** | SmugMug, Pixieset | ❌ Ikke vårt fokus |
 | **Fotograf → Allmenheten** | 500px, Behance | ✅ Men uten sosiale features |
-| **Fotograf → Fotograf** | ❌ **GAP** | ✅ Spaces + Collaborators |
+| **Fotograf → Fotograf** | ❌ **GAP** | ✅ Spaces |
 | **Visual storytelling** | Medium (tekst-fokus) | ✅ PhotoText |
 | **Professional collaboration** | Figma (design), Notion (tekst) | ✅ Men for visuelt innhold |
 
@@ -260,10 +260,10 @@ Imalink = PhotoText narratives + Content-addressable storage + Workspace collabo
 
 ```python
 class VisibilityLevel(Enum):
-    PRIVATE = "private"              # Kun eier
-    COLLABORATORS = "collaborators"  # Eier + inviterte samarbeidspartnere
-    SPACE = "space"                  # Alle medlemmer i et space
-    PUBLIC = "public"                # Alle (også uauthentiserte)
+    PRIVATE = "private"          # Kun eier
+    SPACE = "space"              # Medlemmer av spesifikke spaces
+    AUTHENTICATED = "authenticated"  # Alle innloggede brukere
+    PUBLIC = "public"            # Alle (også anonyme)
 ```
 
 **Anvendelse:**
@@ -271,6 +271,17 @@ class VisibilityLevel(Enum):
 - `PhotoTextDocument.visibility`
 
 **Default:** `PRIVATE`
+
+**Logikk:**
+- `private`: Kun eier ser innholdet
+- `space`: Kun medlemmer av spaces hvor innholdet er delt
+- `authenticated`: Alle innloggede imalink-brukere (community-deling)
+- `public`: Alle inkludert anonyme besøkende (SEO, markedsføring)
+
+**Relasjon til Spaces:**
+- Når `visibility = "space"`, må innholdet knyttes til ett eller flere spaces via `photo_space_memberships` tabell
+- Space-medlemskap gir IKKE automatisk tilgang til eierens øvrige innhold
+- Hvert innhold må eksplisitt deles til space(s)
 
 ### 3.3 Database-modeller
 
@@ -344,52 +355,61 @@ class SpaceMember(Base, TimestampMixin):
     )
 ```
 
-#### Collaborator (Direkte samarbeid)
+#### PhotoSpaceMembership (Innhold delt til spaces)
 
 ```python
-class Collaborator(Base, TimestampMixin):
+class PhotoSpaceMembership(Base, TimestampMixin):
     """
-    Direct collaboration on specific resource
+    Links photos to spaces when visibility = 'space'
     
-    Allows sharing a single photo or document with specific users
-    without creating a space.
-    
-    Use cases:
-    - Share draft with colleague for feedback
-    - Co-author a PhotoText document
-    - Give client access to specific images
+    Allows photos to be in multiple spaces simultaneously.
     """
-    __tablename__ = "collaborators"
+    __tablename__ = "photo_space_memberships"
     
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    photo_id = Column(Integer, ForeignKey('photos.id', ondelete='CASCADE'), nullable=False, index=True)
+    space_id = Column(Integer, ForeignKey('spaces.id', ondelete='CASCADE'), nullable=False, index=True)
     
-    # Resource being shared (polymorphic)
-    resource_type = Column(String(50), nullable=False, index=True)
-    # 'photo' or 'phototext'
-    resource_id = Column(Integer, nullable=False, index=True)
-    
-    # Ownership
-    owner_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
-    
-    # Who gets access
-    collaborator_user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
-    
-    # Permission level
-    permission = Column(String(20), nullable=False, default='view')
-    # Permissions: view, edit
+    # Who added this photo to the space
+    added_by_user_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    added_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     
     # Relationships
-    owner = relationship("User", foreign_keys=[owner_id], back_populates="granted_collaborations")
-    collaborator = relationship("User", foreign_keys=[collaborator_user_id], back_populates="received_collaborations")
+    photo = relationship("Photo", back_populates="space_memberships")
+    space = relationship("Space")
+    added_by = relationship("User")
     
     # Constraints
     __table_args__ = (
-        # Can't share with yourself
-        CheckConstraint('owner_id != collaborator_user_id', name='no_self_collaboration'),
-        CheckConstraint("resource_type IN ('photo', 'phototext')", name='valid_resource_type'),
-        CheckConstraint("permission IN ('view', 'edit')", name='valid_permission'),
-        # One collaboration per user per resource
-        UniqueConstraint('resource_type', 'resource_id', 'collaborator_user_id', name='unique_collaboration'),
+        # Photo can only be in a space once
+        UniqueConstraint('photo_id', 'space_id', name='unique_photo_space'),
+    )
+```
+
+#### PhotoTextSpaceMembership (Dokumenter delt til spaces)
+
+```python
+class PhotoTextSpaceMembership(Base, TimestampMixin):
+    """
+    Links PhotoText documents to spaces when visibility = 'space'
+    """
+    __tablename__ = "phototext_space_memberships"
+    
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    document_id = Column(Integer, ForeignKey('phototext_documents.id', ondelete='CASCADE'), nullable=False, index=True)
+    space_id = Column(Integer, ForeignKey('spaces.id', ondelete='CASCADE'), nullable=False, index=True)
+    
+    added_by_user_id = Column(Integer, ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    added_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    
+    # Relationships
+    document = relationship("PhotoTextDocument", back_populates="space_memberships")
+    space = relationship("Space")
+    added_by = relationship("User")
+    
+    # Constraints
+    __table_args__ = (
+        UniqueConstraint('document_id', 'space_id', name='unique_document_space'),
     )
 ```
 
@@ -401,23 +421,16 @@ class Photo(Base, TimestampMixin):
     
     # Sharing controls
     visibility = Column(String(20), nullable=False, default='private', index=True)
-    # Values: private, collaborators, space, public
-    
-    space_id = Column(Integer, ForeignKey('spaces.id', ondelete='SET NULL'), nullable=True, index=True)
-    # Only used if visibility='space'
+    # Values: private, space, authenticated, public
     
     # Relationships
-    space = relationship("Space")
+    space_memberships = relationship("PhotoSpaceMembership", back_populates="photo", cascade="all, delete-orphan")
     
     # Constraints
     __table_args__ = (
         CheckConstraint(
-            "visibility IN ('private', 'collaborators', 'space', 'public')",
+            "visibility IN ('private', 'space', 'authenticated', 'public')",
             name='valid_photo_visibility'
-        ),
-        CheckConstraint(
-            "(visibility = 'space' AND space_id IS NOT NULL) OR (visibility != 'space')",
-            name='space_visibility_requires_space_id'
         ),
     )
 ```
@@ -430,24 +443,17 @@ class PhotoTextDocument(Base, TimestampMixin):
     
     # Sharing controls
     visibility = Column(String(20), nullable=False, default='private', index=True)
-    # Values: private, collaborators, space, public
-    
-    space_id = Column(Integer, ForeignKey('spaces.id', ondelete='SET NULL'), nullable=True, index=True)
-    # Only used if visibility='space'
+    # Values: private, space, authenticated, public
     
     # Relationships
-    space = relationship("Space")
+    space_memberships = relationship("PhotoTextSpaceMembership", back_populates="document", cascade="all, delete-orphan")
     
     # Constraints
     __table_args__ = (
         # ... existing constraints ...
         CheckConstraint(
-            "visibility IN ('private', 'collaborators', 'space', 'public')",
+            "visibility IN ('private', 'space', 'authenticated', 'public')",
             name='valid_document_visibility'
-        ),
-        CheckConstraint(
-            "(visibility = 'space' AND space_id IS NOT NULL) OR (visibility != 'space')",
-            name='space_visibility_requires_space_id'
         ),
     )
 ```
@@ -459,22 +465,26 @@ class PhotoTextDocument(Base, TimestampMixin):
 ### 4.1 Photo access check
 
 ```python
-def can_view_photo(photo: Photo, user: Optional[User]) -> bool:
+def can_view_photo(photo: Photo, user: Optional[User], user_space_ids: Optional[List[int]] = None) -> bool:
     """
     Determine if user can view photo
     
     Rules:
     1. Owner can always see own photos
     2. Public photos visible to everyone (including anonymous)
-    3. Space photos visible to space members
-    4. Collaborator photos visible to invited users
+    3. Authenticated photos visible to all logged-in users
+    4. Space photos visible to space members
     5. Private photos only visible to owner
     """
     # Public - anyone can see
     if photo.visibility == "public":
         return True
     
-    # Must be authenticated for non-public
+    # Authenticated - all logged-in users
+    if photo.visibility == "authenticated" and user is not None:
+        return True
+    
+    # Must be authenticated for remaining checks
     if user is None:
         return False
     
@@ -483,16 +493,26 @@ def can_view_photo(photo: Photo, user: Optional[User]) -> bool:
         return True
     
     # Space - check membership
-    if photo.visibility == "space" and photo.space_id:
-        if is_space_member(photo.space_id, user.id):
+    if photo.visibility == "space":
+        if user_space_ids is None:
+            # Fetch user's space IDs (should be cached in practice)
+            user_space_ids = get_user_space_ids(user.id)
+        
+        # Get photo's space IDs
+        photo_space_ids = [psm.space_id for psm in photo.space_memberships]
+        
+        # Check if any overlap
+        if set(user_space_ids) & set(photo_space_ids):
             return True
     
-    # Collaborators - check invitation
-    if photo.visibility == "collaborators":
-        if is_collaborator(photo, user):
-            return True
-    
+    # Private - only owner
     return False
+```
+
+**Performance optimization:**
+- Cache `user_space_ids` in session/Redis
+- Index on `photo_space_memberships(photo_id)` and `photo_space_memberships(space_id)`
+- For listing queries, pre-fetch user's space IDs once
 
 def can_edit_photo(photo: Photo, user: User) -> bool:
     """
@@ -500,32 +520,22 @@ def can_edit_photo(photo: Photo, user: User) -> bool:
     
     Rules:
     1. Owner can always edit
-    2. Collaborators with 'edit' permission can edit
-    3. Space members cannot edit (view only)
+    2. Space members cannot edit (view only)
+    3. Only owner can change visibility or delete
     """
-    # Owner can edit
-    if photo.user_id == user.id:
-        return True
-    
-    # Collaborator with edit permission
-    if photo.visibility == "collaborators":
-        collab = get_collaboration(
-            resource_type="photo",
-            resource_id=photo.id,
-            user_id=user.id
-        )
-        if collab and collab.permission == "edit":
-            return True
-    
-    return False
+    # Only owner can edit
+    return photo.user_id == user.id
 ```
 
 ### 4.2 Query filtering
 
 ```python
-def get_visible_photos(user: Optional[User], filters: dict) -> List[Photo]:
+def get_photos_for_user(user: Optional[User], user_space_ids: Optional[List[int]] = None):
     """
-    Get photos visible to user based on visibility rules
+    Get all photos user has access to
+    
+    For anonymous users: Only public
+    For authenticated users: Own + authenticated + public + space photos
     """
     query = db.query(Photo)
     
@@ -533,29 +543,21 @@ def get_visible_photos(user: Optional[User], filters: dict) -> List[Photo]:
         # Anonymous - only public
         query = query.filter(Photo.visibility == "public")
     else:
+        # Cache user's space IDs
+        if user_space_ids is None:
+            user_space_ids = get_user_space_ids(user.id)
+        
         # Authenticated user sees:
-        # - Own photos
-        # - Public photos
-        # - Photos in their spaces
-        # - Photos they're invited to as collaborator
-        
-        user_spaces = get_user_space_ids(user.id)
-        
         query = query.filter(
             or_(
                 Photo.user_id == user.id,                    # Own photos
                 Photo.visibility == "public",                # Public photos
+                Photo.visibility == "authenticated",         # Authenticated photos
                 and_(                                         # Space photos
                     Photo.visibility == "space",
-                    Photo.space_id.in_(user_spaces)
-                ),
-                and_(                                         # Collaborator photos
-                    Photo.visibility == "collaborators",
-                    exists(
-                        select(Collaborator).where(
-                            Collaborator.resource_type == "photo",
-                            Collaborator.resource_id == Photo.id,
-                            Collaborator.collaborator_user_id == user.id
+                    Photo.id.in_(
+                        select(PhotoSpaceMembership.photo_id).where(
+                            PhotoSpaceMembership.space_id.in_(user_space_ids)
                         )
                     )
                 )
@@ -570,76 +572,64 @@ def get_visible_photos(user: Optional[User], filters: dict) -> List[Photo]:
 
 ## 5. Implementeringsplan
 
-### Fase 1: Basic Visibility (2-3 uker)
+### Fase 1: Basic Visibility (2-3 uker) - PRIORITERT
 
-**Scope:** Private vs Public toggle
+**Scope:** Fire-nivå visibility system
+
+**Visibility levels:**
+- `private` - Kun eier
+- `space` - Space-medlemmer (krever space-infrastruktur)
+- `authenticated` - Alle innloggede brukere
+- `public` - Alle inkludert anonyme
 
 **Database changes:**
-- Add `visibility` field to Photo (default='private')
-- Add `visibility` field to PhotoTextDocument (default='private')
+- Add `visibility` field to Photo (default='private', VARCHAR(20))
+- Add `visibility` field to PhotoTextDocument (default='private', VARCHAR(20))
+- CHECK constraint for valid values
 - Migration script
 
 **API changes:**
-- Update Photo/PhotoText creation endpoints (accept visibility)
+- Update Photo/PhotoText creation endpoints (accept optional visibility)
 - Update Photo/PhotoText update endpoints (change visibility)
 - Filter all GET endpoints by visibility + user
+- Add `get_current_user_optional` dependency for anonymous access
+- Endpoints support both authenticated and anonymous requests
+
+**Access control:**
+- `can_view_photo(photo, user, user_space_ids)` utility
+- `can_edit_photo(photo, user)` utility (owner only)
+- Repository methods accept `Optional[User]`
 
 **Frontend changes:**
-- Visibility toggle UI (Private/Public)
+- Visibility dropdown UI (Private/Authenticated/Public)
+- Space option disabled until Phase 3
 - Warning når man publiserer
 - Public gallery view (no auth required)
+- Authenticated community gallery (requires login)
+
+**Performance:**
+- Index on visibility column
+- Cache user_space_ids in session (for future Phase 3)
 
 **Testing:**
 - Owner sees all own content
 - Anonymous sees only public
+- Authenticated users see own + authenticated + public
 - Changing visibility updates access immediately
 
-**Deliverable:** Brukere kan publisere enkeltbilder/stories offentlig
+**Deliverable:** Brukere kan publisere til community eller hele verden
 
 ---
 
-### Fase 2: Collaborators (3-4 uker)
-
-**Scope:** Invitere spesifikke brukere til samarbeid
-
-**Database changes:**
-- Create `collaborators` table
-- Update Photo/PhotoText visibility to include 'collaborators'
-
-**API changes:**
-- POST /api/v1/photos/{hash}/collaborators (add collaborator)
-- DELETE /api/v1/photos/{hash}/collaborators/{user_id} (remove)
-- GET /api/v1/photos/{hash}/collaborators (list collaborators)
-- Same for PhotoText documents
-- Email notification system
-
-**Frontend changes:**
-- "Share with user" dialog
-- User search/autocomplete
-- View vs Edit permission selector
-- List of current collaborators
-- Email invitations
-
-**Testing:**
-- Invited user sees content
-- View-only cannot edit
-- Edit permission can modify
-- Removing collaborator revokes access
-- Email notifications sent
-
-**Deliverable:** 1-til-1 deling med kolleger
-
----
-
-### Fase 3: Spaces (4-5 uker)
+### Fase 2: Spaces Infrastructure (4-5 uker)
 
 **Scope:** Opprett delte workspaces
 
 **Database changes:**
 - Create `spaces` table
 - Create `space_members` table
-- Update Photo/PhotoText visibility to include 'space'
-- Add `space_id` foreign key
+- Create `photo_space_memberships` table
+- Create `phototext_space_memberships` table
 
 **API changes:**
 - Space CRUD operations
@@ -653,28 +643,47 @@ def get_visible_photos(user: Optional[User], filters: dict) -> List[Photo]:
   - DELETE /api/v1/spaces/{id}/members/{user_id} (remove)
   - GET /api/v1/spaces/{id}/members (list members)
 - Share to space
-  - PUT /api/v1/photos/{hash} (set visibility=space, space_id=X)
-  - PUT /api/v1/phototext/{id} (set visibility=space, space_id=X)
+  - POST /api/v1/photos/{hash}/spaces (add to space)
+  - DELETE /api/v1/photos/{hash}/spaces/{space_id} (remove from space)
+  - GET /api/v1/photos/{hash}/spaces (list spaces photo is in)
+  - Same for PhotoText documents
 - Space content
   - GET /api/v1/spaces/{id}/photos (all photos shared to space)
   - GET /api/v1/spaces/{id}/documents (all documents shared to space)
+- Enable `visibility=space` in Photo/PhotoText endpoints
+
+**Access control:**
+- Update `can_view_photo()` to check space memberships
+- Cache `user_space_ids` in session/Redis
+- Efficient JOIN queries with proper indexes
 
 **Frontend changes:**
 - Space creation wizard
 - Space list view
 - Space detail view (members + content)
-- Share to space UI
+- "Share to spaces" multi-select UI
 - Member management
+- Enable "Space" option in visibility dropdown
 
 **Testing:**
 - Space creation
 - Invite/remove members
-- Share content to space
-- All members see shared content
+- Share content to multiple spaces
+- All space members see shared content
 - Non-members don't see content
-- Space deletion doesn't delete content
+- Space deletion doesn't delete content (orphan handling)
+- Photo can be in multiple spaces
 
 **Deliverable:** Gruppesamarbeid i delte rom
+
+---
+
+### Fase 3: Future Extensions
+
+**Mulige fremtidige features (ikke planlagt nå):**
+- Direct user-to-user sharing (individuell deling)
+- Comments/annotations på bilder
+- Activity feed for spaces
 
 ---
 
@@ -697,7 +706,6 @@ def get_visible_photos(user: Optional[User], filters: dict) -> List[Photo]:
 | **Token hijacking** | JWT expiry + refresh tokens |
 | **Space takeover** | Kun owner kan slette space |
 | **Content leak via API** | Filtrer hotpreview/coldpreview basert på tilgang |
-| **Collaborator abuse** | Audit log + easy revocation |
 
 ### 6.3 Privacy
 
@@ -804,23 +812,22 @@ def get_visible_photos(user: Optional[User], filters: dict) -> List[Photo]:
 3. Gi gratis tilgang i 3 måneder
 4. Samle feedback:
    - Bruker de visibility features?
-   - Ønsker de Collaborators?
    - Ønsker de Spaces?
    - Hva mangler?
 
 **Success criteria:**
 - ✅ 70%+ aktive brukere etter 1 måned
 - ✅ Minst 3 brukere publiserer offentlig
-- ✅ Minst 2 brukere ber om collaboration features
+- ✅ Minst 2 brukere ber om Spaces
 - ✅ NPS score > 40
 
-**If criteria not met:** Pivot eller juster før Fase 2/3
+**If criteria not met:** Pivot eller juster før Fase 2
 
 ### 9.3 Pricing (fremtidig)
 
 **Freemium model:**
 - Free tier: 5 GB storage, unlimited private photos
-- Pro tier ($10/måned): 100 GB, spaces, collaborators
+- Pro tier ($10/måned): 100 GB, spaces
 - Team tier ($25/bruker/måned): Unlimited storage, priority support
 
 ---
@@ -862,7 +869,7 @@ def get_visible_photos(user: Optional[User], filters: dict) -> List[Photo]:
    - Mål success criteria
 
 3. **Hvis validering OK:**
-   - Implementer Fase 2 (Collaborators)
+   - Implementer Fase 2 (Spaces)
    - Utvid beta-test
    - Iterér basert på feedback
 

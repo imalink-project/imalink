@@ -36,25 +36,27 @@ from src.schemas.tag_schemas import AddTagsRequest, AddTagsResponse, RemoveTagRe
 from src.schemas.common import PaginatedResponse, create_success_response
 from src.schemas.responses.photo_stack_responses import PhotoStackSummary
 from src.core.exceptions import NotFoundError, ValidationError, DuplicateImageError
-from src.api.dependencies import get_current_active_user
+from src.api.dependencies import get_current_active_user, get_optional_current_user
 from src.models.user import User
+from pydantic import ValidationError as PydanticValidationError
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=PaginatedResponse[PhotoResponse])
-def list_photos(
+async def list_photos(
     offset: int = Query(0, ge=0, description="Number of photos to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of photos to return"),
     author_id: Optional[int] = Query(None, description="Filter by author ID"),
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     photo_service: PhotoService = Depends(get_photo_service)
 ):
-    """Get paginated list of photos with metadata (user-scoped)"""
+    """Get paginated list of photos with metadata (supports anonymous access to public photos)"""
     try:
+        user_id = getattr(current_user, 'id', None) if current_user else None
         return photo_service.get_photos(
-            user_id=getattr(current_user, 'id'),
+            user_id=user_id,
             offset=offset,
             limit=limit,
             author_id=author_id
@@ -127,13 +129,13 @@ def create_photo_with_file(
             status_code=409, 
             detail=f"Photo with this image already exists. Use POST /photos/{{hothash}}/files to add companion files. {str(e)}"
         )
-    except ValidationError as e:
+    except (ValidationError, PydanticValidationError) as e:
         logger.error(f"Validation error creating photo: {str(e)}")
         logger.error(f"Request data details - filename: {image_data.filename}, "
                     f"hotpreview_size: {len(image_data.hotpreview) if image_data.hotpreview else 0}, "
                     f"file_size: {image_data.file_size}, "
                     f"has_exif: {bool(image_data.exif_dict)}")
-        raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
+        raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
     except Exception as e:
         logger.error(f"Unexpected error creating photo with file: {str(e)}", exc_info=True)
         logger.error(f"Request data - filename: {image_data.filename if hasattr(image_data, 'filename') else 'N/A'}, "
@@ -193,14 +195,15 @@ def add_file_to_photo(
 
 
 @router.get("/{hothash}", response_model=PhotoResponse)
-def get_photo(
+async def get_photo(
     hothash: str,
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     photo_service: PhotoService = Depends(get_photo_service)
 ):
-    """Get single photo by hash (user-scoped)"""
+    """Get single photo by hash (supports anonymous access for public photos)"""
     try:
-        return photo_service.get_photo_by_hash(hothash, getattr(current_user, 'id'))
+        user_id = getattr(current_user, 'id', None) if current_user else None
+        return photo_service.get_photo_by_hash(hothash, user_id)
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
