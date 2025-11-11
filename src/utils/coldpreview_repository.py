@@ -6,12 +6,14 @@ This utility provides server-side repository for medium-size preview images (col
 Coldpreviews are typically 800-1200px images that provide good quality for photo evaluation
 without requiring full resolution downloads.
 
-Now using imalink-core's PreviewGenerator for image processing.
+Backend receives pre-processed coldpreviews from:
+- PhotoEgg (from imalink-core server)
+- Direct upload endpoint (frontend sends processed image)
 
 Key features:
 - Configurable repository location via core.config
 - Efficient 2-level directory structure for performance  
-- imalink-core based image processing with error handling
+- No image processing - just stores pre-processed bytes
 - Relative path storage for database references
 """
 import os
@@ -20,10 +22,8 @@ from pathlib import Path
 from typing import Optional, Tuple
 from PIL import Image as PILImage
 import io
-import tempfile
 
 from src.core.config import Config
-from imalink_core import PreviewGenerator
 
 
 class ColdpreviewRepository:
@@ -56,59 +56,49 @@ class ColdpreviewRepository:
     def save_coldpreview(self, hothash: str, image_data: bytes, 
                         max_size: int = 1200, quality: int = 85) -> Tuple[str, int, int, int]:
         """
-        Save coldpreview to filesystem with optional resizing
+        Save pre-processed coldpreview to filesystem
         
-        Uses imalink-core's PreviewGenerator for consistent image processing.
+        Backend receives coldpreview already processed by:
+        - imalink-core server (via PhotoEgg)
+        - Frontend (via direct upload endpoint)
+        
+        No image processing done here - just stores bytes and reads dimensions.
         
         Args:
             hothash: Photo hash identifier
-            image_data: Raw image bytes
-            max_size: Maximum dimension (pixels)
-            quality: JPEG quality (1-100)
+            image_data: Pre-processed coldpreview bytes (JPEG)
+            max_size: IGNORED (kept for backwards compatibility)
+            quality: IGNORED (kept for backwards compatibility)
             
         Returns:
-            Tuple of (path, width, height, file_size)
+            Tuple of (relative_path, width, height, file_size)
         """
         # Validate input
         if not image_data:
             raise ValueError("Image data is empty")
         
-        # Save to temporary file for imalink-core processing
-        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_file:
-            tmp_path = Path(tmp_file.name)
-            tmp_file.write(image_data)
-        
         try:
-            # Use imalink-core to generate coldpreview with EXIF-aware rotation
-            coldpreview = PreviewGenerator.generate_coldpreview(
-                tmp_path, 
-                max_size=max_size, 
-                quality=quality
-            )
+            # Read dimensions from image bytes (no processing)
+            img = PILImage.open(io.BytesIO(image_data))
+            width, height = img.size
             
             # Generate file path
             file_path = self.get_file_path(hothash)
             file_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # Save processed image
-            file_path.write_bytes(coldpreview.bytes)
+            # Save bytes directly to disk (no processing!)
+            file_path.write_bytes(image_data)
             
-            # Get dimensions and file size
-            width = coldpreview.width
-            height = coldpreview.height
+            # Get file size
             file_size = file_path.stat().st_size
             
-            # Return relative path for database storage (relative to base_path)
+            # Return relative path for database storage
             relative_path = str(file_path.relative_to(self.base_path))
             
             return relative_path, width, height, file_size
             
         except Exception as e:
-            raise ValueError(f"Failed to process coldpreview: {str(e)}")
-        finally:
-            # Clean up temporary file
-            if tmp_path.exists():
-                tmp_path.unlink()
+            raise ValueError(f"Failed to save coldpreview: {str(e)}")
     
     def load_coldpreview(self, relative_path: str) -> Optional[bytes]:
         """

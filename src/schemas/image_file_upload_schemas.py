@@ -3,7 +3,7 @@ New ImageFile upload schemas for clear separation of concerns
 
 CLEAR SEPARATION:
 1. ImageFileNewPhotoRequest - For creating completely new photos (requires hotpreview)
-2. ImageFileAddToPhotoRequest - For adding companion files to existing photos (NO hotpreview/perceptual_hash)
+2. ImageFileAddToPhotoRequest - For adding companion files to existing photos (NO hotpreview)
 
 The key distinction:
 - new-photo: Creates the visual representation of a photo (needs hotpreview for hothash generation)

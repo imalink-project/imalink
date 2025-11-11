@@ -11,9 +11,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from pathlib import Path
 import io
-
-from PIL import Image as PILImage
-from imalink_core import HothashCalculator
+import hashlib
 
 from src.repositories.photo_repository import PhotoRepository
 from src.repositories.image_file_repository import ImageFileRepository
@@ -139,7 +137,7 @@ class PhotoService:
         
         USE CASE: Adding companion files (RAW, different resolution, etc.)
         - Photo already exists with visual data
-        - ImageFile stores only file metadata (no hotpreview/exif/perceptual_hash)
+        - ImageFile stores only file metadata (no hotpreview/exif)
         
         WORKFLOW:
         1. Validate that Photo exists and belongs to user
@@ -200,6 +198,87 @@ class PhotoService:
             raise NotFoundError("Hotpreview", hothash)
         
         return hotpreview_data
+    
+    def upload_coldpreview(self, hothash: str, file_content: bytes, user_id: int) -> Dict[str, Any]:
+        """Upload or update coldpreview for a photo (user-scoped)"""
+        # Get photo to ensure it exists and user has access
+        photo = self.photo_repo.get_by_hash(hothash, user_id)
+        if not photo:
+            raise NotFoundError("Photo", hothash)
+        
+        # Use coldpreview repository utility
+        from src.utils.coldpreview_repository import ColdpreviewRepository
+        repository = ColdpreviewRepository()
+        
+        # Save coldpreview and get metadata (returns tuple)
+        relative_path, width, height, file_size = repository.save_coldpreview(hothash, file_content)
+        
+        # SIMPLIFIED: Only store path, dimensions/size will be read dynamically
+        setattr(photo, 'coldpreview_path', relative_path)
+        
+        # Commit changes
+        self.db.commit()
+        self.db.refresh(photo)
+        
+        return {
+            'hothash': hothash,
+            'width': width,
+            'height': height,
+            'size': file_size,
+            'path': relative_path
+        }
+    
+    def get_coldpreview(self, hothash: str, user_id: int, width: Optional[int] = None, height: Optional[int] = None) -> Optional[bytes]:
+        """Get coldpreview image for photo with optional resizing (user-scoped)"""
+        # Get photo and verify user has access
+        photo = self.photo_repo.get_by_hash(hothash, user_id)
+        if not photo:
+            raise NotFoundError("Photo", hothash)
+        
+        # Check if coldpreview exists
+        if not getattr(photo, 'coldpreview_path', None):
+            return None
+        
+        # Use coldpreview repository utility
+        from src.utils.coldpreview_repository import ColdpreviewRepository
+        repository = ColdpreviewRepository()
+        
+        # Load coldpreview with optional resizing
+        if width or height:
+            # First load the original image
+            original_data = repository.load_coldpreview_by_hash(hothash)
+            if not original_data:
+                return None
+            # Then resize it
+            return repository.resize_coldpreview(original_data, target_width=width, target_height=height)
+        else:
+            return repository.load_coldpreview_by_hash(hothash)
+    
+    def delete_coldpreview(self, hothash: str, user_id: int) -> None:
+        """Delete coldpreview for photo (user-scoped)"""
+        # Get photo and verify user has access
+        photo = self.photo_repo.get_by_hash(hothash, user_id)
+        if not photo:
+            raise NotFoundError("Photo", hothash)
+        
+        # Check if coldpreview exists
+        if not getattr(photo, 'coldpreview_path', None):
+            raise NotFoundError("Coldpreview", hothash)
+        
+        # Use coldpreview repository utility
+        from src.utils.coldpreview_repository import ColdpreviewRepository
+        repository = ColdpreviewRepository()
+        
+        # Delete from filesystem (need to construct full path from relative path)
+        # We need to pass the hothash since that's what the delete method expects
+        try:
+            repository.delete_coldpreview_by_hash(hothash)
+        except Exception:
+            pass  # File might already be deleted, continue with database cleanup
+        
+        # Clear path in database
+        setattr(photo, 'coldpreview_path', None)
+        self.db.commit()
     
     def search_photos(self, search_params: PhotoSearchRequest, user_id: int) -> PaginatedResponse[PhotoResponse]:
         """Search photos with advanced filtering (user-scoped)"""
@@ -440,93 +519,6 @@ class PhotoService:
         
         return format_map.get(ext, "unknown")
     
-    def upload_coldpreview(self, hothash: str, file_content: bytes, user_id: int) -> Dict[str, Any]:
-        """Upload or update coldpreview for a photo (user-scoped)"""
-        # Get photo to ensure it exists and user has access
-        photo = self.photo_repo.get_by_hash(hothash, user_id)
-        if not photo:
-            raise NotFoundError("Photo", hothash)
-        
-        # Use coldpreview repository utility
-        from src.utils.coldpreview_repository import ColdpreviewRepository
-        repository = ColdpreviewRepository()
-        
-        # Save coldpreview and get metadata (returns tuple)
-        relative_path, width, height, file_size = repository.save_coldpreview(hothash, file_content)
-        
-        # SIMPLIFIED: Only store path, dimensions/size will be read dynamically
-        setattr(photo, 'coldpreview_path', relative_path)
-        
-        # Commit changes
-        self.db.commit()
-        self.db.refresh(photo)
-        
-        return {
-            'hothash': hothash,
-            'width': width,
-            'height': height,
-            'size': file_size,
-            'path': relative_path
-        }
-    
-    def get_coldpreview(self, hothash: str, user_id: int, width: Optional[int] = None, height: Optional[int] = None) -> Optional[bytes]:
-        """Get coldpreview image for photo with optional resizing (user-scoped)"""
-        # Get photo and verify user has access
-        photo = self.photo_repo.get_by_hash(hothash, user_id)
-        if not photo:
-            raise NotFoundError("Photo", hothash)
-        
-        # Check if coldpreview exists
-        if not getattr(photo, 'coldpreview_path', None):
-            return None
-        
-        # Use coldpreview repository utility
-        from src.utils.coldpreview_repository import ColdpreviewRepository
-        repository = ColdpreviewRepository()
-        
-        # Load coldpreview with optional resizing
-        if width or height:
-            # First load the original image
-            original_data = repository.load_coldpreview_by_hash(hothash)
-            if not original_data:
-                return None
-            # Then resize it
-            return repository.resize_coldpreview(original_data, target_width=width, target_height=height)
-        else:
-            return repository.load_coldpreview_by_hash(hothash)
-    
-    def delete_coldpreview(self, hothash: str, user_id: int) -> None:
-        """Delete coldpreview for photo (user-scoped)"""
-        # Get photo and verify user has access
-        photo = self.photo_repo.get_by_hash(hothash, user_id)
-        if not photo:
-            raise NotFoundError("Photo", hothash)
-        
-        # Check if coldpreview exists
-        if not getattr(photo, 'coldpreview_path', None):
-            raise NotFoundError("Coldpreview", hothash)
-        
-        # Use coldpreview repository utility
-        from src.utils.coldpreview_repository import ColdpreviewRepository
-        repository = ColdpreviewRepository()
-        
-        # Delete from filesystem (need to construct full path from relative path)
-        # We need to pass the hothash since that's what the delete method expects
-        try:
-            repository.delete_coldpreview_by_hash(hothash)
-        except Exception:
-            pass  # File might already be deleted, continue with database cleanup
-        
-        # Clear metadata from database
-        setattr(photo, 'coldpreview_path', None)
-        setattr(photo, 'coldpreview_width', None)
-        setattr(photo, 'coldpreview_height', None)
-        setattr(photo, 'coldpreview_size', None)
-        
-        # Commit changes
-        self.db.commit()
-        self.db.refresh(photo)
-    
     # ========== Private Helper Methods for Photo+ImageFile Creation ==========
     
     def _create_new_photo_with_image_file(
@@ -611,6 +603,118 @@ class PhotoService:
         return image_file
     
     def _generate_hothash_from_hotpreview(self, hotpreview_bytes: bytes) -> str:
-        """Generate SHA256 hash from hotpreview bytes using imalink-core"""
-        calculator = HothashCalculator()
-        return calculator.calculate(hotpreview_bytes)
+        """Generate SHA256 hash from hotpreview bytes"""
+        return hashlib.sha256(hotpreview_bytes).hexdigest()
+
+    def create_photo_from_photoegg(self, photoegg_request, user_id: int) -> Photo:
+        """
+        Create Photo from PhotoEgg (new architecture)
+        
+        PhotoEgg comes from imalink-core server and contains all image processing results.
+        Backend only stores metadata and previews.
+        
+        Args:
+            photoegg_request: PhotoEggRequest with photo_egg and user metadata
+            user_id: Owner user ID
+            
+        Returns:
+            Created Photo
+            
+        Raises:
+            DuplicateImageError: If photo with same hothash already exists for this user
+        """
+        import base64
+        
+        egg = photoegg_request.photo_egg
+        
+        # Check for duplicate
+        existing = self.photo_repo.get_by_hash(egg.hothash, user_id)
+        if existing:
+            raise DuplicateImageError(f"Photo with hothash {egg.hothash} already exists")
+        
+        # Decode base64 hotpreview
+        hotpreview_bytes = base64.b64decode(egg.hotpreview_base64)
+        
+        # Build exif_dict with PhotoEgg metadata
+        exif_dict = egg.exif_dict or {}
+        
+        # Add PhotoEgg metadata to exif_dict (flexible JSON storage)
+        if egg.metadata:
+            if egg.metadata.camera_make:
+                exif_dict['camera_make'] = egg.metadata.camera_make
+            if egg.metadata.camera_model:
+                exif_dict['camera_model'] = egg.metadata.camera_model
+            if egg.metadata.lens_model:
+                exif_dict['lens_model'] = egg.metadata.lens_model
+            if egg.metadata.focal_length:
+                exif_dict['focal_length'] = egg.metadata.focal_length
+            if egg.metadata.f_number:
+                exif_dict['f_number'] = egg.metadata.f_number
+            if egg.metadata.iso:
+                exif_dict['iso'] = egg.metadata.iso
+            if egg.metadata.exposure_time:
+                exif_dict['exposure_time'] = egg.metadata.exposure_time
+            if egg.metadata.gps_altitude:
+                exif_dict['gps_altitude'] = egg.metadata.gps_altitude
+        
+        # Create Photo with correct fields
+        photo = Photo(
+            hothash=egg.hothash,
+            hotpreview=hotpreview_bytes,
+            width=egg.width,
+            height=egg.height,
+            rating=photoegg_request.rating,
+            visibility=photoegg_request.visibility,
+            exif_dict=exif_dict,
+            user_id=user_id,
+            # Extract basic metadata from PhotoEgg
+            taken_at=egg.metadata.taken_at if egg.metadata else None,
+            gps_latitude=egg.metadata.gps_latitude if egg.metadata else None,
+            gps_longitude=egg.metadata.gps_longitude if egg.metadata else None,
+        )
+        
+        # Handle coldpreview as filesystem path (NOT BLOB)
+        if egg.coldpreview_base64:
+            from src.utils.coldpreview_repository import ColdpreviewRepository
+            repository = ColdpreviewRepository()
+            
+            # Decode and save to filesystem
+            coldpreview_bytes = base64.b64decode(egg.coldpreview_base64)
+            relative_path, _, _, _ = repository.save_coldpreview(egg.hothash, coldpreview_bytes)
+            photo.coldpreview_path = relative_path
+        
+        # Set author if provided
+        if photoegg_request.author_id:
+            photo.author_id = photoegg_request.author_id
+        
+        # Save to database
+        self.db.add(photo)
+        self.db.commit()
+        self.db.refresh(photo)
+        
+        # TODO: Add tags if provided (implement tag association later)
+        # if photoegg_request.tags:
+        #     for tag_name in photoegg_request.tags:
+        #         # Associate tag with photo
+        #         pass
+        
+        return photo
+    
+    def get_photo_by_hothash(self, hothash: str, user_id: int) -> Photo:
+        """
+        Get photo by hothash for specific user
+        
+        Args:
+            hothash: Photo hothash
+            user_id: Owner user ID
+            
+        Returns:
+            Photo
+            
+        Raises:
+            NotFoundError: If photo not found
+        """
+        photo = self.photo_repo.get_by_hash(hothash, user_id)
+        if not photo:
+            raise NotFoundError("Photo", hothash)
+        return photo

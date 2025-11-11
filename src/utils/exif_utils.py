@@ -2,13 +2,10 @@
 EXIF parsing utilities for Photo Corrections
 
 These utilities extract datetime and GPS data from EXIF dictionaries
-that are stored in Photo.exif_dict (provided by frontend during upload).
-
-Now using imalink-core for consistent parsing.
+that are stored in Photo.exif_dict (provided by PhotoEgg from imalink-core server).
 """
 from typing import Optional, Dict, Any
 from datetime import datetime
-from imalink_core import ExifExtractor
 import tempfile
 import json
 from pathlib import Path

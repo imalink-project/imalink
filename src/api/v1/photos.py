@@ -29,6 +29,7 @@ from src.schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, 
     PhotoSearchRequest, TimeLocCorrectionRequest, ViewCorrectionRequest
 )
+from src.schemas.photoegg_schemas import PhotoEggRequest, PhotoEggResponse
 from src.schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
@@ -522,3 +523,67 @@ def get_photo_stack(
         raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch stack for photo: {str(e)}")
+
+
+@router.post("/photoegg", response_model=PhotoEggResponse, status_code=201)
+async def create_photo_from_photoegg(
+    request: PhotoEggRequest,
+    current_user: User = Depends(get_current_active_user),
+    photo_service: PhotoService = Depends(get_photo_service)
+):
+    """
+    Create Photo from PhotoEgg (New Architecture)
+    
+    PhotoEgg is the complete JSON package from imalink-core server containing
+    all image processing results. Frontend sends image to imalink-core server,
+    receives PhotoEgg, then sends it here with user organization metadata.
+    
+    Flow:
+    1. Frontend → imalink-core server (POST /process) → PhotoEgg
+    2. Frontend → Backend (POST /photoegg) → Photo created
+    
+    This replaces the old POST /photos endpoint which did image processing.
+    Backend now only stores metadata and previews from PhotoEgg.
+    """
+    try:
+        photo = photo_service.create_photo_from_photoegg(
+            photoegg_request=request,
+            user_id=getattr(current_user, 'id')
+        )
+        
+        return PhotoEggResponse(
+            id=photo.id,
+            hothash=photo.hothash,
+            title=photo.title,
+            rating=photo.rating,
+            visibility=photo.visibility,
+            width=photo.width,
+            height=photo.height,
+            taken_at=photo.taken_at,
+            created_at=photo.created_at,
+            is_duplicate=False  # Will be set by service if hothash existed
+        )
+        
+    except DuplicateImageError as e:
+        # Photo with this hothash already exists - return existing
+        existing_photo = photo_service.get_photo_by_hothash(
+            hothash=request.photo_egg.hothash,
+            user_id=getattr(current_user, 'id')
+        )
+        return PhotoEggResponse(
+            id=existing_photo.id,
+            hothash=existing_photo.hothash,
+            title=existing_photo.title,
+            rating=existing_photo.rating,
+            visibility=existing_photo.visibility,
+            width=existing_photo.width,
+            height=existing_photo.height,
+            taken_at=existing_photo.taken_at,
+            created_at=existing_photo.created_at,
+            is_duplicate=True
+        )
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to create photo from PhotoEgg: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to create photo: {str(e)}")

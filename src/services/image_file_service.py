@@ -13,11 +13,9 @@ ImageFiles cannot be:
 """
 from typing import Optional
 from sqlalchemy.orm import Session
-import imagehash
 import io
-from PIL import Image as PILImage
+import hashlib
 from datetime import datetime
-from imalink_core import HothashCalculator
 
 from src.repositories.image_file_repository import ImageFileRepository
 from src.repositories.photo_repository import PhotoRepository
@@ -66,14 +64,14 @@ class ImageFileService:
         Create ImageFile that will create a new Photo
         
         USE CASE: Uploading a completely new, unique photo
-        - Hotpreview, exif_dict, perceptual_hash stored in Photo
+        - Hotpreview and exif_dict stored in Photo
         - ImageFile only stores file metadata
         
         WORKFLOW:
         1. Validate hotpreview data
         2. Generate photo_hothash from hotpreview (SHA256)
         3. Check if Photo already exists (if yes, raise DuplicateImageError)
-        4. Create new Photo with hotpreview, exif_dict, perceptual_hash
+        4. Create new Photo with hotpreview and exif_dict
         5. Create ImageFile with only file metadata
         6. Return success response
         """
@@ -95,22 +93,16 @@ class ImageFileService:
         if existing_photo:
             raise DuplicateImageError(f"Photo with this image already exists (hothash: {hothash[:8]}...)")
         
-        # 5. Generate perceptual hash if not provided
-        perceptual_hash = self._generate_perceptual_hash_if_missing(
-            image_data.perceptual_hash, 
-            hotpreview_bytes
-        )
-        
-        # 6. Create new Photo + ImageFile
+        # 5. Create new Photo + ImageFile
         image_file = self._create_new_photo_with_image_file(
-            image_data, hothash, perceptual_hash, hotpreview_bytes, user_id
+            image_data, hothash, hotpreview_bytes, user_id
         )
         
-        # 7. Commit transaction
+        # 6. Commit transaction
         self.db.commit()
         self.db.refresh(image_file)
         
-        # 8. Return success response
+        # 7. Return success response
         return ImageFileUploadResponse(
             image_file_id=getattr(image_file, 'id'),
             filename=getattr(image_file, 'filename'),
@@ -127,7 +119,7 @@ class ImageFileService:
         
         USE CASE: Adding companion files (RAW, different resolution, etc.)
         - Photo already exists with visual data
-        - ImageFile only stores file metadata (no hotpreview/exif/perceptual_hash)
+        - ImageFile only stores file metadata (no hotpreview/exif)
         
         WORKFLOW:
         1. Validate that Photo exists and belongs to user
@@ -163,7 +155,6 @@ class ImageFileService:
         self, 
         image_data: ImageFileNewPhotoRequest, 
         hothash: str, 
-        perceptual_hash: Optional[str], 
         hotpreview_bytes: bytes, 
         user_id: int
     ) -> ImageFile:
@@ -175,7 +166,6 @@ class ImageFileService:
             'hothash': hothash,
             'hotpreview': hotpreview_bytes,
             'exif_dict': image_data.exif_dict,
-            'perceptual_hash': perceptual_hash,
             'taken_at': image_data.taken_at,
             'gps_latitude': image_data.gps_latitude,
             'gps_longitude': image_data.gps_longitude,
@@ -227,24 +217,5 @@ class ImageFileService:
         return image_file
     
     def _generate_hothash_from_hotpreview(self, hotpreview_bytes: bytes) -> str:
-        """Generate SHA256 hash from hotpreview bytes using imalink-core"""
-        calculator = HothashCalculator()
-        return calculator.calculate(hotpreview_bytes)
-    
-    def _generate_perceptual_hash_if_missing(
-        self, 
-        provided_hash: Optional[str], 
-        hotpreview_bytes: bytes
-    ) -> Optional[str]:
-        """Generate perceptual hash from hotpreview if not provided"""
-        if provided_hash:
-            return provided_hash
-        
-        try:
-            # Generate perceptual hash from hotpreview
-            img = PILImage.open(io.BytesIO(hotpreview_bytes))
-            phash = imagehash.phash(img)
-            return str(phash)
-        except Exception:
-            # Silently ignore perceptual hash generation errors
-            return None
+        """Generate SHA256 hash from hotpreview bytes"""
+        return hashlib.sha256(hotpreview_bytes).hexdigest()

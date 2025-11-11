@@ -42,7 +42,7 @@ class ImageFileResponse(BaseModel):
     # Timestamps
     created_at: datetime = Field(..., description="When image was imported")
     
-    # NOTE: Visual data (hotpreview, exif_dict, perceptual_hash) moved to Photo model
+    # NOTE: Visual data (hotpreview, exif_dict) moved to Photo model
     # NOTE: Metadata (taken_at, GPS, width, height) moved to Photo model
     # Access these via photo relationship: image_file.photo.hotpreview, etc.
     

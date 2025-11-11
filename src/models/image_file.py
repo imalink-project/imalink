@@ -34,7 +34,7 @@ class ImageFile(Base, TimestampMixin):
     Visual and metadata is stored in Photo:
     - Photo has hotpreview (150x150 thumbnail)
     - Photo has exif_dict (EXIF metadata from master file)
-    - Photo has perceptual_hash (for similarity search)
+    - Photo has hothash (SHA256 for duplicate detection)
     
     Key design principles:
     - One ImageFile per physical file

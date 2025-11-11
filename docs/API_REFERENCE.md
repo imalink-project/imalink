@@ -1538,7 +1538,192 @@ The following endpoints were removed in API v2.1. All functionality has been mov
 
 ---
 
-## 📚 Authors
+## � Timeline
+
+Navigate photos by time with hierarchical year/month/day/hour aggregation. The Timeline API provides automatic photo organization with representative previews and visibility-aware filtering.
+
+**Features:**
+- Hierarchical time navigation (year → month → day → hour)
+- Smart preview selection (highest rated or temporally centered)
+- Visibility filtering (respects private/authenticated/public)
+- Anonymous access support (public photos only)
+- Scalable aggregation on server
+
+### Get Timeline Aggregations
+
+```http
+GET /api/v1/timeline?granularity=year
+Authorization: Bearer <token>  # Optional - anonymous sees only public photos
+```
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description | Values |
+|-----------|------|----------|-------------|--------|
+| `granularity` | string | No | Time bucket size | `year`, `month`, `day`, `hour` (default: `year`) |
+| `year` | integer | No | Filter to specific year | 1900-2100 |
+| `month` | integer | No | Filter to specific month | 1-12 (requires `year`) |
+| `day` | integer | No | Filter to specific day | 1-31 (requires `year` and `month`) |
+
+### Years Aggregation
+
+```http
+GET /api/v1/timeline?granularity=year
+```
+
+**Response** (`200 OK`):
+```json
+{
+  "data": [
+    {
+      "year": 2024,
+      "count": 1247,
+      "preview_hothash": "abc123...",
+      "preview_url": "/api/v1/photos/abc123.../hotpreview",
+      "date_range": {
+        "first": "2024-01-05T08:23:12Z",
+        "last": "2024-12-28T19:45:00Z"
+      }
+    },
+    {
+      "year": 2023,
+      "count": 892,
+      "preview_hothash": "def456...",
+      "preview_url": "/api/v1/photos/def456.../hotpreview",
+      "date_range": {
+        "first": "2023-02-14T10:30:00Z",
+        "last": "2023-12-31T23:59:59Z"
+      }
+    }
+  ],
+  "meta": {
+    "total_years": 5,
+    "total_photos": 4521,
+    "granularity": "year"
+  }
+}
+```
+
+### Months Aggregation
+
+```http
+GET /api/v1/timeline?granularity=month&year=2024
+```
+
+**Response** (`200 OK`):
+```json
+{
+  "data": [
+    {
+      "year": 2024,
+      "month": 12,
+      "count": 156,
+      "preview_hothash": "xyz789...",
+      "preview_url": "/api/v1/photos/xyz789.../hotpreview",
+      "date_range": {
+        "first": "2024-12-01T09:15:00Z",
+        "last": "2024-12-28T19:45:00Z"
+      }
+    }
+  ],
+  "meta": {
+    "total_months": 12,
+    "total_photos": 1247,
+    "granularity": "month",
+    "year": 2024
+  }
+}
+```
+
+### Days Aggregation
+
+```http
+GET /api/v1/timeline?granularity=day&year=2024&month=12
+```
+
+**Response** (`200 OK`):
+```json
+{
+  "data": [
+    {
+      "year": 2024,
+      "month": 12,
+      "day": 28,
+      "count": 45,
+      "preview_hothash": "rst123...",
+      "preview_url": "/api/v1/photos/rst123.../hotpreview",
+      "date_range": {
+        "first": "2024-12-28T08:00:00Z",
+        "last": "2024-12-28T19:45:00Z"
+      }
+    }
+  ],
+  "meta": {
+    "total_days": 28,
+    "total_photos": 156,
+    "granularity": "day",
+    "year": 2024,
+    "month": 12
+  }
+}
+```
+
+### Hours Aggregation
+
+```http
+GET /api/v1/timeline?granularity=hour&year=2024&month=12&day=28
+```
+
+**Response** (`200 OK`):
+```json
+{
+  "data": [
+    {
+      "year": 2024,
+      "month": 12,
+      "day": 28,
+      "hour": 14,
+      "count": 12,
+      "preview_hothash": "lmn456...",
+      "preview_url": "/api/v1/photos/lmn456.../hotpreview",
+      "date_range": {
+        "first": "2024-12-28T14:05:32Z",
+        "last": "2024-12-28T14:58:41Z"
+      }
+    }
+  ],
+  "meta": {
+    "total_hours": 6,
+    "total_photos": 45,
+    "granularity": "hour",
+    "year": 2024,
+    "month": 12,
+    "day": 28
+  }
+}
+```
+
+**Preview Selection:**
+- Priority 1: Highest rated photo (rating 4-5)
+- Priority 2: Temporally centered photo (middle of period)
+- Priority 3: First photo in period
+
+**Visibility Filtering:**
+- Anonymous users see only `public` photos
+- Authenticated users see: own + `authenticated` + `public` photos
+- Empty periods (no accessible photos) are not included in response
+
+**Use Cases:**
+- Year overview grid with preview cards
+- Month/day expansion on click
+- Lazy-loading infinite scroll timeline
+- Public gallery for anonymous users
+
+**See also:** [Timeline API Documentation](./TIMELINE_API.md) for detailed specifications
+
+---
+
+## �📚 Authors
 
 Manage photographers/creators. Authors are **shared metadata tags** used to identify who took a photo - they are NOT user-scoped resources. All users can view all authors.
 
