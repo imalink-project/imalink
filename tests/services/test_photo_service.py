@@ -11,7 +11,7 @@ from unittest.mock import Mock, MagicMock
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 
 from services.photo_service import PhotoService
-from core.exceptions import NotFoundError, ValidationError
+from src.core.exceptions import NotFoundError, ValidationError
 from schemas.photo_schemas import PhotoUpdateRequest
 
 

@@ -11,7 +11,7 @@ from unittest.mock import Mock, MagicMock
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 
 from services.author_service import AuthorService
-from core.exceptions import NotFoundError, ValidationError
+from src.core.exceptions import NotFoundError, ValidationError
 from schemas.requests.author_requests import AuthorCreateRequest, AuthorUpdateRequest
 
 
@@ -41,11 +41,11 @@ class TestAuthorService:
         mock_author_repo.get_all.return_value = []
         mock_author_repo.count_all.return_value = 0
         
-        result = author_service.get_authors(user_id=1, offset=0, limit=10)
+        result = author_service.get_authors(offset=0, limit=10)
         
         # Should call repository methods
-        mock_author_repo.get_all.assert_called_once_with(1, 0, 10)
-        mock_author_repo.count_all.assert_called_once_with(1)
+        mock_author_repo.get_all.assert_called_once_with(0, 10)
+        mock_author_repo.count_all.assert_called_once()
         
         # Should return PaginatedResponse structure
         assert hasattr(result, 'data')
@@ -56,7 +56,7 @@ class TestAuthorService:
         mock_author_repo.get_by_id.return_value = None
         
         with pytest.raises(NotFoundError) as exc_info:
-            author_service.get_author_by_id(999, user_id=1)
+            author_service.get_author_by_id(999)
         
         assert "Author" in str(exc_info.value)
         assert "999" in str(exc_info.value)
@@ -107,8 +107,7 @@ class TestAuthorService:
         with pytest.raises(NotFoundError):
             author_service.update_author(
                 999, 
-                AuthorUpdateRequest(name="Updated"),
-                user_id=1
+                AuthorUpdateRequest(name="Updated")
             )
     
     def test_delete_author_not_found_raises_exception(self, author_service, mock_author_repo):
@@ -116,7 +115,7 @@ class TestAuthorService:
         mock_author_repo.get_by_id.return_value = None  # Author not found
         
         with pytest.raises(NotFoundError):
-            author_service.delete_author(999, user_id=1)
+            author_service.delete_author(999)
 
 
 class TestAuthorServiceSync:

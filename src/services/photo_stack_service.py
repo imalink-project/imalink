@@ -37,8 +37,8 @@ class PhotoStackService:
             
             stack_responses.append({
                 "id": stack.id,
-                "cover_photo_hothash": stack.cover_photo_hothash,
                 "stack_type": stack.stack_type,
+                "title": stack.title,
                 "photo_count": photo_count,
                 "created_at": stack.created_at.isoformat(),
                 "updated_at": stack.updated_at.isoformat()
@@ -69,8 +69,8 @@ class PhotoStackService:
         
         response = {
             "id": stack.id,
-            "cover_photo_hothash": stack.cover_photo_hothash,
             "stack_type": stack.stack_type,
+            "title": stack.title,
             "created_at": stack.created_at.isoformat(),
             "updated_at": stack.updated_at.isoformat()
         }
@@ -91,11 +91,6 @@ class PhotoStackService:
         if stack_data.get('stack_type'):
             self._validate_stack_type(stack_data['stack_type'])
         
-        # Validate cover photo exists if provided
-        if stack_data.get('cover_photo_hothash'):
-            if not self._validate_photos_exist([stack_data['cover_photo_hothash']], user_id):
-                raise ValidationError("Cover photo does not exist or is not accessible")
-        
         # Create stack
         stack = self.stack_repo.create(stack_data, user_id)
         
@@ -112,11 +107,6 @@ class PhotoStackService:
         # Validate updates
         if 'stack_type' in update_data and update_data['stack_type']:
             self._validate_stack_type(update_data['stack_type'])
-        
-        # Validate cover photo exists if provided
-        if 'cover_photo_hothash' in update_data and update_data['cover_photo_hothash']:
-            if not self._validate_photos_exist([update_data['cover_photo_hothash']], user_id):
-                raise ValidationError("Cover photo does not exist or is not accessible")
         
         # Update stack
         updated_stack = self.stack_repo.update(stack_id, update_data, user_id)
@@ -197,24 +187,10 @@ class PhotoStackService:
         stack = self.stack_repo.get_by_id(stack_id, user_id)
         if not stack:
             raise NotFoundError("PhotoStack", stack_id)
-        
-        # Store current cover photo for comparison
-        current_cover_photo = stack.cover_photo_hothash
-        
         # Remove photo
         success = self.stack_repo.remove_photos(stack_id, [photo_hothash], user_id)
         if not success:
             raise ValidationError("Failed to remove photo from stack")
-        
-        # Handle cover photo removal - set new cover if removed photo was cover
-        if current_cover_photo is not None and str(current_cover_photo) == photo_hothash:
-            # Get remaining photos and set first one as new cover
-            remaining_photos = self.stack_repo.get_photos_in_stack(stack_id, user_id)
-            if remaining_photos:
-                self.stack_repo.update(stack_id, {"cover_photo_hothash": remaining_photos[0]}, user_id)
-            else:
-                # No photos left, clear cover photo
-                self.stack_repo.update(stack_id, {"cover_photo_hothash": None}, user_id)
         
         # Get updated stack details
         updated_stack = self.get_stack_by_id(stack_id, user_id, include_photos=True)
@@ -231,23 +207,10 @@ class PhotoStackService:
         if not stack:
             raise NotFoundError("PhotoStack", stack_id)
         
-        # Check if cover photo is being removed
-        cover_photo_removed = stack.cover_photo_hothash is not None and stack.cover_photo_hothash in photo_hothashes
-        
         # Remove photos
         success = self.stack_repo.remove_photos(stack_id, photo_hothashes, user_id)
         if not success:
             raise ValidationError("Failed to remove photos from stack")
-        
-        # Handle cover photo removal
-        if cover_photo_removed:
-            # Get remaining photos and set first one as new cover
-            remaining_photos = self.stack_repo.get_photos_in_stack(stack_id, user_id)
-            new_cover = remaining_photos[0] if remaining_photos else None
-            
-            # Update stack with new cover photo
-            update_data = {"cover_photo_hothash": new_cover}
-            updated_stack = self.stack_repo.update(stack_id, update_data, user_id)
         
         # Return updated stack details
         final_stack = self.get_stack_by_id(stack_id, user_id, include_photos=True)
@@ -268,14 +231,14 @@ class PhotoStackService:
         # Type assertion to help Pylance understand these are actual values, not Column objects
         stack_id: int = stack.id  # type: ignore
         stack_type: Optional[str] = stack.stack_type  # type: ignore
-        cover_photo_hothash: Optional[str] = stack.cover_photo_hothash  # type: ignore
+        title: Optional[str] = stack.title  # type: ignore
             
         photo_count = self.stack_repo.get_photo_count(stack_id, user_id)
         
         return PhotoStackSummary(
             id=stack_id,
             stack_type=stack_type,
-            cover_photo_hothash=cover_photo_hothash,
+            title=title,
             photo_count=photo_count,
             created_at=stack.created_at,
             updated_at=stack.updated_at

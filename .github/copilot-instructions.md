@@ -3,401 +3,405 @@
 ## Module Purpose
 FastAPI backend for photo metadata management with multi-user support, visibility controls, and timeline features.
 
-**NEW ARCHITECTURE (2024)**: Backend receives PhotoEgg JSON from frontend (which got it from imalink-core server). Backend does NO image processing - only metadata storage and organization.
+**Core Philosophy**: Backend NEVER processes images - only metadata storage, organization, and access control.
 
 ## Architecture Principles
 
-### 1. PhotoEgg Architecture (NEW)
-- **imalink-core runs as separate FastAPI server** (localhost, same machine)
-- **Frontend sends image → imalink-core server → PhotoEgg JSON**
-- **Frontend sends PhotoEgg → Backend → Database storage**
-- Backend NEVER processes images directly
-- Backend stores metadata + previews (base64) in database
+### 1. Hash-Based Photo Identity
+- **Hothash** (SHA256 of hotpreview): Unique photo identifier across all systems
+- **Hybrid PK**: Integer `id` (technical FK) + unique `hothash` (API operations)
+- Use `hothash` in API paths: `/photos/{hothash}` not `/photos/{id}`
+- JPEG+RAW pairs share same hothash → same Photo entity
+- Filenames/locations irrelevant - hash is source of truth
 
-### 2. Photo Model
-- **Backend Photo**: Database entity with user organization
-  - From PhotoEgg: hothash, hotpreview, coldpreview, width, height, EXIF metadata
-  - User additions: user_id, title, description, tags, rating, visibility
-- **No original files stored** - user's responsibility on local machine
-- Previews stored as bytes (decoded from base64) in database
-
-### 3. User Isolation
-- **Every Photo belongs to one User** (user_id required)
-- All queries MUST filter by user_id or visibility level
-- Never expose private photos to other users
-- Visibility levels: private < space < authenticated < public
-
-### 4. Visibility System
-```python
-VISIBILITY_LEVELS = {
-    "private": 0,      # Only owner
-    "space": 1,        # Shared with specific users/groups (future)
-    "authenticated": 2, # All logged-in users
-    "public": 3        # Everyone including anonymous
-}
-```
-
-### 5. Preview Storage
-- **Hotpreview**: BLOB in database (~5-15KB, 150x150px JPEG)
-- **Coldpreview**: BLOB in database (~50-200KB, variable size JPEG) - OPTIONAL
-- Both come pre-processed from PhotoEgg
-- No on-demand generation - all from imalink-core server
-
-## External Dependencies
-
-### imalink-core Server
-**Type**: Separate FastAPI server (not a library!)  
-**Source**: https://github.com/kjelkols/imalink-core  
-**Deployment**: Runs on localhost (same machine as backend)  
-**Port**: Typically 8001 (configurable)
-
-**What it does**:
-- Receives images from frontend
-- Processes images (EXIF extraction, preview generation, hashing)
-- Returns PhotoEgg JSON
-- Stateless - no storage
-
-**Backend does NOT import imalink-core** - it's a separate service!
-
-### PhotoEgg Contract
-PhotoEgg is the JSON package from imalink-core server:
-
-```json
-{
-  "hothash": "sha256_hash_of_hotpreview",
-  "hotpreview_base64": "/9j/4AAQSkZJRg...",
-  "coldpreview_base64": "/9j/4AAQSkZJRg..." or null,
-  "width": 4000,
-  "height": 3000,
-  "metadata": {
-    "taken_at": "2024-01-15T14:30:00",
-    "camera_make": "Canon",
-    "camera_model": "EOS R5",
-    "lens_model": "RF 24-70mm F2.8 L IS USM",
-    "focal_length": 50.0,
-    "f_number": 2.8,
-    "iso": 400,
-    "exposure_time": "1/250",
-    "gps_latitude": 59.9139,
-    "gps_longitude": 10.7522,
-    "gps_altitude": 12.5
-  },
-  "exif_dict": { ... },
-  
-  // NEW: Validation & Extended Info (v2.0+)
-  "is_valid_image": true,
-  "image_format": "JPEG",
-  "file_size_bytes": 2485760
-}
-```
-
-**Backend receives this and adds**:
-- user_id (from authentication)
-- title, description (from user input)
-- rating, visibility (from user preferences)
-- tags, author_id (from user organization)
-
-
-**Breaking Change Protocol**:
-- imalink-core 2.x requires backend migration
-- Test in isolated environment first
-- Update mapping code in `photo_service.py`
-- Run full test suite before deploying
-- Update `pyproject.toml` dependency
-
-## Key API Endpoints
-
-### Photo Management
-- `POST /api/v1/photos` - Create photo (legacy)
-- `POST /api/v1/photos/photoegg` - Create from PhotoEgg (recommended)
-- `GET /api/v1/photos` - List photos (paginated, filtered by user_id/visibility)
-- `GET /api/v1/photos/{id}` - Get photo details
-- `GET /api/v1/photos/{id}/hotpreview` - Get hotpreview image
-- `PUT /api/v1/photos/{id}` - Update photo metadata
-- `DELETE /api/v1/photos/{id}` - Delete photo
-
-### Coldpreview Management (by hothash)
-- `PUT /api/v1/photos/{hothash}/coldpreview` - Upload coldpreview separately
-- `GET /api/v1/photos/{hothash}/coldpreview` - Get coldpreview (with optional resize)
-- `DELETE /api/v1/photos/{hothash}/coldpreview` - Delete coldpreview
-- **Note**: These are functional legacy endpoints. PhotoEgg can include coldpreview, but these allow separate upload.
-
-### Timeline API
-- `GET /api/v1/timeline` - Hierarchical time aggregation
-  - Query params: `granularity` (year/month/day/hour), `year`, `month`, `day`, `visibility`
-  - Returns: Buckets with photo counts + preview selection
-  - Preview selection: Rating 4-5 stars → temporal center fallback
-
-### Import Sessions
-- `POST /api/v1/import-sessions/` - Start import
-- `GET /api/v1/import-sessions/{id}` - Get status
-- Background processing with progress tracking
-
-### Authentication
-- `POST /api/v1/auth/register` - User registration
-- `POST /api/v1/auth/login` - Get JWT token
-- All protected endpoints require: `Authorization: Bearer <token>`
-
-## Database Schema
-
-### Core Models
-- `User`: id, email, hashed_password, created_at
-- `Photo`: id, user_id, hothash, hotpreview, taken_at, rating, visibility, exif_dict
-- `ImageFile`: id, photo_id, filename, file_path, file_format, file_size
-- `PhotoStack`: Groups related files (JPEG+RAW pairs, panoramas, etc.)
-- `Author`: id, user_id, name, description
-- `Tag`: id, user_id, name
-- `PhotoTag`: photo_id, tag_id
-
-### Indexes
-- `photos.user_id` (user isolation queries)
-- `photos.hothash` (duplicate detection)
-- `photos.taken_at` (timeline queries)
-- `photos.visibility` (access control)
-- Composite: `(taken_at, visibility)` for timeline API
-
-## Testing Strategy
-
-### Test Fixtures
-- Use PhotoEgg pattern for consistent test data
-- Store test photos as JSON in `tests/fixtures/`
-- Generate eggs via imalink-core: `result.photo.to_dict()`
-
-### Test Database
-- SQLite for tests (`test_imalink.db`)
-- PostgreSQL for production
-- Clean database between test runs
-
-### Critical Tests
-- User isolation (no cross-user data leaks)
-- Visibility filtering (correct access control)
-- Timeline aggregation accuracy
-- Duplicate detection (hothash collision handling)
-- EXIF metadata preservation
-
-## Code Organization
-
+### 2. Three-Layer Architecture
 ```
 src/
-├── models/          # SQLAlchemy ORM models
-├── schemas/         # Pydantic request/response schemas
-├── repositories/    # Database query layer
-├── services/        # Business logic
-├── api/             # FastAPI endpoints (v1/)
-├── core/            # Config, dependencies, exceptions
-├── database/        # DB connection, session management
-└── utils/           # Helpers (EXIF, coldpreview, etc.)
+├── api/v1/          # FastAPI endpoints - request validation, auth
+├── services/        # Business logic - orchestrates repos
+├── repositories/    # Database queries - SQLAlchemy ORM
+├── schemas/         # Pydantic models - request/response validation
+└── models/          # SQLAlchemy ORM - database entities
 ```
+
+**Pattern**: `API → Service → Repository → Database`
+- Never skip layers (e.g., API calling Repository directly)
+- Use `src.` prefix for all internal imports
+- Services contain business logic, repos contain queries
+
+### 3. User Isolation (CRITICAL)
+- **Every Photo/Tag/Author belongs to one User** (`user_id` required)
+- All queries MUST filter by `user_id` OR visibility level
+- Never expose private data to other users
+- Visibility hierarchy: `private` < `space` < `authenticated` < `public`
+
+### 4. External Dependencies
+
+**imalink-core** (separate FastAPI server, NOT a library):
+- **Repository**: https://github.com/kjelkols/imalink-core
+- **Architecture**: Separate FastAPI server on localhost:8001 (configurable)
+- **Flow**: Frontend sends image → imalink-core → PhotoEgg JSON → Backend
+- **Backend role**: Receives pre-processed metadata only, NO image processing
+- **Critical contract**: PhotoEgg schema defined in imalink-core, consumed here
+
+**PhotoEgg Contract** (defined in imalink-core):
+```json
+{
+  "hothash": "sha256...",
+  "hotpreview_base64": "...",
+  "coldpreview_base64": "..." | null,
+  "width": 4000, "height": 3000,
+  "metadata": { "taken_at": "...", "camera_make": "...", ... },
+  "exif_dict": { ... }
+}
+```
+
+**Backend implementation**: `src/schemas/photoegg_schemas.py` defines Pydantic models that validate incoming PhotoEgg data. This is backend's CONTRACT ENFORCEMENT, not the source definition.
+
+**For AI agents**: When PhotoEgg schema questions arise:
+1. Use `@github` tool to search `kjelkols/imalink-core` repository
+2. Look for PhotoEgg/CorePhoto definitions in imalink-core codebase
+3. Check `docs/CONTRACTS.md` in THIS repo for contract documentation
+4. PhotoEgg is the SOURCE OF TRUTH - backend adapts to its schema
+5. **Version compatibility**: v2.0+ added optional fields with defaults for backward compatibility
+
 
 ## Development Workflow
 
 ### Running Locally
 ```bash
-# Start server
+# Start backend (from project root)
 uvicorn src.main:app --reload --port 8000
 
-# Run tests
+# Run all tests
 uv run pytest
 
-# Run specific test
+# Run specific test file
 uv run pytest tests/api/test_timeline.py -v
+
+# Run tests with coverage
+uv run pytest --cov=src tests/
 
 # Database migrations
 alembic upgrade head
 alembic revision --autogenerate -m "description"
 ```
 
-### Code Style
-- Use `src.` prefix for all imports from project
-- Type hints required for all functions
-- Pydantic models for validation
-- Repository pattern for database access
-- Service layer for business logic
+### Test Strategy
+- **Fixtures**: Use PhotoEgg pattern from `tests/fixtures/photo_eggs.py`
+- **Database**: SQLite in-memory for tests, PostgreSQL for production
+- **Isolation**: Each test gets fresh database via `test_db_session` fixture
+- **Critical coverage**: User isolation, visibility filtering, timeline aggregation
+- **Pattern**: Create test users → Create photos → Assert access control
+
+### Code Conventions
+- **Imports**: Always use `src.` prefix (`from src.models import Photo`)
+- **Type hints**: Required for all function signatures
+- **Validation**: Pydantic schemas for API requests/responses
+- **Error handling**: Raise domain exceptions (`NotFoundError`, `ValidationError`)
+- **Repository pattern**: All database queries through repository layer
+- **Service pattern**: Business logic orchestrates multiple repos
 
 ## Common Patterns
 
-### User Context
+### User Authentication
 ```python
-from src.core.dependencies import get_current_user
+from src.core.dependencies import get_current_user, get_current_user_optional
 
+# Protected endpoint (requires auth)
 @router.get("/photos")
 async def list_photos(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # Always filter by user_id
     photos = photo_repo.list_by_user(db, current_user.id)
-```
+    ...
 
-### Visibility Filtering
-```python
-# Get photos accessible to user
-photos = photo_repo.list_accessible(
-    db=db,
-    viewer_user_id=current_user.id,  # or None for anonymous
-    min_visibility="authenticated"
-)
-```
-
-### Photo Creation from PhotoEgg
-```python
-# In API endpoint (photos.py)
-@router.post("/photoegg", response_model=PhotoEggResponse)
-async def create_photo_from_photoegg(
-    photoegg: PhotoEggRequest,
-    current_user: User = Depends(get_current_user),
+# Public endpoint (optional auth)
+@router.get("/timeline")
+async def timeline(
+    current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
-    # Check for duplicates
-    existing = photo_service.get_photo_by_hothash(photoegg.hothash, current_user.id)
-    if existing:
-        return PhotoEggResponse(id=existing.id, is_duplicate=True)
-    
-    # Create from PhotoEgg
-    photo = photo_service.create_photo_from_photoegg(photoegg, current_user.id)
-    return PhotoEggResponse(id=photo.id, is_duplicate=False)
+    user_id = current_user.id if current_user else None
+    ...
 ```
 
+### Visibility Filtering (Repository Layer)
 ```python
-# In service layer (photo_service.py)
-def create_photo_from_photoegg(
-    self, 
-    photoegg_request: PhotoEggRequest, 
-    user_id: int
-) -> Photo:
-    # Decode base64 hotpreview to bytes
-    hotpreview_bytes = base64.b64decode(photoegg_request.hotpreview_base64)
+# In photo_repository.py
+def get_photos(self, user_id: Optional[int], ...):
+    query = self.db.query(Photo)
     
-    # Handle coldpreview if provided (save to filesystem)
-    coldpreview_path = None
-    if photoegg_request.coldpreview_base64:
-        coldpreview_bytes = base64.b64decode(photoegg_request.coldpreview_base64)
-        coldpreview_path = self.coldpreview_repo.save_coldpreview(
-            photoegg_request.hothash, 
-            coldpreview_bytes
+    if user_id:
+        # Authenticated: own photos + accessible to user
+        query = query.filter(
+            (Photo.user_id == user_id) | 
+            (Photo.visibility.in_(["authenticated", "public"]))
         )
+    else:
+        # Anonymous: only public photos
+        query = query.filter(Photo.visibility == "public")
     
-    # Store ALL metadata in exif_dict JSON (flexible schema)
+    return query.all()
+```
+
+### Creating Photos from PhotoEgg
+```python
+# In photo_service.py
+def create_photo_from_photoegg(self, photoegg: PhotoEggRequest, user_id: int):
+    # 1. Decode base64 → bytes
+    hotpreview_bytes = base64.b64decode(photoegg.hotpreview_base64)
+    
+    # 2. Store ALL metadata in exif_dict JSON (flexible schema)
     exif_dict = {
-        "taken_at": photoegg_request.metadata.taken_at.isoformat() if photoegg_request.metadata.taken_at else None,
-        "camera_make": photoegg_request.metadata.camera_make,
-        "camera_model": photoegg_request.metadata.camera_model,
-        "lens_model": photoegg_request.metadata.lens_model,
-        "focal_length": photoegg_request.metadata.focal_length,
-        "f_number": photoegg_request.metadata.f_number,
-        "iso": photoegg_request.metadata.iso,
-        "exposure_time": photoegg_request.metadata.exposure_time,
-        "gps_altitude": photoegg_request.metadata.gps_altitude,
-        # Add any other metadata from photoegg_request.exif_dict
-        **photoegg_request.exif_dict
+        "taken_at": photoegg.metadata.taken_at.isoformat(),
+        "camera_make": photoegg.metadata.camera_make,
+        **photoegg.exif_dict  # Merge all EXIF data
     }
     
-    # Create Photo with core fields only
+    # 3. Create Photo with indexed fields extracted
     photo = Photo(
         user_id=user_id,
-        hothash=photoegg_request.hothash,
+        hothash=photoegg.hothash,
         hotpreview=hotpreview_bytes,
-        coldpreview_path=coldpreview_path,  # Filesystem path or None
-        width=photoegg_request.width,
-        height=photoegg_request.height,
-        exif_dict=exif_dict,  # ALL metadata stored here
-        
-        # User-provided metadata
-        title=photoegg_request.title,
-        description=photoegg_request.description,
-        rating=photoegg_request.rating or 0,
-        visibility=photoegg_request.visibility or "private",
-        
-        # Extract key fields for indexed queries
-        taken_at=photoegg_request.metadata.taken_at,
-        gps_latitude=photoegg_request.metadata.gps_latitude,
-        gps_longitude=photoegg_request.metadata.gps_longitude,
+        exif_dict=exif_dict,  # Complete metadata
+        taken_at=photoegg.metadata.taken_at,  # Indexed for queries
+        gps_latitude=photoegg.metadata.gps_latitude,
+        visibility="private"  # Default
     )
-    
     self.db.add(photo)
     self.db.commit()
-    self.db.refresh(photo)
+    return photo
+```
+
+### Error Handling
+```python
+from src.core.exceptions import NotFoundError, DuplicatePhotoError, AuthorizationError
+
+# In service layer
+def get_photo(self, hothash: str, user_id: int):
+    photo = self.photo_repo.get_by_hash(hothash, user_id)
+    if not photo:
+        raise NotFoundError("Photo", hothash)
     
-    # TODO: Handle tag association if photoegg_request.tags provided
+    # Check ownership for write operations
+    if photo.user_id != user_id:
+        raise AuthorizationError("Cannot modify other user's photo")
     
     return photo
 ```
 
-## Migration Notes
+## Database Schema
 
-### Timeline API (Implemented)
-- Added hierarchical time aggregation
-- Requires indexes: `photos.taken_at`, `photos.visibility`
-- Preview selection uses rating + temporal center
-- All 26 tests passing
+### Core Models
+- **User**: `id`, `email`, `hashed_password` (authentication)
+- **Photo**: `id`, `hothash`, `user_id`, `hotpreview` (BLOB), `exif_dict` (JSON), `visibility`, `taken_at`
+- **ImageFile**: `id`, `photo_id`, `filename`, `file_path` (original files)
+- **Tag**: `id`, `user_id`, `name` (user-scoped tags)
+- **PhotoTag**: `photo_id`, `tag_id` (many-to-many)
+- **Author**: `id`, `user_id`, `name`, `email` (photographers)
+- **PhotoStack**: Groups related files (RAW+JPEG pairs, panoramas)
 
-### PhotoEgg API (Implemented)
-- ✅ New endpoint: `POST /api/v1/photos/photoegg`
-- ✅ Receives PhotoEgg JSON from frontend (which got it from imalink-core server)
-- ✅ Handles optional coldpreview_base64
-- ✅ Duplicate detection via hothash
-- ✅ Hotpreview stored as BLOB in database
-- ✅ Coldpreview saved to filesystem (coldpreview_path)
-- ✅ ALL metadata stored in exif_dict JSON (flexible schema)
-- ⏳ TODO: Tag association in create_photo_from_photoegg
+### Critical Indexes
+```sql
+-- User isolation
+CREATE INDEX idx_photos_user_id ON photos(user_id);
 
-### Coldpreview Endpoints (Legacy but Functional)
-- ✅ PUT /api/v1/photos/{hothash}/coldpreview - Separate coldpreview upload
-- ✅ GET /api/v1/photos/{hothash}/coldpreview - Retrieve with optional resize
-- ✅ DELETE /api/v1/photos/{hothash}/coldpreview - Delete coldpreview
-- **Note**: These remain functional for backwards compatibility and separate workflows
-- ⏳ TODO: Tag association in create_photo_from_photoegg
+-- Timeline queries
+CREATE INDEX idx_photos_taken_at ON photos(taken_at);
+CREATE INDEX idx_photos_visibility ON photos(visibility);
+CREATE INDEX idx_photos_taken_at_visibility ON photos(taken_at, visibility);
 
-## Security Considerations
-
-- JWT tokens with expiration
-- Password hashing with bcrypt
-- SQL injection prevention (SQLAlchemy ORM)
-- User isolation enforced at repository layer
-- Rate limiting on auth endpoints (SlowAPI)
-- CORS configuration for production
-
-## Performance Guidelines
-
-- Pagination required for list endpoints (default 50 items)
-- Timeline API uses efficient SQL aggregation (not Python loops)
-- Hotpreview stored in DB for fast gallery rendering
-- Coldpreview generated on-demand (cached separately)
-- Database indexes on high-traffic query columns
-
-## Error Handling
-
-```python
-from src.core.exceptions import NotFoundError, ValidationError, DuplicatePhotoError
-
-# Raise domain-specific exceptions
-if not photo:
-    raise NotFoundError(f"Photo {photo_id} not found")
-
-# Service layer catches and translates
-# API layer returns proper HTTP status codes
+-- Duplicate detection
+CREATE UNIQUE INDEX idx_photos_hothash ON photos(hothash);
 ```
 
-## Future Considerations
 
-- Multi-user spaces/groups (visibility="space")
-- S3/object storage for coldpreviews
-- PhotoText document support (already implemented)
-- Advanced search with filters
-- Batch operations
-- Export/backup functionality
+## Key API Endpoints
 
-## Questions & Coordination
+### Photo Management
+- `POST /api/v1/photos/new-photo` - Create photo with hotpreview + ImageFile
+- `GET /api/v1/photos` - List photos (paginated, visibility-filtered)
+- `GET /api/v1/photos/{hothash}` - Get photo details
+- `GET /api/v1/photos/{hothash}/hotpreview` - Get hotpreview image (JPEG bytes)
+- `PUT /api/v1/photos/{hothash}` - Update photo metadata
+- `DELETE /api/v1/photos/{hothash}` - Delete photo
+- `PATCH /api/v1/photos/{hothash}/timeloc-correction` - Correct time/location
+- `PATCH /api/v1/photos/{hothash}/view-correction` - Visual adjustments (frontend hints)
 
-**Before breaking changes**:
-1. Check imalink-core version compatibility
-2. Review BACKEND_MIGRATION.md if updating core library
-3. Run full test suite
-4. Update API documentation
-5. Coordinate with frontend teams
+### Timeline API
+- `GET /api/v1/timeline?granularity=year` - Hierarchical time aggregation
+  - Query params: `granularity` (year/month/day/hour), `year`, `month`, `day`
+  - Returns: Buckets with photo counts + representative preview
+  - Preview selection: Rating 4-5 stars → temporal center fallback
+  - Supports anonymous access (public photos only)
 
-**When in doubt**:
-- Photo model vs CorePhoto: Backend adds user fields, excludes coldpreview
-- Visibility: Always filter by user_id or visibility level
-- Coldpreview: Generate on-demand, don't store in DB
-- Tests: Use PhotoEgg fixtures for consistency
+### Tags
+- `GET /api/v1/tags` - List user's tags with counts
+- `GET /api/v1/tags/autocomplete?q=land` - Tag suggestions
+- `POST /api/v1/photos/{hothash}/tags` - Add tags to photo
+- `DELETE /api/v1/photos/{hothash}/tags/{tag_name}` - Remove tag
+
+### Authentication
+- `POST /api/v1/auth/register` - User registration
+- `POST /api/v1/auth/login` - Get JWT token
+- Protected endpoints require: `Authorization: Bearer <token>`
+
+## Important Constraints
+
+### Security
+- **JWT tokens**: 24-hour expiration (configurable in `src/utils/security.py`)
+- **Password hashing**: sha256_crypt (configured in `src/utils/security.py`)
+- **SQL injection**: Prevented via SQLAlchemy ORM (never raw SQL)
+- **User isolation**: Enforced at repository layer - NEVER skip checks
+- **CORS**: Configured in `src/main.py` (production: restrict origins)
+
+### Performance
+- **Pagination**: Required for list endpoints (default limit=50, max=100)
+- **Timeline API**: Uses SQL aggregation (COUNT, GROUP BY) - NOT Python loops
+- **Hotpreview**: Stored in database BLOB for instant gallery rendering
+- **Coldpreview**: Optional larger preview (filesystem or database)
+- **Database indexes**: See "Critical Indexes" section above
+
+### Data Integrity
+- **Hothash uniqueness**: Enforced by unique constraint - duplicate detection
+- **User-scoped tags**: Same tag name allowed across users (composite key)
+- **Visibility defaults**: New photos default to `"private"`
+- **JSON fields**: `exif_dict`, `timeloc_correction`, `view_correction` - flexible schema
+- **Nullable fields**: `author_id`, `coldpreview_path`, GPS coordinates
+
+## Configuration & Environment
+
+### Environment Variables (.env)
+```bash
+# Database (SQLite for dev/test, PostgreSQL for production)
+DATABASE_URL=sqlite:////mnt/c/temp/00imalink_data/imalink.db
+# DATABASE_URL=postgresql://user:pass@localhost/imalink
+
+# Security (CHANGE IN PRODUCTION!)
+SECRET_KEY=your-secret-key-change-in-production
+
+# Storage paths
+DATA_DIRECTORY=/tmp/imalink_data
+COLDPREVIEW_ROOT=/tmp/imalink_coldpreviews
+
+# Testing (set by tests/conftest.py)
+TESTING=1  # Uses sqlite:///:memory:
+```
+
+### Project Structure
+```
+imalink/
+├── src/
+│   ├── api/v1/          # FastAPI route handlers
+│   ├── services/        # Business logic layer
+│   ├── repositories/    # Database query layer
+│   ├── models/          # SQLAlchemy ORM models
+│   ├── schemas/         # Pydantic request/response models
+│   ├── core/            # Config, dependencies, exceptions
+│   ├── database/        # DB connection & session management
+│   └── utils/           # Security, helpers
+├── tests/
+│   ├── api/             # API endpoint tests
+│   ├── services/        # Service layer tests
+│   ├── repositories/    # Repository tests
+│   └── fixtures/        # Shared test data (PhotoEggs)
+├── alembic/             # Database migrations
+├── docs/                # API reference, architecture docs
+└── scripts/             # Maintenance, migration scripts
+```
+
+## Debugging Tips
+
+### Check Auth Issues
+```python
+# Test token generation
+from src.utils.security import create_access_token
+token = create_access_token({"sub": "1"})
+print(token)  # Should be valid JWT
+
+# Verify user from token
+from src.core.dependencies import get_current_user
+# Use in FastAPI dependency
+```
+
+### Database State
+```bash
+# Check database directly
+sqlite3 /mnt/c/temp/00imalink_data/imalink.db
+
+# Useful queries
+SELECT COUNT(*) FROM photos;
+SELECT visibility, COUNT(*) FROM photos GROUP BY visibility;
+SELECT user_id, COUNT(*) FROM photos GROUP BY user_id;
+```
+
+### API Testing
+```bash
+# Health check
+curl http://localhost:8000/
+
+# List routes
+curl http://localhost:8000/debug/routes
+
+# Login and get token
+curl -X POST http://localhost:8000/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "user@example.com", "password": "password"}'
+```
+
+## Migration & Maintenance
+
+### Alembic Migrations
+```bash
+# Generate migration from model changes
+alembic revision --autogenerate -m "add_new_field"
+
+# Review generated migration before applying!
+# Edit alembic/versions/*.py if needed
+
+# Apply migration
+alembic upgrade head
+
+# Rollback one migration
+alembic downgrade -1
+
+# Check current version
+alembic current
+```
+
+### Database Reset (Development Only)
+```bash
+# Nuclear option - deletes everything
+python scripts/nuclear_reset.py
+
+# Safer option - reset with confirmation
+python scripts/reset_database.py
+```
+
+## Known Issues & Gotchas
+
+1. **User isolation**: Always check `user_id` in repositories - easy to forget
+2. **Visibility filtering**: Anonymous users (`user_id=None`) only see public photos
+3. **Hothash vs ID**: Use `hothash` in API paths, `id` only for foreign keys
+4. **PhotoEgg base64**: Must decode before storing in database (`base64.b64decode()`)
+5. **Timeline indexes**: Required for performance - see `alembic/versions/*timeline_indexes.py`
+6. **Testing database**: Uses in-memory SQLite - different from production PostgreSQL
+7. **CORS in production**: Update `src/main.py` to restrict origins (currently allows all)
+
+## Additional Resources
+
+- **API Reference**: `docs/API_REFERENCE.md` - Complete endpoint documentation
+- **Timeline API**: `docs/TIMELINE_API.md` - Detailed timeline design & examples
+- **Contracts**: `docs/CONTRACTS.md` - External API contracts (imalink-core)
+- **README**: `README.md` - Project overview, design philosophy
+- **Examples**: `examples/` - API usage examples, demo scripts
+
+### External Codebases
+
+When working with PhotoEgg schema or imalink-core integration:
+- **imalink-core repository**: https://github.com/kjelkols/imalink-core
+- Use GitHub search tools to query imalink-core for PhotoEgg/CorePhoto definitions
+- PhotoEgg schema changes in imalink-core require backend migration updates
+- Check imalink-core's `README.md` and API documentation for processing capabilities

@@ -11,7 +11,7 @@ class PhotoStackSummary(BaseModel):
     
     id: int = Field(..., description="Unique identifier for the photo stack")
     stack_type: Optional[str] = Field(None, description="Type of stack")
-    cover_photo_hothash: Optional[str] = Field(None, description="Hash of the cover photo")
+    title: Optional[str] = Field(None, description="User-friendly name for the stack")
     photo_count: int = Field(..., description="Number of photos in this stack")
     created_at: datetime = Field(..., description="When the stack was created")
     updated_at: datetime = Field(..., description="When the stack was last updated")
@@ -25,7 +25,7 @@ class PhotoStackDetail(BaseModel):
     
     id: int = Field(..., description="Unique identifier for the photo stack")
     stack_type: Optional[str] = Field(None, description="Type of stack")
-    cover_photo_hothash: Optional[str] = Field(None, description="Hash of the cover photo")
+    title: Optional[str] = Field(None, description="User-friendly name for the stack")
     photo_hothashes: List[str] = Field(default_factory=list, description="List of photo hashes in the stack")
     created_at: datetime = Field(..., description="When the stack was created")
     updated_at: datetime = Field(..., description="When the stack was last updated")

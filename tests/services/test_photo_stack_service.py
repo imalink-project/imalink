@@ -10,8 +10,8 @@ from unittest.mock import Mock, MagicMock, patch
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 
 from services.photo_stack_service import PhotoStackService
-from core.exceptions import NotFoundError, ValidationError
-from schemas.common import PaginatedResponse
+from src.core.exceptions import NotFoundError, ValidationError
+from src.schemas.common import PaginatedResponse
 
 
 @pytest.fixture
@@ -78,7 +78,7 @@ class TestPhotoStackService:
         # Mock stack attributes
         for i, stack in enumerate(mock_stacks):
             stack.id = i + 1
-            stack.cover_photo_hothash = f"hash{i + 1}"
+            stack.title = f"Stack {i + 1}"  # Changed from cover_photo_hothash
             stack.stack_type = "panorama"
             stack.created_at = Mock()
             stack.created_at.isoformat.return_value = "2024-01-01T10:00:00"
@@ -149,21 +149,6 @@ class TestPhotoStackService:
             photo_stack_service.create_stack(stack_data=stack_data, user_id=1)
         
         assert "stack type" in str(exc_info.value).lower()
-    
-    def test_create_stack_with_cover_photo_validation(self, photo_stack_service, mock_stack_repo):
-        """Test creating stack with cover photo validation"""
-        stack_data = {
-            "stack_type": "panorama",
-            "cover_photo_hothash": "nonexistent"
-        }
-        
-        mock_stack_repo.get_photos_in_stack.return_value = []
-        
-        with patch.object(photo_stack_service, '_validate_photos_exist', return_value=False):
-            with pytest.raises(ValidationError) as exc_info:
-                photo_stack_service.create_stack(stack_data=stack_data, user_id=1)
-            
-            assert "cover photo does not exist" in str(exc_info.value).lower()
     
     def test_update_stack_success(self, photo_stack_service, mock_stack_repo, sample_stack_object):
         """Test updating stack metadata"""
@@ -268,7 +253,7 @@ class TestPhotoStackService:
         # Mock repository response with single stack
         mock_stack = Mock()
         mock_stack.id = 1
-        mock_stack.cover_photo_hothash = "hash001"
+        mock_stack.title = "Test Stack"  # Changed from cover_photo_hothash
         mock_stack.stack_type = "panorama"
         mock_stack.created_at = datetime(2024, 1, 1, 10, 0, 0)
         mock_stack.updated_at = datetime(2024, 1, 1, 10, 0, 0)

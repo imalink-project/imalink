@@ -46,8 +46,8 @@ class PhotoStackRepository:
         """Create a new photo stack"""
         stack = PhotoStack(
             user_id=user_id,
-            cover_photo_hothash=stack_data.get('cover_photo_hothash'),
-            stack_type=stack_data.get('stack_type')
+            stack_type=stack_data.get('stack_type'),
+            title=stack_data.get('title')
         )
         
         self.db.add(stack)

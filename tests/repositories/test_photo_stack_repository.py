@@ -107,14 +107,14 @@ class TestPhotoStackRepository:
         
         stack_data = {
             "stack_type": "panorama",
-            "cover_photo_hothash": "hash001"
+            "title": "Mountain Panorama"
         }
         
         stack = photo_stack_repo.create(stack_data, user1.id)
         
         assert stack is not None
         assert stack.stack_type == "panorama"
-        assert stack.cover_photo_hothash == "hash001"
+        assert stack.title == "Mountain Panorama"
         assert stack.user_id == user1.id
         assert stack.created_at is not None
         assert stack.updated_at is not None
@@ -128,7 +128,7 @@ class TestPhotoStackRepository:
         
         assert stack is not None
         assert stack.stack_type is None
-        assert stack.cover_photo_hothash is None
+        assert stack.title is None
         assert stack.user_id == user1.id
     
     def test_get_by_id_user_isolation(self, photo_stack_repo, test_users):
@@ -223,18 +223,18 @@ class TestPhotoStackRepository:
         user1, user2 = test_users
         
         # Create stack
-        stack = photo_stack_repo.create({"stack_type": "Original"}, user1.id)
+        stack = photo_stack_repo.create({"stack_type": "Original", "title": "Old Title"}, user1.id)
         
         # Update stack
         update_data = {
             "stack_type": "burst",
-            "cover_photo_hothash": "new_cover"
+            "title": "New Title"
         }
         updated = photo_stack_repo.update(stack.id, update_data, user1.id)
         
         assert updated is not None
         assert updated.stack_type == "burst"
-        assert updated.cover_photo_hothash == "new_cover"
+        assert updated.title == "New Title"
         assert updated.user_id == user1.id
         
         # User2 cannot update user1's stack
