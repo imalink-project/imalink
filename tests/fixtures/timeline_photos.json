@@ -1,0 +1,57 @@
+{
+  "name": "timeline_test_photos",
+  "description": "Photos spanning different years and months for timeline API testing",
+  "version": "1.0",
+  "photos": {
+    "summer_2024_beach": {
+      "hothash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "hotpreview_base64": "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAB//2Q==",
+      "primary_file": {
+        "filename": "beach_2024.jpg",
+        "file_format": "jpeg",
+        "file_size": 1048576
+      },
+      "width": 4000,
+      "height": 3000,
+      "taken_at": "2024-06-15T14:30:00+00:00",
+      "gps_latitude": 59.9139,
+      "gps_longitude": 10.7522,
+      "rating": 5,
+      "visibility": "public",
+      "description": "Summer beach photo from 2024 - Oslo harbor",
+      "tags": ["summer", "beach", "oslo"]
+    },
+    "winter_2024_mountains": {
+      "hothash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "hotpreview_base64": "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAB//2Q==",
+      "primary_file": {
+        "filename": "mountains_2024.jpg",
+        "file_format": "jpeg",
+        "file_size": 1048576
+      },
+      "width": 4000,
+      "height": 3000,
+      "taken_at": "2024-12-20T10:00:00+00:00",
+      "rating": 4,
+      "visibility": "authenticated",
+      "description": "Winter mountain photo from 2024",
+      "tags": ["winter", "mountains", "snow"]
+    },
+    "autumn_2023_forest": {
+      "hothash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "hotpreview_base64": "/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAB//2Q==",
+      "primary_file": {
+        "filename": "forest_2023.jpg",
+        "file_format": "jpeg",
+        "file_size": 1048576
+      },
+      "width": 3000,
+      "height": 4000,
+      "taken_at": "2023-10-10T16:45:00+00:00",
+      "rating": 3,
+      "visibility": "private",
+      "description": "Autumn forest photo from 2023",
+      "tags": ["autumn", "forest", "nature"]
+    }
+  }
+}
