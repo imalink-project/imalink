@@ -199,13 +199,15 @@ def import_session(test_db_session, test_user):
     
     ImportSession groups photos by import batch.
     Every photo MUST belong to an import session.
+    This fixture creates a protected session (like the default Quick Add session).
     """
     from models.import_session import ImportSession
     
     session = ImportSession(
         user_id=test_user.id,
         title="Test Import Session",
-        description="Test import batch for unit tests"
+        description="Test import batch for unit tests",
+        is_protected=True  # Make it protected like default session
     )
     test_db_session.add(session)
     test_db_session.commit()
