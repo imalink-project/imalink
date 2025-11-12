@@ -190,3 +190,44 @@ def second_user_client(test_client, second_user_headers):
     """
     test_client.auth_headers = second_user_headers
     return test_client
+
+
+@pytest.fixture(scope="function")
+def import_session(test_db_session, test_user):
+    """
+    Create a test import session for the test user
+    
+    ImportSession groups photos by import batch.
+    Every photo MUST belong to an import session.
+    """
+    from models.import_session import ImportSession
+    
+    session = ImportSession(
+        user_id=test_user.id,
+        title="Test Import Session",
+        description="Test import batch for unit tests"
+    )
+    test_db_session.add(session)
+    test_db_session.commit()
+    test_db_session.refresh(session)
+    
+    return session
+
+
+@pytest.fixture(scope="function")
+def second_user_import_session(test_db_session, second_user):
+    """
+    Create a test import session for the second test user
+    """
+    from models.import_session import ImportSession
+    
+    session = ImportSession(
+        user_id=second_user.id,
+        title="Second User Import Session",
+        description="Test import batch for second user"
+    )
+    test_db_session.add(session)
+    test_db_session.commit()
+    test_db_session.refresh(session)
+    
+    return session

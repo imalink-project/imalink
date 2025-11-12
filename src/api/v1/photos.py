@@ -2,21 +2,21 @@
 API endpoints for photo operations using Service Layer
 
 ARCHITECTURAL NOTE (UPDATED):
-Photos are created via POST /photos/new-photo which creates both Photo + ImageFile.
-Additional files can be added to existing Photos via POST /photos/{hothash}/files.
+Photos are created via POST /photos/photoegg which receives pre-processed PhotoEgg from imalink-core.
+PhotoEgg contains hotpreview (base64), metadata, and exif_dict - backend stores this data.
 This ensures:
 - Photo-centric API (100% of operations through /photos)
-- No orphaned Photos without Image files
-- Photo.hothash is derived from Image.hotpreview (content-based)
-- JPEG/RAW pairs automatically share the same Photo
+- Backend NEVER processes images - only stores metadata from PhotoEgg
+- Photo.hothash is derived from hotpreview (SHA256, content-based)
+- JPEG/RAW pairs automatically share the same Photo (same hotpreview = same hash)
 
 This API provides:
-- CREATE: Upload new photos (POST /new-photo) and add files (POST /{hothash}/files)
+- CREATE: Upload photos via PhotoEgg (POST /photoegg)
 - READ: List, search, and retrieve photo metadata
-- UPDATE: Edit photo metadata (title, description, tags, rating, author)
+- UPDATE: Edit photo metadata (rating, visibility, tags, category, author)
 - DELETE: Remove photo and all associated image files (cascade)
 """
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Response, Query, File, UploadFile
 from fastapi.responses import StreamingResponse
 import io
@@ -33,6 +33,7 @@ from src.schemas.photoegg_schemas import PhotoEggRequest, PhotoEggResponse
 from src.schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
+from src.schemas.image_file_schemas import ImageFileResponse
 from src.schemas.tag_schemas import AddTagsRequest, AddTagsResponse, RemoveTagResponse
 from src.schemas.common import PaginatedResponse, create_success_response
 from src.schemas.responses.photo_stack_responses import PhotoStackSummary
@@ -91,108 +92,28 @@ def search_photos(
         raise HTTPException(status_code=500, detail=f"Failed to search photos: {str(e)}")
 
 
-@router.post("/new-photo", response_model=ImageFileUploadResponse, status_code=201)
-def create_photo_with_file(
-    image_data: ImageFileNewPhotoRequest,
-    current_user: User = Depends(get_current_active_user),
-    photo_service: PhotoService = Depends(get_photo_service)
-):
-    """
-    Create new Photo with initial ImageFile
-    
-    USE CASE: Uploading a completely new, unique photo
-    - Hotpreview and exif_dict stored in Photo (visual data)
-    - ImageFile stores only file metadata
-    - A new Photo will always be created
-    
-    WORKFLOW:
-    1. Validate hotpreview data
-    2. Generate photo_hothash from hotpreview (SHA256)
-    3. Check if Photo already exists (if yes → error 409)
-    4. Create new Photo with visual data
-    5. Create ImageFile with file metadata
-    6. Return success response
-    
-    Returns:
-        ImageFileUploadResponse with photo_created=True
-    """
-    try:
-        logger.debug(f"Creating new photo for user {getattr(current_user, 'id')}")
-        logger.debug(f"Request data: filename={image_data.filename}, has_hotpreview={bool(image_data.hotpreview)}, "
-                    f"file_size={image_data.file_size}, has_exif={bool(image_data.exif_dict)}, "
-                    f"import_session_id={image_data.import_session_id}")
-        
-        return photo_service.create_photo_with_file(image_data, getattr(current_user, 'id'))
-    except DuplicateImageError as e:
-        # Photo with same hotpreview already exists
-        logger.warning(f"Duplicate photo upload attempt by user {getattr(current_user, 'id')}: {str(e)}")
-        raise HTTPException(
-            status_code=409, 
-            detail=f"Photo with this image already exists. Use POST /photos/{{hothash}}/files to add companion files. {str(e)}"
-        )
-    except (ValidationError, PydanticValidationError) as e:
-        logger.error(f"Validation error creating photo: {str(e)}")
-        logger.error(f"Request data details - filename: {image_data.filename}, "
-                    f"hotpreview_size: {len(image_data.hotpreview) if image_data.hotpreview else 0}, "
-                    f"file_size: {image_data.file_size}, "
-                    f"has_exif: {bool(image_data.exif_dict)}")
-        raise HTTPException(status_code=422, detail=f"Validation error: {str(e)}")
-    except Exception as e:
-        logger.error(f"Unexpected error creating photo with file: {str(e)}", exc_info=True)
-        logger.error(f"Request data - filename: {image_data.filename if hasattr(image_data, 'filename') else 'N/A'}, "
-                    f"hotpreview_present: {bool(getattr(image_data, 'hotpreview', None))}, "
-                    f"user_id: {getattr(current_user, 'id')}")
-        raise HTTPException(status_code=500, detail=f"Failed to create photo with file: {str(e)}")
+# NOTE: /new-photo endpoint REMOVED - use POST /photoegg instead
+# PhotoEgg endpoint is the single unified way to create photos
 
 
-@router.post("/{hothash}/files", response_model=ImageFileUploadResponse, status_code=201)
-def add_file_to_photo(
+@router.get("/{hothash}/files", response_model=List[ImageFileResponse])
+def get_photo_files(
     hothash: str,
-    image_data: ImageFileAddToPhotoRequest,
-    current_user: User = Depends(get_current_active_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     photo_service: PhotoService = Depends(get_photo_service)
 ):
     """
-    Add new ImageFile to an existing Photo
+    Get list of ImageFiles for a photo
     
-    USE CASE: Adding companion files to existing photos
-    - RAW file for existing JPEG photo
-    - Different format/resolution of same photo
-    - Additional file versions
-    
-    REQUIREMENTS:
-    - Photo with {hothash} must exist and belong to user
-    - NO hotpreview or exif_dict (Photo already has these)
-    
-    WORKFLOW:
-    1. Validate that Photo with hothash exists
-    2. Create ImageFile with only file metadata
-    3. Return success response
-    
-    Returns:
-        ImageFileUploadResponse with photo_created=False
+    Returns all files associated with this photo (JPEG, RAW, etc.)
     """
     try:
-        logger.debug(f"Adding file to existing photo {hothash} for user {getattr(current_user, 'id')}")
-        logger.debug(f"Request data: filename={image_data.filename}, file_size={image_data.file_size}")
-        
-        return photo_service.add_file_to_photo(hothash, image_data, getattr(current_user, 'id'))
+        user_id = getattr(current_user, 'id', None) if current_user else None
+        return photo_service.get_photo_files(hothash, user_id)
     except NotFoundError as e:
-        # Photo with provided hothash doesn't exist
-        logger.warning(f"Attempt to add file to non-existent photo {hothash} by user {getattr(current_user, 'id')}")
-        raise HTTPException(
-            status_code=404,
-            detail=f"Photo with hothash '{hothash}' not found. Use POST /photos/new-photo to create new photo."
-        )
-    except ValidationError as e:
-        logger.error(f"Validation error adding file to photo {hothash}: {str(e)}")
-        logger.error(f"Request data - filename: {image_data.filename}, file_size: {image_data.file_size}")
-        raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
+        raise HTTPException(status_code=404, detail=str(e))
     except Exception as e:
-        logger.error(f"Unexpected error adding file to photo {hothash}: {str(e)}", exc_info=True)
-        logger.error(f"Request data - filename: {image_data.filename if hasattr(image_data, 'filename') else 'N/A'}, "
-                    f"hothash: {hothash}, user_id: {getattr(current_user, 'id')}")
-        raise HTTPException(status_code=500, detail=f"Failed to add file to photo: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to get photo files: {str(e)}")
 
 
 @router.get("/{hothash}", response_model=PhotoResponse)
@@ -554,7 +475,6 @@ async def create_photo_from_photoegg(
         return PhotoEggResponse(
             id=photo.id,
             hothash=photo.hothash,
-            title=photo.title,
             rating=photo.rating,
             visibility=photo.visibility,
             width=photo.width,
@@ -573,7 +493,6 @@ async def create_photo_from_photoegg(
         return PhotoEggResponse(
             id=existing_photo.id,
             hothash=existing_photo.hothash,
-            title=existing_photo.title,
             rating=existing_photo.rating,
             visibility=existing_photo.visibility,
             width=existing_photo.width,

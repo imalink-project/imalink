@@ -190,6 +190,8 @@ class PhotoRepository:
         # Update only provided fields
         if photo_data.rating is not None:
             setattr(photo, 'rating', photo_data.rating)
+        if photo_data.category is not None:
+            setattr(photo, 'category', photo_data.category)
         if photo_data.author_id is not None:
             setattr(photo, 'author_id', photo_data.author_id)
         if photo_data.visibility is not None:
@@ -283,6 +285,10 @@ class PhotoRepository:
             query = query.filter(Photo.rating >= search_params.rating_min)
         if search_params.rating_max is not None:
             query = query.filter(Photo.rating <= search_params.rating_max)
+        
+        # Filter by category
+        if search_params.category is not None:
+            query = query.filter(Photo.category == search_params.category)
         
         # Filter by date range
         if search_params.taken_after:

@@ -40,8 +40,9 @@ class ImageFileNewPhotoRequest(BaseModel):
     # Visibility control
     visibility: Optional[str] = Field(default="private", description="Visibility level: private, space, authenticated, or public")
     
-    # Import context
-    import_session_id: Optional[int] = Field(None, description="Import session ID")
+    # Import context (REQUIRED) - every photo must belong to an import session
+    # ImportSession groups photos by when imported and stores user's notes about source/storage
+    import_session_id: int = Field(..., description="Import session ID (required)")
     imported_info: Optional[Dict[str, Any]] = Field(None, description="Import context and original location")
     local_storage_info: Optional[Dict[str, Any]] = Field(None, description="Local storage info")
     cloud_storage_info: Optional[Dict[str, Any]] = Field(None, description="Cloud storage info")

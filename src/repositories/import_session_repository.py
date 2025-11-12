@@ -27,6 +27,20 @@ class ImportSessionRepository:
         
         return query.first()
     
+    def get_protected_session(self, user_id: int) -> Optional[ImportSession]:
+        """
+        Get user's protected ImportSession (default session for quick uploads)
+        
+        Used when import_session_id is not provided in PhotoEgg API.
+        """
+        query = (
+            self.db.query(ImportSession)
+            .filter(ImportSession.is_protected == True)
+            .filter(ImportSession.user_id == user_id)
+        )
+        
+        return query.first()
+    
     def get_all_imports(self, user_id: int, limit: int = 50, offset: int = 0) -> List[ImportSession]:
         """Get all ImportSessions with pagination (user-scoped)"""
         query = (

@@ -23,7 +23,8 @@ class TestTimelineYearAggregation:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Authenticated user should see their own photos aggregated by year."""
         # Create photos in different years
@@ -33,21 +34,24 @@ class TestTimelineYearAggregation:
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="year2024_2",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 8, 20, 14, 30, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="year2023_1",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2023, 3, 10, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
         ]
         
@@ -96,21 +100,24 @@ class TestTimelineYearAggregation:
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 5, 1, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="public"
+                visibility="public",
+                import_session_id=1
             ),
             Photo(
                 hothash="private_2024",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 1, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="authenticated_2023",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2023, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="authenticated"
+                visibility="authenticated",
+                import_session_id=1
             ),
         ]
         
@@ -132,7 +139,8 @@ class TestTimelineYearAggregation:
     def test_get_years_empty_timeline(
         self,
         client: TestClient,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Empty timeline should return empty array."""
         response = client.get("/api/v1/timeline/?granularity=year", headers=auth_headers)
@@ -150,7 +158,8 @@ class TestTimelineYearAggregation:
         test_db_session: Session,
         test_user: User,
         second_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Users should only see their own private photos."""
         photos = [
@@ -159,14 +168,16 @@ class TestTimelineYearAggregation:
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="user2_photo",
                 hotpreview=b"fake_preview_data",
                 user_id=second_user.id,
                 taken_at=datetime(2024, 2, 1, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
         ]
         
@@ -193,7 +204,8 @@ class TestTimelineMonthAggregation:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Should aggregate photos by month for a specific year."""
         photos = [
@@ -202,28 +214,32 @@ class TestTimelineMonthAggregation:
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 5, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="jan_photo2",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 20, 15, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="feb_photo",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 2, 10, 12, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="dec_photo",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 12, 25, 18, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
         ]
         
@@ -257,7 +273,8 @@ class TestTimelineMonthAggregation:
     def test_get_months_requires_year_parameter(
         self,
         client: TestClient,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Month granularity should require year parameter."""
         response = client.get(
@@ -270,7 +287,8 @@ class TestTimelineMonthAggregation:
     def test_get_months_invalid_year(
         self,
         client: TestClient,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Should reject invalid year values."""
         response = client.get(
@@ -285,7 +303,8 @@ class TestTimelineMonthAggregation:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Month aggregation should respect visibility levels."""
         photos = [
@@ -294,14 +313,16 @@ class TestTimelineMonthAggregation:
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="public"
+                visibility="public",
+                import_session_id=1
             ),
             Photo(
                 hothash="private_jan",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
         ]
         
@@ -331,7 +352,8 @@ class TestTimelineDayAggregation:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Should aggregate photos by day for a specific month."""
         photos = [
@@ -340,21 +362,24 @@ class TestTimelineDayAggregation:
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 1, 8, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="day1_photo2",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 1, 18, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="day15_photo",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
         ]
         
@@ -389,7 +414,8 @@ class TestTimelineDayAggregation:
     def test_get_days_requires_year_and_month(
         self,
         client: TestClient,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Day granularity requires both year and month."""
         # Missing year
@@ -409,7 +435,8 @@ class TestTimelineDayAggregation:
     def test_get_days_invalid_month(
         self,
         client: TestClient,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Should reject invalid month values."""
         response = client.get(
@@ -428,7 +455,8 @@ class TestTimelineHourAggregation:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Should aggregate photos by hour for a specific day."""
         photos = [
@@ -437,28 +465,32 @@ class TestTimelineHourAggregation:
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 15, 9, 15, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="hour9_photo2",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 15, 9, 45, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="hour14_photo",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 15, 14, 30, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="hour23_photo",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 15, 23, 59, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
         ]
         
@@ -495,7 +527,8 @@ class TestTimelineHourAggregation:
     def test_get_hours_requires_year_month_day(
         self,
         client: TestClient,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Hour granularity requires year, month, and day."""
         response = client.get(
@@ -508,7 +541,8 @@ class TestTimelineHourAggregation:
     def test_get_hours_invalid_day(
         self,
         client: TestClient,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Should reject invalid day values."""
         response = client.get(
@@ -527,7 +561,8 @@ class TestTimelinePreviewSelection:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Preview should prioritize highest-rated photo (4-5 stars)."""
         photos = [
@@ -577,7 +612,8 @@ class TestTimelinePreviewSelection:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """If no high ratings, preview should be temporally centered photo."""
         photos = [
@@ -628,7 +664,8 @@ class TestTimelinePreviewSelection:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Preview URL should point to hotpreview endpoint."""
         photo = Photo(
@@ -636,7 +673,8 @@ class TestTimelinePreviewSelection:
                 hotpreview=b"fake_preview_data",
             user_id=test_user.id,
             taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
-            visibility="private"
+            visibility="private",
+                import_session_id=1
         )
         test_db_session.add(photo)
         test_db_session.commit()
@@ -661,7 +699,8 @@ class TestTimelineEdgeCases:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Photos without taken_at should be excluded from timeline."""
         photos = [
@@ -670,14 +709,16 @@ class TestTimelineEdgeCases:
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="no_date",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=None,
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
         ]
         
@@ -697,7 +738,8 @@ class TestTimelineEdgeCases:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Should handle leap year dates correctly."""
         photo = Photo(
@@ -705,7 +747,8 @@ class TestTimelineEdgeCases:
                 hotpreview=b"fake_preview_data",
             user_id=test_user.id,
             taken_at=datetime(2024, 2, 29, 12, 0, 0, tzinfo=timezone.utc),  # 2024 is leap year
-            visibility="private"
+            visibility="private",
+                import_session_id=1
         )
         test_db_session.add(photo)
         test_db_session.commit()
@@ -725,7 +768,8 @@ class TestTimelineEdgeCases:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Should handle different timezones consistently."""
         photos = [
@@ -734,7 +778,8 @@ class TestTimelineEdgeCases:
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 1, 23, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
         ]
         
@@ -758,7 +803,8 @@ class TestTimelineEdgeCases:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Default granularity should be 'year'."""
         photo = Photo(
@@ -766,7 +812,8 @@ class TestTimelineEdgeCases:
                 hotpreview=b"fake_preview_data",
             user_id=test_user.id,
             taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
-            visibility="private"
+            visibility="private",
+                import_session_id=1
         )
         test_db_session.add(photo)
         test_db_session.commit()
@@ -782,7 +829,8 @@ class TestTimelineEdgeCases:
     def test_invalid_granularity(
         self,
         client: TestClient,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Should reject invalid granularity values."""
         response = client.get(
@@ -797,7 +845,8 @@ class TestTimelineEdgeCases:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Should handle large datasets efficiently."""
         # Create 100 photos across multiple years
@@ -810,7 +859,8 @@ class TestTimelineEdgeCases:
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(year, month, 15, 12, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             )
             photos.append(photo)
         
@@ -835,7 +885,8 @@ class TestTimelineVisibilityIntegration:
         test_db_session: Session,
         test_user: User,
         second_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Authenticated users should see 'authenticated' photos from other users."""
         photos = [
@@ -844,14 +895,16 @@ class TestTimelineVisibilityIntegration:
                 hotpreview=b"fake_preview_data",
                 user_id=second_user.id,
                 taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="authenticated"
+                visibility="authenticated",
+                import_session_id=1
             ),
             Photo(
                 hothash="user2_private",
                 hotpreview=b"fake_preview_data",
                 user_id=second_user.id,
                 taken_at=datetime(2024, 2, 1, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
         ]
         
@@ -880,7 +933,8 @@ class TestTimelineVisibilityIntegration:
                 hotpreview=b"fake_preview_data",
             user_id=test_user.id,
             taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
-            visibility="public"
+            visibility="public",
+                import_session_id=1
         )
         test_db_session.add(photo)
         test_db_session.commit()
@@ -899,7 +953,8 @@ class TestTimelineVisibilityIntegration:
         client: TestClient,
         test_db_session: Session,
         test_user: User,
-        auth_headers: dict
+        auth_headers: dict,
+        import_session
     ):
         """Bucket should aggregate all accessible photos regardless of visibility."""
         photos = [
@@ -908,21 +963,24 @@ class TestTimelineVisibilityIntegration:
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 5, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="private"
+                visibility="private",
+                import_session_id=1
             ),
             Photo(
                 hothash="authenticated_jan",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="authenticated"
+                visibility="authenticated",
+                import_session_id=1
             ),
             Photo(
                 hothash="public_jan",
                 hotpreview=b"fake_preview_data",
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 25, 10, 0, 0, tzinfo=timezone.utc),
-                visibility="public"
+                visibility="public",
+                import_session_id=1
             ),
         ]
         

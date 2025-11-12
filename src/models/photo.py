@@ -23,16 +23,17 @@ class Photo(Base, TimestampMixin):
     Primary photo model - aggregated view for galleries and browsing
     
     CREATION FLOW:
-    Photos are created when uploading the first (master) ImageFile:
-    1. Client uploads image file → POST /image-files/new-photo with hotpreview, exif_dict
-    2. System generates hothash from hotpreview (SHA256)
-    3. Photo is created with hotpreview, exif_dict from request
-    4. ImageFile is created and linked to Photo (without hotpreview/exif - stored only in Photo)
-    5. Additional ImageFiles (RAW, etc.) can be added via POST /image-files/add-to-photo
+    Photos are created via POST /photos/photoegg with PhotoEgg from imalink-core:
+    1. Client sends image → imalink-core service (external processor)
+    2. imalink-core generates PhotoEgg JSON (hothash, hotpreview_base64, metadata, exif_dict)
+    3. Client sends PhotoEgg → POST /photos/photoegg
+    4. Backend creates Photo with hotpreview bytes + metadata
+    5. Backend creates ImageFile linked to Photo (file path metadata only)
     
     This ensures:
-    - Photo has single source of visual representation (from master file)
-    - No duplication of hotpreview/exif data across multiple ImageFiles
+    - Backend NEVER processes images - only receives pre-processed PhotoEgg metadata
+    - Photo has single source of visual representation (from PhotoEgg hotpreview)
+    - hothash is content-based (SHA256 of hotpreview) - same for JPEG/RAW pairs
     - JPEG/RAW pairs naturally share same Photo (same visual content = same hash)
     - Photo metadata can be edited independently of ImageFile files
     
@@ -40,9 +41,9 @@ class Photo(Base, TimestampMixin):
     - Hybrid primary key: Integer id (technical PK) + unique hothash (content-based identifier)
     - hothash used for API operations (content-based, shared between JPEG/RAW)
     - id used internally for foreign key relationships (performance optimization)
-    - Contains all user-facing metadata (rating, author, GPS)
+    - Contains all user-facing metadata (rating, author, GPS, category)
     - Contains visual data (hotpreview, coldpreview, dimensions)
-    - Contains EXIF metadata from master file (immutable after creation)
+    - Contains EXIF metadata from PhotoEgg (immutable after creation)
     - Optimized for gallery queries and photo browsing
     """
     __tablename__ = "photos"
@@ -72,8 +73,11 @@ class Photo(Base, TimestampMixin):
     
     # User metadata (editable by users)
     rating = Column(Integer, default=0)  # 1-5 star rating
+    category = Column(String(100), nullable=True, index=True)  # User-defined category (e.g., "hobby", "work", "family")
     
-    # Import tracking - which import session this photo came from
+    # Import tracking - groups photos by import batch
+    # ImportSession stores user's notes about when/where photos were imported (passive metadata)
+    # Required for production use, but nullable for flexibility (tests, legacy data, etc.)
     import_session_id = Column(Integer, ForeignKey('import_sessions.id'), nullable=True, index=True)
     
     # Authorship

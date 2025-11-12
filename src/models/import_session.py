@@ -4,7 +4,7 @@ Import session model - User's reference metadata for imported photos
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -17,15 +17,37 @@ if TYPE_CHECKING:
 
 class ImportSession(Base, TimestampMixin):
     """
-    User's reference metadata for a batch of imported photos.
+    ImportSession - User's organizational metadata for photo imports
     
-    This is NOT a file processor - it's a simple container for:
-    - User's notes about the import ("Italy vacation 2024")
-    - When the import happened
-    - Who took the photos (default author)
-    - Where the client stored the files
+    ROLE: Passive grouping and documentation (NO file processing)
     
-    All file operations are handled by the client application.
+    PURPOSE:
+    - Group photos by when they were imported (batch tracking)
+    - Store user's notes about the import source
+    - Document where user stores the original files
+    - Set default photographer for the batch
+    
+    RELATIONSHIP TO PHOTOS:
+    - REQUIRED: Every Photo MUST belong to one ImportSession
+    - Grouping: All photos imported together share same session
+    - Persistence: Sessions remain even if photos are deleted (history)
+    
+    WHAT IT IS:
+    - User's organizational tool ("Italy vacation 2024")
+    - Reference metadata (source, storage location notes)
+    - Batch timestamp (when import happened)
+    
+    WHAT IT IS NOT:
+    - File processor (client handles all file operations)
+    - File scanner (client detects and processes images)
+    - Storage manager (just stores notes about where files are)
+    
+    CLIENT WORKFLOW:
+    1. User selects folder/files to import
+    2. Client creates ImportSession with user's notes
+    3. Client processes each file → creates PhotoEgg
+    4. Client sends PhotoEgg + import_session_id to backend
+    5. Backend creates Photo linked to ImportSession
     """
     __tablename__ = "import_sessions"
     
@@ -40,6 +62,11 @@ class ImportSession(Base, TimestampMixin):
     # User's metadata
     title = Column(String(255))                         # "Italy Summer 2024"
     description = Column(Text)                          # User's notes/comments
+    
+    # System protection flag - prevents deletion by user
+    # Set to True for auto-created default sessions (like "Quick Add")
+    # User can edit title/description, but cannot delete the session
+    is_protected = Column(Boolean, default=False, nullable=False)
     
     # Default photographer for this batch
     default_author_id = Column(Integer, ForeignKey('authors.id'), nullable=True, index=True)

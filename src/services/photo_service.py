@@ -613,6 +613,9 @@ class PhotoService:
         PhotoEgg comes from imalink-core server and contains all image processing results.
         Backend only stores metadata and previews.
         
+        If import_session_id is not provided in the request, automatically uses the user's
+        protected default session. This allows immediate photo uploads without setup.
+        
         Args:
             photoegg_request: PhotoEggRequest with photo_egg and user metadata
             user_id: Owner user ID
@@ -622,10 +625,27 @@ class PhotoService:
             
         Raises:
             DuplicateImageError: If photo with same hothash already exists for this user
+            ValueError: If no import_session_id provided and protected session not found
         """
         import base64
+        from src.repositories.import_session_repository import ImportSessionRepository
         
         egg = photoegg_request.photo_egg
+        
+        # Resolve import_session_id - use protected default if not provided
+        import_session_id = photoegg_request.import_session_id
+        if import_session_id is None:
+            # Find user's protected default session
+            import_repo = ImportSessionRepository(self.db)
+            default_session = import_repo.get_protected_session(user_id)
+            
+            if not default_session:
+                raise ValueError(
+                    "No import_session_id provided and no protected default session found. "
+                    "This should not happen - contact administrator."
+                )
+            
+            import_session_id = default_session.id
         
         # Check for duplicate
         existing = self.photo_repo.get_by_hash(egg.hothash, user_id)
@@ -635,42 +655,56 @@ class PhotoService:
         # Decode base64 hotpreview
         hotpreview_bytes = base64.b64decode(egg.hotpreview_base64)
         
-        # Build exif_dict with PhotoEgg metadata
+        # Build exif_dict - PhotoEgg's exif_dict is complete EXIF "DNA"
+        # We store it readonly, never modify it
         exif_dict = egg.exif_dict or {}
         
-        # Add PhotoEgg metadata to exif_dict (flexible JSON storage)
-        if egg.metadata:
-            if egg.metadata.camera_make:
-                exif_dict['camera_make'] = egg.metadata.camera_make
-            if egg.metadata.camera_model:
-                exif_dict['camera_model'] = egg.metadata.camera_model
-            if egg.metadata.lens_model:
-                exif_dict['lens_model'] = egg.metadata.lens_model
-            if egg.metadata.focal_length:
-                exif_dict['focal_length'] = egg.metadata.focal_length
-            if egg.metadata.f_number:
-                exif_dict['f_number'] = egg.metadata.f_number
-            if egg.metadata.iso:
-                exif_dict['iso'] = egg.metadata.iso
-            if egg.metadata.exposure_time:
-                exif_dict['exposure_time'] = egg.metadata.exposure_time
-            if egg.metadata.gps_altitude:
-                exif_dict['gps_altitude'] = egg.metadata.gps_altitude
+        # Add PhotoEgg fields to exif_dict for complete preservation
+        # (These are also stored in indexed columns for queries)
+        if egg.camera_make:
+            exif_dict['camera_make'] = egg.camera_make
+        if egg.camera_model:
+            exif_dict['camera_model'] = egg.camera_model
+        if egg.lens_model:
+            exif_dict['lens_model'] = egg.lens_model
+        if egg.focal_length:
+            exif_dict['focal_length'] = egg.focal_length
+        if egg.aperture:
+            exif_dict['aperture'] = egg.aperture
+        if egg.iso:
+            exif_dict['iso'] = egg.iso
+        if egg.shutter_speed:
+            exif_dict['shutter_speed'] = egg.shutter_speed
+        if egg.taken_at:
+            exif_dict['taken_at'] = egg.taken_at.isoformat()
+        if egg.gps_latitude:
+            exif_dict['gps_latitude'] = egg.gps_latitude
+        if egg.gps_longitude:
+            exif_dict['gps_longitude'] = egg.gps_longitude
         
-        # Create Photo with correct fields
+        # Create Photo with direct field mapping (PhotoEgg is flat!)
         photo = Photo(
+            user_id=user_id,
             hothash=egg.hothash,
             hotpreview=hotpreview_bytes,
             width=egg.width,
             height=egg.height,
+            
+            # Time & location (indexed copies for queries)
+            taken_at=egg.taken_at,
+            gps_latitude=egg.gps_latitude,
+            gps_longitude=egg.gps_longitude,
+            
+            # Complete EXIF (readonly "DNA" - camera fields stored here)
+            exif_dict=exif_dict,
+            
+            # Import context (resolved to default session if not provided)
+            import_session_id=import_session_id,
+            
+            # User organization
             rating=photoegg_request.rating,
             visibility=photoegg_request.visibility,
-            exif_dict=exif_dict,
-            user_id=user_id,
-            # Extract basic metadata from PhotoEgg
-            taken_at=egg.metadata.taken_at if egg.metadata else None,
-            gps_latitude=egg.metadata.gps_latitude if egg.metadata else None,
-            gps_longitude=egg.metadata.gps_longitude if egg.metadata else None,
+            author_id=photoegg_request.author_id,
         )
         
         # Handle coldpreview as filesystem path (NOT BLOB)
@@ -682,10 +716,6 @@ class PhotoService:
             coldpreview_bytes = base64.b64decode(egg.coldpreview_base64)
             relative_path, _, _, _ = repository.save_coldpreview(egg.hothash, coldpreview_bytes)
             photo.coldpreview_path = relative_path
-        
-        # Set author if provided
-        if photoegg_request.author_id:
-            photo.author_id = photoegg_request.author_id
         
         # Save to database
         self.db.add(photo)

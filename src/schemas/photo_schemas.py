@@ -111,6 +111,7 @@ class PhotoResponse(BaseModel):
     
     # User metadata
     rating: int = Field(0, ge=0, le=5, description="User rating (0-5 stars)")
+    category: Optional[str] = Field(None, description="User-defined category (e.g., 'hobby', 'work', 'family')")
     
     # Sharing and visibility (Fase 1)
     visibility: str = Field('private', description="Photo visibility: 'private', 'space', 'authenticated', or 'public'")
@@ -193,6 +194,7 @@ class PhotoUpdateRequest(BaseModel):
     
     # User editable fields only
     rating: Optional[int] = Field(None, ge=0, le=5, description="User rating")
+    category: Optional[str] = Field(None, max_length=100, description="User-defined category")
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
     visibility: Optional[str] = Field(None, pattern=r'^(private|space|authenticated|public)$', description="Photo visibility (optional, backwards compatible)")
 
@@ -218,6 +220,7 @@ class PhotoSearchRequest(BaseModel):
     # Metadata filters
     rating_min: Optional[int] = Field(None, ge=0, le=5, description="Minimum rating (inclusive)")
     rating_max: Optional[int] = Field(None, ge=0, le=5, description="Maximum rating (inclusive)")
+    category: Optional[str] = Field(None, description="Filter by category (exact match)")
     
     # Date filters
     taken_after: Optional[datetime] = Field(None, description="Photos taken after this date (inclusive)")

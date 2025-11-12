@@ -23,21 +23,29 @@ class TestPhotoCreationWithRealPhotoEggs:
     with real hothashes, base64 previews, and metadata.
     """
     
-    def test_create_photo_from_basic_photoegg(self, client, auth_headers):
-        """Create photo using basic PhotoEgg fixture"""
+    def test_create_photo_from_basic_photoegg(self, client, auth_headers, import_session):
+        """Basic PhotoEgg → Photo creation flow"""
         
-        # Load real PhotoEgg from fixture
-        photoegg = load_photoegg(BASIC)
+        photoegg_data = load_photoegg(BASIC)
         
         # Verify it has expected structure
-        assert "hothash" in photoegg
-        assert "hotpreview_base64" in photoegg
-        assert "primary_filename" in photoegg
+        assert "hothash" in photoegg_data
+        assert "hotpreview_base64" in photoegg_data
+        assert "primary_filename" in photoegg_data
         
-        # Create photo via API
+        # Wrap PhotoEgg in PhotoEggRequest format
+        request_body = {
+            "photo_egg": photoegg_data,
+            "rating": 0,
+            "visibility": "private",
+            "tags": [],
+            "import_session_id": import_session.id
+        }
+        
+        # Create photo via PhotoEgg API
         response = client.post(
-            "/api/v1/photos/new-photo",
-            json=photoegg,
+            "/api/v1/photos/photoegg",
+            json=request_body,
             headers=auth_headers
         )
         
@@ -45,58 +53,84 @@ class TestPhotoCreationWithRealPhotoEggs:
         photo = response.json()
         
         # Photo should have same hothash
-        assert photo["hothash"] == photoegg["hothash"]
-        assert photo["width"] == photoegg["width"]
-        assert photo["height"] == photoegg["height"]
+        assert photo["hothash"] == photoegg_data["hothash"]
     
     
-    def test_create_landscape_photo(self, client, auth_headers):
-        """Create landscape photo using real fixture"""
+    def test_create_landscape_photo(self, client, auth_headers, import_session):
+        """Create photo from landscape orientation PhotoEgg"""
         
-        photoegg = load_photoegg(LANDSCAPE)
+        photoegg_data = load_photoegg(LANDSCAPE)
+        
+        request_body = {
+            "photo_egg": photoegg_data,
+            "rating": 4,
+            "visibility": "public",
+            "tags": ["landscape", "nature"],
+            "import_session_id": import_session.id
+        }
         
         response = client.post(
-            "/api/v1/photos/new-photo",
-            json=photoegg,
+            "/api/v1/photos/photoegg",
+            json=request_body,
             headers=auth_headers
         )
         
         assert response.status_code == 201
         photo = response.json()
         
-        # Landscape photos have width > height
-        assert photo["width"] > photo["height"]
+        # Verify landscape dimensions
+        assert photo["width"] == photoegg_data["width"]
+        assert photo["height"] == photoegg_data["height"]
+        assert photo["rating"] == 4
+        assert photo["visibility"] == "public"
     
     
-    def test_create_photo_with_coldpreview(self, client, auth_headers):
-        """Create photo with both hot and cold previews"""
+    def test_create_photo_with_coldpreview(self, client, auth_headers, import_session):
+        """Create photo that includes coldpreview"""
         
-        photoegg = load_photoegg(FUJI_WITH_COLDPREVIEW)
+        photoegg_data = load_photoegg(FUJI_WITH_COLDPREVIEW)
         
-        # This PhotoEgg should have coldpreview
-        assert photoegg.get("coldpreview_base64") is not None
+        # This PhotoEgg has coldpreview
+        assert photoegg_data["coldpreview_base64"] is not None
+        
+        request_body = {
+            "photo_egg": photoegg_data,
+            "rating": 5,
+            "visibility": "private",
+            "tags": [],
+            "import_session_id": import_session.id
+        }
         
         response = client.post(
-            "/api/v1/photos/new-photo",
-            json=photoegg,
+            "/api/v1/photos/photoegg",
+            json=request_body,
             headers=auth_headers
         )
         
         assert response.status_code == 201
         photo = response.json()
         
-        # Backend should store coldpreview info
-        assert photo["hothash"] == photoegg["hothash"]
+        # Photo created successfully
+        assert photo["hothash"] == photoegg_data["hothash"]
+        assert photo["rating"] == 5
     
     
-    def test_create_tiny_image(self, client, auth_headers):
-        """Create very small image (100x100 pixels)"""
+    def test_create_tiny_image(self, client, auth_headers, import_session):
+        """Create photo from tiny test image"""
         
-        photoegg = load_photoegg(TINY)
+        photoegg_data = load_photoegg(TINY)
+        
+        request_body = {
+            "photo_egg": photoegg_data,
+            "rating": 0,
+            "visibility": "private",
+            "tags": [],
+            "import_session_id": import_session.id
+        }
         
         response = client.post(
-            "/api/v1/photos/new-photo",
-            json=photoegg,
+            "/api/v1/photos/photoegg",
+            json=request_body,
             headers=auth_headers
         )
         
@@ -104,36 +138,46 @@ class TestPhotoCreationWithRealPhotoEggs:
         photo = response.json()
         
         # Small image dimensions should be preserved
-        assert photo["width"] == photoegg["width"]
-        assert photo["height"] == photoegg["height"]
+        assert photo["width"] == photoegg_data["width"]
+        assert photo["height"] == photoegg_data["height"]
     
     
-    def test_duplicate_photoegg_rejected(self, client, auth_headers):
+    def test_duplicate_photoegg_rejected(self, client, auth_headers, import_session):
         """Uploading same PhotoEgg twice should detect duplicate"""
         
-        photoegg = load_photoegg(BASIC)
+        photoegg_data = load_photoegg(BASIC)
+        
+        request_body = {
+            "photo_egg": photoegg_data,
+            "rating": 0,
+            "visibility": "private",
+            "tags": [],
+            "import_session_id": import_session.id
+        }
         
         # First upload succeeds
         response1 = client.post(
-            "/api/v1/photos/new-photo",
-            json=photoegg,
+            "/api/v1/photos/photoegg",
+            json=request_body,
             headers=auth_headers
         )
         assert response1.status_code == 201
+        photo1 = response1.json()
+        assert photo1["is_duplicate"] == False
         
-        # Second upload of SAME hothash should fail or return existing
+        # Second upload of SAME hothash returns existing with is_duplicate=True
         response2 = client.post(
-            "/api/v1/photos/new-photo",
-            json=photoegg,
+            "/api/v1/photos/photoegg",
+            json=request_body,
             headers=auth_headers
         )
         
-        # Should either reject (409) or return existing photo
-        assert response2.status_code in [409, 200, 201]
-        
-        if response2.status_code == 200:
-            # If returning existing, hothash should match
-            assert response2.json()["hothash"] == photoegg["hothash"]
+        # Should return 201 with is_duplicate flag
+        assert response2.status_code == 201
+        photo2 = response2.json()
+        assert photo2["is_duplicate"] == True
+        assert photo2["hothash"] == photoegg_data["hothash"]
+        assert photo2["id"] == photo1["id"]  # Same photo returned
 
 
 class TestCompareWithMockData:
@@ -202,17 +246,25 @@ def landscape_photoegg():
     LANDSCAPE,
     TINY,
 ])
-def test_create_photos_parametrized(fixture_name, client, auth_headers):
+def test_create_photos_parametrized(fixture_name, client, auth_headers, import_session):
     """Create photos using different PhotoEgg fixtures"""
     
-    photoegg = load_photoegg(fixture_name)
+    photoegg_data = load_photoegg(fixture_name)
+    
+    request_body = {
+        "photo_egg": photoegg_data,
+        "rating": 0,
+        "visibility": "private",
+        "tags": [],
+        "import_session_id": import_session.id
+    }
     
     response = client.post(
-        "/api/v1/photos/new-photo",
-        json=photoegg,
+        "/api/v1/photos/photoegg",
+        json=request_body,
         headers=auth_headers
     )
     
     assert response.status_code == 201
     photo = response.json()
-    assert photo["hothash"] == photoegg["hothash"]
+    assert photo["hothash"] == photoegg_data["hothash"]

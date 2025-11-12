@@ -71,7 +71,26 @@ class ImportSessionService:
         description: Optional[str] = None,
         default_author_id: Optional[int] = None
     ):
-        """Update ImportSession metadata"""
+        """
+        Update ImportSession metadata
+        
+        All fields can be updated, even for protected sessions.
+        Protection only prevents deletion, not modification.
+        
+        Args:
+            session_id: Session ID to update
+            user_id: Owner user ID
+            title: New title (allowed even for protected sessions)
+            description: New description
+            default_author_id: New default author
+            
+        Returns:
+            Updated ImportSessionResponse
+            
+        Raises:
+            NotFoundError: If session not found
+        """
+        # Proceed with update (no restrictions)
         session = self.import_repo.update_simple(
             session_id=session_id,
             user_id=user_id,
@@ -86,8 +105,33 @@ class ImportSessionService:
         return ImportSessionResponse.model_validate(session)
     
     def delete_session(self, session_id: int, user_id: int) -> bool:
-        """Delete ImportSession"""
-        success = self.import_repo.delete(session_id, user_id)
-        if not success:
+        """
+        Delete ImportSession
+        
+        Protection: Cannot delete protected sessions (is_protected=True).
+        
+        Args:
+            session_id: Session ID to delete
+            user_id: Owner user ID
+            
+        Returns:
+            True if deleted successfully
+            
+        Raises:
+            NotFoundError: If session not found
+            ValueError: If trying to delete protected session
+        """
+        # Get session first to check if it's protected
+        session = self.import_repo.get_import_by_id(session_id, user_id)
+        if not session:
             raise NotFoundError("Import session", session_id)
+        
+        # Protect system sessions from deletion
+        if session.is_protected:
+            raise ValueError(
+                f"Cannot delete protected session '{session.title}'. "
+                "This session is required by the system."
+            )
+        
+        success = self.import_repo.delete(session_id, user_id)
         return success

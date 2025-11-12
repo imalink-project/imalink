@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 
 from src.models.user import User
+from src.models.import_session import ImportSession
 from src.repositories.user_repository import UserRepository
 from src.utils.security import verify_password, create_access_token
 from src.schemas.user import UserCreate, UserResponse
@@ -67,23 +68,48 @@ class AuthService:
     
     def register_user(self, user_data: UserCreate) -> User:
         """
-        Register a new user
+        Register a new user and create default ImportSession
+        
+        Automatically creates a 'Quick Add' ImportSession for immediate photo uploads.
+        This default session:
+        - Is created for all new users
+        - Cannot be deleted or renamed
+        - Allows users to upload photos immediately without setup
         
         Args:
             user_data: User registration data
             
         Returns:
-            Created User instance
+            Created User instance (with default_import_session relationship loaded)
             
         Raises:
             ValueError: If username or email already exists
         """
-        return self.user_repo.create(
+        from datetime import datetime
+        
+        # Create the user
+        user = self.user_repo.create(
             username=user_data.username,
             email=user_data.email,
             password=user_data.password,
             display_name=user_data.display_name
         )
+        
+        # Create default ImportSession for quick uploads
+        # is_protected=True prevents deletion (user can edit title/description)
+        default_session = ImportSession(
+            user_id=user.id,
+            title="Quick Add",
+            description="Default session for quick photo uploads.",
+            imported_at=datetime.utcnow(),
+            is_protected=True  # Cannot be deleted by user
+        )
+        
+        self.db.add(default_session)
+        self.db.commit()
+        self.db.refresh(user)
+        
+        return user
     
     def get_current_user(self, user_id: int) -> Optional[User]:
         """
