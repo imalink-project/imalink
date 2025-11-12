@@ -22,15 +22,21 @@ class Photo(Base, TimestampMixin):
     """
     Primary photo model - aggregated view for galleries and browsing
     
-    CREATION FLOW:
-    Photos are created via POST /photos/photoegg with PhotoEgg from imalink-core:
-    1. Client sends image → imalink-core service (external processor)
-    2. imalink-core generates PhotoEgg JSON (hothash, hotpreview_base64, metadata, exif_dict)
-    3. Client sends PhotoEgg → POST /photos/photoegg
-    4. Backend creates Photo with hotpreview bytes + metadata
-    5. Backend creates ImageFile linked to Photo (file path metadata only)
+    CREATION FLOWS:
     
-    This ensures:
+    1. Desktop App (Recommended - Batch Processing):
+       - User selects files → Desktop app → imalink-core (local) → PhotoEgg
+       - Desktop app → Backend POST /photos/photoegg → Photo created
+       - Fast: Local processing, no file transfer to server
+       - Original files remain on user's computer
+    
+    2. Web Upload (Convenience - Single Photos):
+       - User uploads file → Backend POST /photos/register-image → imalink-core (server)
+       - imalink-core → PhotoEgg → Backend stores Photo
+       - Slower: File upload to server, then processing
+       - Good for: Quick single uploads from phone/browser
+    
+    Both flows result in identical Photos:
     - Backend NEVER processes images - only receives pre-processed PhotoEgg metadata
     - Photo has single source of visual representation (from PhotoEgg hotpreview)
     - hothash is content-based (SHA256 of hotpreview) - same for JPEG/RAW pairs

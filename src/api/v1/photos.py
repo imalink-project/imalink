@@ -21,6 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response, Query, File, Up
 from fastapi.responses import StreamingResponse
 import io
 import logging
+import httpx
 
 from src.core.dependencies import get_photo_service, get_photo_stack_service
 from src.services.photo_service import PhotoService
@@ -506,3 +507,122 @@ async def create_photo_from_photoegg(
     except Exception as e:
         logger.error(f"Failed to create photo from PhotoEgg: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to create photo: {str(e)}")
+
+
+@router.post("/register-image", response_model=PhotoEggResponse, status_code=201)
+async def register_image(
+    file: UploadFile = File(..., description="Image file to register"),
+    import_session_id: Optional[int] = Query(None, description="Import session ID (uses protected 'Quick Add' if not provided)"),
+    rating: int = Query(0, ge=0, le=5, description="Star rating 0-5"),
+    visibility: str = Query("private", pattern="^(private|space|authenticated|public)$", description="Visibility level"),
+    author_id: Optional[int] = Query(None, description="Author ID"),
+    coldpreview_size: Optional[int] = Query(None, ge=150, description="Size for coldpreview (e.g., 2560)"),
+    current_user: User = Depends(get_current_active_user),
+    photo_service: PhotoService = Depends(get_photo_service)
+):
+    """
+    Register image by sending to imalink-core for processing (Convenience endpoint)
+    
+    **Use case**: Quick web upload when user doesn't have desktop app available.
+    **Not recommended for**: Batch imports (use desktop app with local imalink-core instead).
+    
+    Flow:
+    1. Frontend uploads raw image file (multipart/form-data)
+    2. Backend sends to imalink-core server (localhost:8001) for processing
+    3. imalink-core returns PhotoEgg (metadata + previews)
+    4. Backend stores PhotoEgg (same as POST /photoegg endpoint)
+    
+    Note: Original image is NOT stored on server, only metadata and previews.
+    
+    Args:
+        file: Image file (JPEG, PNG, etc.)
+        import_session_id: Optional import session (defaults to protected 'Quick Add')
+        rating: Star rating 0-5
+        visibility: Visibility level (private, space, authenticated, public)
+        author_id: Optional photographer/author
+        coldpreview_size: Optional size for larger preview (e.g., 2560px)
+        
+    Returns:
+        PhotoEggResponse: Created photo metadata
+        
+    Raises:
+        400: If image processing fails or invalid image
+        500: If imalink-core service unavailable
+    """
+    from src.utils.imalink_core_client import ImalinkCoreClient
+    
+    try:
+        # Read uploaded file
+        image_bytes = await file.read()
+        
+        # Send to imalink-core for processing
+        core_client = ImalinkCoreClient()
+        photoegg = await core_client.process_image(
+            image_bytes=image_bytes,
+            filename=file.filename or "uploaded_image.jpg",
+            coldpreview_size=coldpreview_size
+        )
+        
+        # Build PhotoEggRequest with user metadata
+        photoegg_request = PhotoEggRequest(
+            photo_egg=photoegg,
+            import_session_id=import_session_id,  # Optional, uses protected default if None
+            rating=rating,
+            visibility=visibility,
+            tags=[],  # No tags for quick upload
+            author_id=author_id
+        )
+        
+        # Create photo using existing PhotoEgg logic
+        photo = photo_service.create_photo_from_photoegg(
+            photoegg_request=photoegg_request,
+            user_id=getattr(current_user, 'id')
+        )
+        
+        return PhotoEggResponse(
+            id=photo.id,
+            hothash=photo.hothash,
+            rating=photo.rating,
+            visibility=photo.visibility,
+            width=photo.width,
+            height=photo.height,
+            taken_at=photo.taken_at,
+            created_at=photo.created_at,
+            is_duplicate=False
+        )
+        
+    except DuplicateImageError:
+        # Photo already exists
+        existing_photo = photo_service.get_photo_by_hothash(
+            hothash=photoegg.hothash,
+            user_id=getattr(current_user, 'id')
+        )
+        return PhotoEggResponse(
+            id=existing_photo.id,
+            hothash=existing_photo.hothash,
+            rating=existing_photo.rating,
+            visibility=existing_photo.visibility,
+            width=existing_photo.width,
+            height=existing_photo.height,
+            taken_at=existing_photo.taken_at,
+            created_at=existing_photo.created_at,
+            is_duplicate=True
+        )
+    except httpx.HTTPStatusError as e:
+        # imalink-core returned error (400, 500, etc.)
+        logger.error(f"imalink-core error: {e.response.status_code} - {e.response.text}")
+        raise HTTPException(
+            status_code=e.response.status_code,
+            detail=f"Image processing failed: {e.response.json().get('detail', 'Unknown error')}"
+        )
+    except httpx.RequestError as e:
+        # imalink-core service unavailable
+        logger.error(f"Failed to connect to imalink-core: {str(e)}")
+        raise HTTPException(
+            status_code=503,
+            detail="Image processing service unavailable. Please try again later."
+        )
+    except Exception as e:
+        logger.error(f"Failed to register image: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to register image: {str(e)}")
+

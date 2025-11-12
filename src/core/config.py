@@ -48,6 +48,10 @@ class Config:
     GOOGLE_MAPS_API_KEY: Optional[str] = os.getenv("GOOGLE_MAPS_API_KEY")
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     
+    # imalink-core service URL (image processing service)
+    # Runs on same machine as backend for convenience uploads from web
+    IMALINK_CORE_URL: str = os.getenv("IMALINK_CORE_URL", "http://localhost:8001")
+    
     # Development
     DEBUG: bool = os.getenv("DEBUG", "False").lower() in ("true", "1", "yes")
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
