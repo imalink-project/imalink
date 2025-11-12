@@ -1,15 +1,17 @@
-# ImaLink API Reference v2.2 (Photo-Centric + Visibility)
+# ImaLink API Reference v2.3 (PhotoEgg Architecture)
 
 **Base URL**: `http://localhost:8000/api/v1`  
 **Authentication**: JWT Bearer tokens required for most endpoints (see individual endpoints for details)
 
-**What's New in v2.2:**
-- **Visibility Control**: Photos and PhotoText documents now support four visibility levels: `private`, `space`, `authenticated`, `public`
-- **Anonymous Access**: Public content can be viewed without authentication
-- **Authenticated Community**: Share content with all logged-in users via `authenticated` visibility
-- **Spaces (Phase 2)**: `space` visibility planned for group collaboration (not yet functional)
+**What's New in v2.3:**
+- **PhotoEgg Architecture**: All photo creation now uses pre-processed PhotoEgg format
+- **Desktop App Flow**: Process images locally with imalink-core → Send PhotoEgg to backend (fast, no upload)
+- **Web Upload Flow**: Upload image → Backend forwards to imalink-core server → PhotoEgg stored
+- **Backend Never Processes Images**: All image processing delegated to imalink-core service
+- **Category Field**: User-defined photo categorization (e.g., "vacation", "work", "family")
+- **Protected ImportSessions**: Auto-created "Quick Add" session per user (cannot be deleted)
 
-**Important Change in v2.1:** The ImageFiles API has been removed. All ImageFile operations are now performed through the Photos API for a cleaner, more intuitive interface. See the [ImageFiles section](#️-imagefiles) for migration details.
+**Important Change in v2.3:** `POST /api/v1/photos/new-photo` has been removed. Use `POST /api/v1/photos/photoegg` (desktop app) or `POST /api/v1/photos/register-image` (web app) instead. See [Migration Guide](API_CHANGELOG_2025_11_12.md) for details.
 
 ---
 
@@ -162,32 +164,36 @@ const loginResponse = await fetch('http://localhost:8000/api/v1/auth/login', {
 });
 const { access_token } = await loginResponse.json();
 
-// 2. Create 150x150px thumbnail (hotpreview) from your image
-const canvas = document.createElement('canvas');
-canvas.width = 150;
-canvas.height = 150;
-const ctx = canvas.getContext('2d');
-ctx.drawImage(yourImage, 0, 0, 150, 150);
-const hotpreview = canvas.toDataURL('image/jpeg', 0.85); // Includes data URL prefix
+// 2. Process image with imalink-core (desktop app with local instance)
+const photoegg = await fetch('http://localhost:8001/v1/process', {
+  method: 'POST',
+  body: formDataWithImage  // Send image to local imalink-core
+}).then(r => r.json());
 
-// 3. Upload the photo
-const response = await fetch('http://localhost:8000/api/v1/photos/new-photo', {
+// 3. Send PhotoEgg to backend
+const response = await fetch('http://localhost:8000/api/v1/photos/photoegg', {
   method: 'POST',
   headers: {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${access_token}`
   },
   body: JSON.stringify({
-    filename: 'my_photo.jpg',
-    hotpreview: hotpreview,  // Can include "data:image/jpeg;base64," prefix
-    file_size: 2048576,
-    visibility: 'private',   // Optional: 'private' (default), 'space', 'authenticated', 'public'
-    exif_dict: { Make: 'Canon', Model: 'EOS R5' }  // Optional
+    photo_egg: photoegg,
+    import_session_id: 5,  // Track import batch
+    image_file: {
+      filename: 'my_photo.jpg',
+      file_path: '/path/to/my_photo.jpg',
+      file_size: 2048576,
+      file_format: 'JPEG'
+    },
+    rating: 0,
+    visibility: 'private',
+    category: 'vacation'  // Optional user category
   })
 });
 
 const result = await response.json();
-console.log('Photo created:', result.photo_hothash);
+console.log('Photo created:', result.hothash);
 ```
 
 ### List Photos
@@ -1106,86 +1112,143 @@ Authorization: Bearer <token>
 }
 ```
 
-### Create Photo with ImageFile
+### Create Photo from PhotoEgg (Desktop App - PRIMARY METHOD)
 ```http
-POST /api/v1/photos/new-photo
+POST /api/v1/photos/photoegg
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "filename": "IMG_001.jpg",
-  "hotpreview": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
-  "file_size": 2048576,
-  "exif_dict": {
-    "Make": "Canon",
-    "Model": "EOS R5",
-    "DateTime": "2025:10:15 14:30:00",
-    "ImageWidth": 4000,
-    "ImageHeight": 3000
+  "photo_egg": {
+    "hothash": "a6317d064f4d83ff419b9deaf35ba537ff6a31e6722d7df66510d8a3b5d2e281",
+    "hotpreview_base64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUE...",
+    "coldpreview_base64": null,
+    "width": 4000,
+    "height": 3000,
+    "primary_filename": "IMG_001.jpg",
+    "taken_at": "2025-10-15T14:30:00Z",
+    "camera_make": "Canon",
+    "camera_model": "EOS R5",
+    "gps_latitude": 59.9139,
+    "gps_longitude": 10.7522,
+    "has_gps": true,
+    "iso": 400,
+    "aperture": 2.8,
+    "shutter_speed": "1/250",
+    "focal_length": 50,
+    "lens_model": "RF 50mm F1.2 L USM",
+    "lens_make": "Canon"
   },
-  "taken_at": "2025-10-15T14:30:00Z",
-  "gps_latitude": 59.9139,
-  "gps_longitude": 10.7522,
   "import_session_id": 5,
-  "imported_info": {
-    "original_path": "/path/to/original.jpg"
+  "image_file": {
+    "filename": "IMG_001.jpg",
+    "file_path": "/Users/kjell/Photos/2024/IMG_001.jpg",
+    "file_size": 8234567,
+    "file_format": "JPEG"
   },
-  "local_storage_info": {
-    "path": "/storage/photos/IMG_001.jpg"
-  }
+  "rating": 0,
+  "visibility": "private",
+  "author_id": null,
+  "category": null
 }
 ```
 
-**Description:** Create a new Photo with its first ImageFile. This is the primary way to add new photos to the system.
+**Description:** Create a Photo from a pre-processed PhotoEgg. This is the **primary method** for desktop applications. The desktop app processes images locally with imalink-core and sends only metadata to the server.
+
+**Architecture:**
+1. Desktop app → Local imalink-core → PhotoEgg JSON
+2. Desktop app → Backend POST /photoegg → Photo created
+3. Original files remain on user's computer
 
 **Required Fields:**
-- `filename` (string): Original filename with extension
-- `hotpreview` (string): Base64-encoded JPEG thumbnail (150x150px recommended)
-  - Can be with data URL prefix: `"data:image/jpeg;base64,<data>"`
-  - Or just the Base64 data: `"<base64_data>"`
-  - Used to generate the Photo's unique `hothash` (SHA256)
+- `photo_egg` (PhotoEggCreate): Pre-processed photo metadata from imalink-core
+  - `hothash` (string): SHA256 hash of hotpreview (unique identifier)
+  - `hotpreview_base64` (string): Base64-encoded 150x150px JPEG thumbnail
+  - `width` (integer): Original image width
+  - `height` (integer): Original image height
+  - `primary_filename` (string): Original filename
 
 **Optional Fields:**
-- `file_size` (integer): File size in bytes
-- `exif_dict` (object): Parsed EXIF metadata as JSON
-  - Should include `ImageWidth` and `ImageHeight` if available
-  - All other EXIF tags as key-value pairs
-- `taken_at` (datetime): When photo was taken (ISO 8601 format)
-- `gps_latitude` (float): GPS latitude (-90 to 90)
-- `gps_longitude` (float): GPS longitude (-180 to 180)
-- `import_session_id` (integer): ID of import session
-- `imported_info` (object): Import context (original path, source, etc.)
-- `local_storage_info` (object): Local storage metadata
-- `cloud_storage_info` (object): Cloud storage metadata
+- `import_session_id` (integer): Import batch ID (recommended for tracking)
+- `image_file` (ImageFileCreate): File tracking metadata
+  - `filename` (string): Original filename
+  - `file_path` (string): Local file path (for desktop app reference)
+  - `file_size` (integer): File size in bytes
+  - `file_format` (string): Format (JPEG, PNG, CR2, etc.)
+- `rating` (integer): 0-5 star rating
+- `visibility` (string): private|space|authenticated|public
+- `author_id` (integer): Photographer ID
+- `category` (string): User-defined category (e.g., "vacation", "work")
+
+**PhotoEgg Metadata** (all optional):
+- `coldpreview_base64` (string): Larger preview (800-1200px)
+- `taken_at` (datetime): When photo was taken
+- `camera_make`, `camera_model` (string): Camera info
+- `gps_latitude`, `gps_longitude` (float): GPS coordinates
+- `has_gps` (boolean): GPS availability flag
+- `iso`, `aperture`, `focal_length` (number): Camera settings
+- `shutter_speed` (string): Shutter speed (e.g., "1/250")
+- `lens_model`, `lens_make` (string): Lens info
 
 **Response** (`201 Created`):
 ```json
 {
-  "image_file_id": 123,
-  "photo_hothash": "abc123def456789...",
-  "photo_created": true,
-  "success": true,
-  "message": "New photo created successfully",
-  "filename": "IMG_001.jpg",
-  "file_size": 2048576
+  "id": 123,
+  "hothash": "a6317d064f4d83ff419b9deaf35ba537...",
+  "user_id": 1,
+  "width": 4000,
+  "height": 3000,
+  "taken_at": "2025-10-15T14:30:00Z",
+  "gps_latitude": 59.9139,
+  "gps_longitude": 10.7522,
+  "rating": 0,
+  "category": null,
+  "visibility": "private",
+  "created_at": "2025-11-12T10:00:00Z",
+  "updated_at": "2025-11-12T10:00:00Z"
 }
 ```
 
 **Error Responses:**
-- `409 Conflict` - Photo with this hotpreview already exists (duplicate)
-  ```json
-  {
-    "detail": "Photo with this image already exists. Use POST /photos/{hothash}/files to add companion files."
-  }
-  ```
-- `400 Bad Request` - Validation error
-  ```json
-  {
-    "detail": "Validation error: <error details>"
-  }
-  ```
+- `409 Conflict` - Photo with this hothash already exists (duplicate)
+- `400 Bad Request` - Invalid PhotoEgg or validation error
 - `422 Unprocessable Entity` - Invalid field values
-- `500 Internal Server Error` - Server error (check logs for details)
+
+### Register Image via Web Upload (Web App - CONVENIENCE)
+```http
+POST /api/v1/photos/register-image?rating=4&visibility=private
+Authorization: Bearer <token>
+Content-Type: multipart/form-data
+
+file: <binary image data>
+```
+
+**Description:** Quick web upload for when user doesn't have desktop app. Backend forwards image to imalink-core server for processing, then stores the PhotoEgg.
+
+**⚠️ NOT RECOMMENDED FOR:** Batch imports (use desktop app with local imalink-core instead)
+
+**Query Parameters:**
+- `import_session_id` (integer, optional): Import session (defaults to "Quick Add")
+- `rating` (integer, optional): 0-5 star rating
+- `visibility` (string, optional): private|space|authenticated|public
+- `author_id` (integer, optional): Photographer ID
+- `coldpreview_size` (integer, optional): Size for larger preview (e.g., 2560)
+
+**Request Body:**
+- `file` (binary): Image file (JPEG, PNG, etc.)
+
+**Flow:**
+1. Web app uploads file → Backend
+2. Backend → imalink-core server (https://core.trollfjell.com)
+3. imalink-core → PhotoEgg
+4. Backend stores photo metadata
+
+**Response** (`201 Created`): Same as /photoegg endpoint
+
+**Error Responses:**
+- `400 Bad Request` - Invalid image or imalink-core processing failed
+- `503 Service Unavailable` - imalink-core service unavailable
+- `422 Unprocessable Entity` - Missing file
 
 ### Add ImageFile to Existing Photo
 ```http
@@ -1476,17 +1539,19 @@ Authorization: Bearer <token>  # Required - owner only
 
 ### Migration Guide
 
-**Old (Removed):**
+**Old (Removed as of November 12, 2025):**
 ```http
+POST /api/v1/photos/new-photo            ❌ REMOVED
 POST /api/v1/image-files/new-photo       ❌ REMOVED
 POST /api/v1/image-files/add-to-photo    ❌ REMOVED
 GET /api/v1/image-files/{id}             ❌ REMOVED
 ```
 
-**New (Current):**
+**New (Current - PhotoEgg Architecture):**
 ```http
-POST /api/v1/photos/new-photo            ✅ Use this for new photos
-POST /api/v1/photos/{hothash}/files      ✅ Use this to add files
+POST /api/v1/photos/photoegg             ✅ PRIMARY - Desktop app (pre-processed PhotoEgg)
+POST /api/v1/photos/register-image       ✅ CONVENIENCE - Web app (upload image)
+POST /api/v1/photos/{hothash}/files      ✅ Add companion files (RAW, etc.)
 GET /api/v1/photos/{hothash}             ✅ ImageFiles included in response
 ```
 
@@ -2109,18 +2174,23 @@ API accepts requests from:
 ### User Isolation
 All data operations are automatically scoped to the authenticated user. Users cannot access or modify other users' data.
 
-### Photo vs ImageFile (Updated in v2.1)
-- **Photo**: Logical representation of an image with visual data (hothash, dimensions, EXIF metadata, hotpreview, etc.)
-- **ImageFile**: Physical file metadata (filename, file_size, file_type, storage info)
-- **Relationship**: One Photo can have multiple ImageFiles (e.g., RAW + JPEG of the same shot)
-- **API Access**: Photos are the primary user-facing resource. ImageFiles are accessed through Photos API only.
+### Photo vs ImageFile (Updated in v2.3)
+- **Photo**: Logical representation with visual data (hothash, dimensions, EXIF, hotpreview)
+  - Created from PhotoEgg (pre-processed metadata from imalink-core)
+  - Backend NEVER processes images - only stores metadata
+- **ImageFile**: Physical file tracking (filename, file_path, file_size)
+  - Optional - used by desktop app to track local files
+  - Not required for web uploads
+- **Relationship**: One Photo can have multiple ImageFiles (e.g., RAW + JPEG)
+- **API Access**: Photos are primary. ImageFiles accessed through Photos only.
 
-### 100% Photo-Centric API (v2.1)
-As of v2.1, the API is 100% photo-centric:
-- All ImageFile creation is done through Photos endpoints (`POST /photos/new-photo` and `POST /photos/{hothash}/files`)
-- ImageFiles API has been removed
-- ImageFiles are accessible only via Photo relationships (included in Photo responses)
-- This provides a clearer, more intuitive API where Photos are the natural entry point
+### PhotoEgg Architecture (v2.3)
+As of v2.3, all photo creation uses PhotoEgg pattern:
+- **Desktop app**: Process images locally with imalink-core → PhotoEgg → Backend (`POST /photos/photoegg`)
+- **Web app**: Upload image → Backend → imalink-core server → PhotoEgg → Backend stores (`POST /photos/register-image`)
+- Backend NEVER processes images directly
+- Original files NOT stored on server (only metadata + previews)
+- Consistent metadata format regardless of source
 
 ### PhotoStacks
 - One-to-many relationship: each Photo can belong to at most ONE stack
@@ -2161,6 +2231,28 @@ As of v2.1, the API is 100% photo-centric:
 
 ## 📋 Changelog
 
+### v2.3 (November 12, 2025) - PhotoEgg Architecture
+**Breaking Changes:**
+- ❌ **REMOVED:** `POST /api/v1/photos/new-photo` - Use `/photos/photoegg` or `/photos/register-image` instead
+
+**New Features:**
+- ✅ **Added:** `POST /api/v1/photos/photoegg` - Create photo from pre-processed PhotoEgg (desktop app)
+- ✅ **Added:** `POST /api/v1/photos/register-image` - Web upload convenience endpoint
+- ✅ **Added:** `category` field to Photo model (user-defined categorization)
+- ✅ **Added:** `is_protected` field to ImportSession (prevent deletion of default sessions)
+- ✅ **Added:** Protected "Quick Add" ImportSession created automatically per user
+- ✅ **Added:** Auto-use protected ImportSession when import_session_id not provided
+
+**Architecture Changes:**
+- 🔄 **Changed:** Backend no longer processes images directly
+- 🔄 **Changed:** All image processing done by imalink-core (local or server)
+- 🔄 **Changed:** PhotoEgg is now the single photo creation format
+- 🔄 **Changed:** Desktop app uses local imalink-core (fast, no upload)
+- 🔄 **Changed:** Web app uploads to backend → server imalink-core (convenience)
+
+**Migration Guide:**
+- See `docs/API_CHANGELOG_2025_11_12.md` for complete migration instructions
+
 ### v2.2 (November 8, 2025) - Visibility & Sharing
 **New Features:**
 - ✅ **Added:** Four-level visibility system (`private`, `space`, `authenticated`, `public`)
@@ -2174,7 +2266,6 @@ As of v2.1, the API is 100% photo-centric:
 **API Changes:**
 - 📝 **Modified:** `GET /api/v1/photos` - Now supports anonymous access (returns only public photos)
 - 📝 **Modified:** `GET /api/v1/photos/{hothash}` - Now supports anonymous access
-- 📝 **Modified:** `POST /api/v1/photos/new-photo` - Accepts optional `visibility` field
 - 📝 **Modified:** `PUT /api/v1/photos/{hothash}` - Can update `visibility` field
 - 📝 **Modified:** All photo responses now include `visibility` field
 - 📝 **Modified:** `GET /api/v1/phototext` - Now supports anonymous access
