@@ -647,6 +647,22 @@ class PhotoService:
             
             import_session_id = default_session.id
         
+        # Resolve author_id - use user's default self-author if not provided
+        author_id = photoegg_request.author_id
+        if author_id is None:
+            # Find user's default self-author
+            from src.repositories.user_repository import UserRepository
+            user_repo = UserRepository(self.db)
+            user = user_repo.get_by_id(user_id)
+            
+            if not user or not user.default_author_id:
+                raise ValueError(
+                    "No author_id provided and user has no default author. "
+                    "This should not happen - contact administrator."
+                )
+            
+            author_id = user.default_author_id
+        
         # Check for duplicate
         existing = self.photo_repo.get_by_hash(egg.hothash, user_id)
         if existing:
@@ -704,7 +720,7 @@ class PhotoService:
             # User organization
             rating=photoegg_request.rating,
             visibility=photoegg_request.visibility,
-            author_id=photoegg_request.author_id,
+            author_id=author_id,  # Resolved to default if not provided
         )
         
         # Handle coldpreview as filesystem path (NOT BLOB)

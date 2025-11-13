@@ -68,24 +68,33 @@ class AuthService:
     
     def register_user(self, user_data: UserCreate) -> User:
         """
-        Register a new user and create default ImportSession
+        Register a new user and create default Author + ImportSession
         
-        Automatically creates a 'Quick Add' ImportSession for immediate photo uploads.
-        This default session:
-        - Is created for all new users
-        - Cannot be deleted or renamed
+        Automatically creates:
+        1. Default Author (self-author) representing the user as photographer
+        2. 'Quick Add' ImportSession for immediate photo uploads
+        
+        The self-author:
+        - Has same name as user's display_name (or username if no display_name)
+        - Marked with is_self=True
+        - Set as user's default_author_id
+        - Used automatically when author_id not specified in photo imports
+        
+        The default session:
+        - Cannot be deleted (is_protected=True)
         - Allows users to upload photos immediately without setup
         
         Args:
             user_data: User registration data
             
         Returns:
-            Created User instance (with default_import_session relationship loaded)
+            Created User instance (with relationships loaded)
             
         Raises:
             ValueError: If username or email already exists
         """
         from datetime import datetime
+        from src.models.author import Author
         
         # Create the user
         user = self.user_repo.create(
@@ -94,6 +103,20 @@ class AuthService:
             password=user_data.password,
             display_name=user_data.display_name
         )
+        
+        # Create default self-author (represents user as photographer)
+        author_name = user_data.display_name or user_data.username
+        self_author = Author(
+            name=author_name,
+            email=user_data.email,  # Use user's email
+            bio=None,
+            is_self=True  # Mark as self-author
+        )
+        self.db.add(self_author)
+        self.db.flush()  # Get self_author.id
+        
+        # Set user's default_author_id
+        user.default_author_id = self_author.id
         
         # Create default ImportSession for quick uploads
         # is_protected=True prevents deletion (user can edit title/description)

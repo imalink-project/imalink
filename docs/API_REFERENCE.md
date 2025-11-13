@@ -59,9 +59,18 @@ Content-Type: application/json
   "display_name": "John Doe",
   "is_active": true,
   "created_at": "2025-10-20T10:00:00Z",
-  "updated_at": "2025-10-20T10:00:00Z"
+  "updated_at": "2025-10-20T10:00:00Z",
+  "default_author_id": 1
 }
 ```
+
+**Automatic Setup:**
+Registration automatically creates:
+1. **Default Author** - Author with same name as user, marked with `is_self=true`
+2. **Default Import Session** - Protected "Quick Add" session for immediate uploads
+3. **User account** - With `default_author_id` pointing to the self-author
+
+This allows immediate photo uploads without manual setup.
 
 ### Login
 ```http
@@ -1169,7 +1178,7 @@ Content-Type: application/json
   - `primary_filename` (string): Original filename
 
 **Optional Fields:**
-- `import_session_id` (integer): Import batch ID (recommended for tracking)
+- `import_session_id` (integer): Import batch ID (defaults to user's "Quick Add" session if not provided)
 - `image_file` (ImageFileCreate): File tracking metadata
   - `filename` (string): Original filename
   - `file_path` (string): Local file path (for desktop app reference)
@@ -1177,8 +1186,13 @@ Content-Type: application/json
   - `file_format` (string): Format (JPEG, PNG, CR2, etc.)
 - `rating` (integer): 0-5 star rating
 - `visibility` (string): private|space|authenticated|public
-- `author_id` (integer): Photographer ID
+- `author_id` (integer): Photographer ID (defaults to user's self-author if not provided)
 - `category` (string): User-defined category (e.g., "vacation", "work")
+
+**Automatic Defaults:**
+- If `import_session_id` is not provided, uses the user's protected "Quick Add" session
+- If `author_id` is not provided, uses the user's default self-author (created at registration)
+- This allows immediate photo uploads without manual setup
 
 **PhotoEgg Metadata** (all optional):
 - `coldpreview_base64` (string): Larger preview (800-1200px)
@@ -1228,10 +1242,10 @@ file: <binary image data>
 **⚠️ NOT RECOMMENDED FOR:** Batch imports (use desktop app with local imalink-core instead)
 
 **Query Parameters:**
-- `import_session_id` (integer, optional): Import session (defaults to "Quick Add")
+- `import_session_id` (integer, optional): Import session (defaults to "Quick Add" if not provided)
 - `rating` (integer, optional): 0-5 star rating
 - `visibility` (string, optional): private|space|authenticated|public
-- `author_id` (integer, optional): Photographer ID
+- `author_id` (integer, optional): Photographer ID (defaults to user's self-author if not provided)
 - `coldpreview_size` (integer, optional): Size for larger preview (e.g., 2560)
 
 **Request Body:**
@@ -1794,6 +1808,13 @@ Manage photographers/creators. Authors are **shared metadata tags** used to iden
 
 **Important:** Photo ownership and visibility is controlled via `Photo.user_id`, not Author. Authors are simply metadata for tagging the photographer.
 
+**Self-Author Pattern:**
+- When a user registers, an Author is automatically created with `is_self=true`
+- This "self-author" represents the user as a photographer
+- The user's `default_author_id` points to this self-author
+- When importing photos without specifying `author_id`, the default author is used automatically
+- Users can create additional authors for other photographers
+
 ### List Authors
 ```http
 GET /api/v1/authors?offset=0&limit=100
@@ -1810,6 +1831,7 @@ GET /api/v1/authors?offset=0&limit=100
       "name": "Jane Smith",
       "email": "jane@example.com",
       "bio": "Professional landscape photographer",
+      "is_self": true,
       "created_at": "2025-10-20T10:00:00Z",
       "image_count": 42
     }
@@ -2242,10 +2264,15 @@ As of v2.3, all photo creation uses PhotoEgg pattern:
 - ✅ **Added:** `is_protected` field to ImportSession (prevent deletion of default sessions)
 - ✅ **Added:** Protected "Quick Add" ImportSession created automatically per user
 - ✅ **Added:** Auto-use protected ImportSession when import_session_id not provided
+- ✅ **Added:** Self-Author pattern - default Author created automatically at registration
+- ✅ **Added:** `User.default_author_id` - points to user's self-author
+- ✅ **Added:** `Author.is_self` - marks authors that represent users
+- ✅ **Added:** Auto-use default author when author_id not provided in photo imports
 
 **Architecture Changes:**
 - 🔄 **Changed:** Backend no longer processes images directly
 - 🔄 **Changed:** All image processing done by imalink-core (local or server)
+- 🔄 **Changed:** New user registration creates Author + ImportSession automatically
 - 🔄 **Changed:** PhotoEgg is now the single photo creation format
 - 🔄 **Changed:** Desktop app uses local imalink-core (fast, no upload)
 - 🔄 **Changed:** Web app uploads to backend → server imalink-core (convenience)

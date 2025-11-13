@@ -95,14 +95,27 @@ def test_client(test_db_session):
 @pytest.fixture(scope="function")
 def test_user(test_db_session):
     """
-    Create a test user for authentication tests
+    Create a test user with default author for authentication tests
     """
+    from src.models.author import Author
+    
+    # Create self-author first
+    self_author = Author(
+        name="Test User",
+        email="test@example.com",
+        is_self=True
+    )
+    test_db_session.add(self_author)
+    test_db_session.flush()  # Get author.id
+    
+    # Create user with default_author_id
     user = User(
         username="testuser",
         email="test@example.com",
         password_hash="$2b$12$test_hash_for_testing",  # Pre-hashed test password
         display_name="Test User",
-        is_active=True
+        is_active=True,
+        default_author_id=self_author.id
     )
     test_db_session.add(user)
     test_db_session.commit()

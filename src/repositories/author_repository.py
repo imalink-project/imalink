@@ -53,9 +53,8 @@ class AuthorRepository:
         return self.db.query(Author).count()
     
     def create(self, author_data: AuthorCreateRequest, user_id: int) -> Author:
-        """Create new author - still requires authentication via user_id"""
+        """Create new author - user_id no longer needed (authors are shared)"""
         author = Author(
-            user_id=user_id,
             name=author_data.name.strip(),
             email=author_data.email.strip() if author_data.email else None,
             bio=author_data.bio.strip() if author_data.bio else None
