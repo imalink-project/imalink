@@ -11,18 +11,21 @@ from tests.fixtures.real_photo_create_schemas import load_photo_create_schema, B
 class TestPhotoVisibilityUpdate:
     """Test updating photo visibility"""
     
-    def test_update_visibility_to_public(self, authenticated_client, import_session):
+    def test_update_visibility_to_public(self, authenticated_client, import_session, test_user):
         """Update photo visibility from private to public"""
         # Create private photo via PhotoCreateSchema
-        photo_create_data = load_photo_create_schema(BASIC)
+        photo_create_data = load_photo_create_schema(
+            BASIC,
+            user_id=test_user.id,
+            rating=0,
+            visibility="private",
+            import_session_id=import_session.id
+        )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
                 "photo_create_schema": photo_create_data,
-                "rating": 0,
-                "visibility": "private",
-                "tags": [],
-                "import_session_id": import_session.id
+                "tags": []
             },
             headers=authenticated_client.auth_headers
         )

@@ -1,110 +1,69 @@
 """
-PhotoCreateSchema - Pydantic models for Photo creation API
+PhotoCreateSchema - Re-export from imalink-schemas package
 
-PhotoCreateSchema is the complete JSON package from imalink-core server containing
-all image processing results (previews, metadata, hashes).
+All schemas now imported from imalink-schemas to ensure consistency across:
+- imalink (backend)
+- imalink-core (image processing)
+- imalink-desktop (Rust client)
+- imalink-web (TypeScript client)
 
-STRUCTURE: PhotoCreateSchema has FLAT structure matching imalink-core output.
-All EXIF fields are at root level for direct access.
+PhotoCreateSchema structure (matches MY_OVERVIEW.md):
+- hothash, hotpreview (base64), width, height
+- exif_dict: ALL EXIF metadata (camera_make, iso, etc.)
+- taken_at, gps_latitude, gps_longitude (indexed copies for queries)
+- user_id, rating, category, visibility, etc.
+- image_file_list: list of ImageFileCreateSchema (JPEG + RAW companions)
 """
-from typing import Optional, Dict, Any
+from typing import Optional
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-
-class PhotoCreateSchema(BaseModel):
-    """
-    PhotoCreateSchema from imalink-core server (FLAT structure)
-    
-    This matches the actual JSON from imalink-core service.
-    All EXIF metadata is at root level (not nested).
-    
-    Philosophy:
-    - exif_dict: Complete EXIF "DNA" (readonly, never modified)
-    - Root fields: Indexed copies for queries (taken_at, GPS, camera)
-    """
-    # === IDENTITY ===
-    hothash: str = Field(..., description="SHA256 hash of hotpreview (unique identifier)")
-    
-    # === PREVIEWS (base64-encoded JPEG) ===
-    hotpreview_base64: str = Field(..., description="150x150px thumbnail, base64-encoded")
-    hotpreview_width: int = Field(150, description="Hotpreview width in pixels")
-    hotpreview_height: int = Field(150, description="Hotpreview height in pixels")
-    
-    coldpreview_base64: Optional[str] = Field(None, description="Variable size preview, base64-encoded (optional)")
-    coldpreview_width: Optional[int] = Field(None, description="Coldpreview width in pixels")
-    coldpreview_height: Optional[int] = Field(None, description="Coldpreview height in pixels")
-    
-    # === FILE INFO ===
-    primary_filename: str = Field(..., description="Original filename")
-    width: int = Field(..., description="Original image width in pixels")
-    height: int = Field(..., description="Original image height in pixels")
-    
-    # === TIME & LOCATION (indexed copies from EXIF) ===
-    taken_at: Optional[datetime] = Field(None, description="DateTime from EXIF")
-    gps_latitude: Optional[float] = Field(None, description="GPS latitude")
-    gps_longitude: Optional[float] = Field(None, description="GPS longitude")
-    has_gps: bool = Field(False, description="Whether GPS data exists")
-    
-    # === CAMERA (indexed copies from EXIF) ===
-    camera_make: Optional[str] = Field(None, description="Camera manufacturer")
-    camera_model: Optional[str] = Field(None, description="Camera model")
-    
-    # === CAMERA SETTINGS ===
-    iso: Optional[int] = Field(None, description="ISO speed")
-    aperture: Optional[float] = Field(None, description="Aperture (f-number)")
-    shutter_speed: Optional[str] = Field(None, description="Shutter speed")
-    focal_length: Optional[float] = Field(None, description="Focal length in mm")
-    lens_model: Optional[str] = Field(None, description="Lens model")
-    lens_make: Optional[str] = Field(None, description="Lens manufacturer")
-    
-    # === COMPLETE EXIF (readonly "DNA") ===
-    exif_dict: Optional[Dict[str, Any]] = Field(None, description="Complete EXIF metadata (readonly)")
-    
-    # === VALIDATION & EXTENDED INFO ===
-    is_valid_image: bool = Field(True, description="Image validation status")
-    image_format: str = Field("JPEG", description="Image format: JPEG, PNG, HEIC, etc.")
-    file_size_bytes: int = Field(0, description="Original file size in bytes")
+# Import schemas from shared package
+from imalink_schemas import (
+    PhotoCreateSchema,
+    ImageFileCreateSchema,
+    PhotoUpdateSchema,
+    PhotoResponse,
+)
 
 
 class PhotoCreateRequest(BaseModel):
     """
-    Complete request to create Photo from PhotoCreateSchema
+    SIMPLIFIED: PhotoCreateSchema now contains all fields.
     
-    Combines PhotoCreateSchema data with user-specific organization metadata.
+    PhotoCreateSchema from imalink_schemas already includes:
+    - user_id (set by frontend after auth)
+    - rating, category, visibility
+    - import_session_id, author_id, stack_id
+    - image_file_list (replaces primary_filename)
     
-    If import_session_id is not provided, the user's default "Quick Add" session is used.
-    This allows immediate photo uploads without requiring import session setup.
+    This wrapper only adds tags (handled via separate PhotoTag relationship).
+    
+    TODO: Consider removing this wrapper and using PhotoCreateSchema directly.
     """
-    # PhotoCreateSchema from imalink-core
     photo_create_schema: PhotoCreateSchema
-    
-    # Import context (OPTIONAL) - defaults to user's "Quick Add" session if not provided
-    import_session_id: Optional[int] = Field(
-        None, 
-        description="Import session ID (groups photos by import batch). If not provided, uses default 'Quick Add' session."
-    )
-    
-    # User organization fields
-    rating: int = Field(0, ge=0, le=5, description="Star rating 0-5")
-    visibility: str = Field("private", pattern="^(private|space|authenticated|public)$")
     tags: list[str] = Field(default_factory=list, description="Tag names to associate")
-    author_id: Optional[int] = Field(None, description="Optional author association")
 
 
-class PhotoCreateResponse(BaseModel):
+class PhotoCreateResponse(PhotoResponse):
     """
-    Response after creating Photo from PhotoCreateSchema
+    Response after creating Photo.
+    
+    Extends PhotoResponse (from imalink_schemas) with creation-specific fields.
     """
-    id: int
-    hothash: str
-    rating: int
-    visibility: str
-    width: int
-    height: int
-    taken_at: Optional[datetime]
-    created_at: datetime
+    created_at: datetime = Field(..., description="When photo was created in database")
     is_duplicate: bool = Field(default=False, description="True if hothash already existed")
     
     class Config:
         from_attributes = True
+
+
+# Re-export for convenience
+__all__ = [
+    "PhotoCreateSchema",
+    "ImageFileCreateSchema",
+    "PhotoUpdateSchema",
+    "PhotoResponse",
+    "PhotoCreateRequest",
+    "PhotoCreateResponse",
+]

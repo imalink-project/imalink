@@ -608,34 +608,40 @@ class PhotoService:
 
     def create_photo_from_photo_create_schema(self, photo_create_request, user_id: int) -> Photo:
         """
-        Create Photo from PhotoCreateSchema (new architecture)
+        Create Photo from PhotoCreateSchema (matches MY_OVERVIEW.md)
         
-        PhotoCreateSchema comes from imalink-core server and contains all image processing results.
-        Backend only stores metadata and previews.
-        
-        If import_session_id is not provided in the request, automatically uses the user's
-        protected default session. This allows immediate photo uploads without setup.
+        PhotoCreateSchema comes from imalink-core and contains:
+        - hothash, hotpreview (base64)
+        - exif_dict with ALL EXIF (camera_make, iso, etc.)
+        - width, height, taken_at, gps_latitude, gps_longitude
+        - user_id, rating, category, visibility, etc.
+        - image_file_list (one or more source files)
         
         Args:
-            photo_create_request: PhotoCreateSchemaRequest with photo_create_schema and user metadata
-            user_id: Owner user ID
+            photo_create_request: PhotoCreateRequest with photo_create_schema and tags
+            user_id: Owner user ID (overrides photo_create_schema.user_id for security)
             
         Returns:
-            Created Photo
+            Created Photo with associated ImageFile records
             
         Raises:
             DuplicateImageError: If photo with same hothash already exists for this user
-            ValueError: If no import_session_id provided and protected session not found
+            ValueError: If required fields missing
         """
         import base64
         from src.repositories.import_session_repository import ImportSessionRepository
+        from src.models.image_file import ImageFile
         
-        egg = photo_create_request.photo_create_schema
+        schema = photo_create_request.photo_create_schema
+        
+        # Security: Override user_id from request (use authenticated user)
+        # Frontend sets this, but we verify it matches current_user
+        if schema.user_id != user_id:
+            raise ValueError(f"user_id mismatch: schema has {schema.user_id}, but authenticated user is {user_id}")
         
         # Resolve import_session_id - use protected default if not provided
-        import_session_id = photo_create_request.import_session_id
+        import_session_id = schema.import_session_id
         if import_session_id is None:
-            # Find user's protected default session
             import_repo = ImportSessionRepository(self.db)
             default_session = import_repo.get_protected_session(user_id)
             
@@ -648,9 +654,8 @@ class PhotoService:
             import_session_id = default_session.id
         
         # Resolve author_id - use user's default self-author if not provided
-        author_id = photo_create_request.author_id
+        author_id = schema.author_id
         if author_id is None:
-            # Find user's default self-author
             from src.repositories.user_repository import UserRepository
             user_repo = UserRepository(self.db)
             user = user_repo.get_by_id(user_id)
@@ -664,81 +669,81 @@ class PhotoService:
             author_id = user.default_author_id
         
         # Check for duplicate
-        existing = self.photo_repo.get_by_hash(egg.hothash, user_id)
+        existing = self.photo_repo.get_by_hash(schema.hothash, user_id)
         if existing:
-            raise DuplicateImageError(f"Photo with hothash {egg.hothash} already exists")
+            raise DuplicateImageError(f"Photo with hothash {schema.hothash} already exists")
         
         # Decode base64 hotpreview
-        hotpreview_bytes = base64.b64decode(egg.hotpreview_base64)
+        hotpreview_bytes = base64.b64decode(schema.hotpreview_base64)
         
-        # Build exif_dict - PhotoCreateSchema's exif_dict is complete EXIF "DNA"
-        # We store it readonly, never modify it
-        exif_dict = egg.exif_dict or {}
+        # exif_dict already contains ALL EXIF metadata from imalink-core
+        # (camera_make, iso, aperture, etc. are IN exif_dict, not at root)
+        exif_dict = schema.exif_dict or {}
         
-        # Add PhotoCreateSchema fields to exif_dict for complete preservation
-        # (These are also stored in indexed columns for queries)
-        if egg.camera_make:
-            exif_dict['camera_make'] = egg.camera_make
-        if egg.camera_model:
-            exif_dict['camera_model'] = egg.camera_model
-        if egg.lens_model:
-            exif_dict['lens_model'] = egg.lens_model
-        if egg.focal_length:
-            exif_dict['focal_length'] = egg.focal_length
-        if egg.aperture:
-            exif_dict['aperture'] = egg.aperture
-        if egg.iso:
-            exif_dict['iso'] = egg.iso
-        if egg.shutter_speed:
-            exif_dict['shutter_speed'] = egg.shutter_speed
-        if egg.taken_at:
-            exif_dict['taken_at'] = egg.taken_at.isoformat()
-        if egg.gps_latitude:
-            exif_dict['gps_latitude'] = egg.gps_latitude
-        if egg.gps_longitude:
-            exif_dict['gps_longitude'] = egg.gps_longitude
-        
-        # Create Photo with direct field mapping (PhotoCreateSchema is flat!)
+        # Create Photo matching MY_OVERVIEW.md structure
         photo = Photo(
             user_id=user_id,
-            hothash=egg.hothash,
+            hothash=schema.hothash,
             hotpreview=hotpreview_bytes,
-            width=egg.width,
-            height=egg.height,
+            width=schema.width,
+            height=schema.height,
             
-            # Time & location (indexed copies for queries)
-            taken_at=egg.taken_at,
-            gps_latitude=egg.gps_latitude,
-            gps_longitude=egg.gps_longitude,
+            # Time & location (indexed copies from exif_dict for fast queries)
+            taken_at=schema.taken_at,
+            gps_latitude=schema.gps_latitude,
+            gps_longitude=schema.gps_longitude,
             
-            # Complete EXIF (readonly "DNA" - camera fields stored here)
+            # Complete EXIF metadata (all camera/lens data stored here)
             exif_dict=exif_dict,
             
-            # Import context (resolved to default session if not provided)
+            # User organization fields
+            rating=schema.rating,
+            category=schema.category,
+            visibility=schema.visibility,
             import_session_id=import_session_id,
+            author_id=author_id,
+            stack_id=schema.stack_id,
             
-            # User organization
-            rating=photo_create_request.rating,
-            visibility=photo_create_request.visibility,
-            author_id=author_id,  # Resolved to default if not provided
+            # Corrections (usually null initially)
+            timeloc_correction=schema.timeloc_correction,
+            view_correction=schema.view_correction,
         )
         
-        # Handle coldpreview as filesystem path (NOT BLOB)
-        if egg.coldpreview_base64:
+        # Handle coldpreview (optional larger preview)
+        if schema.coldpreview_base64:
             from src.utils.coldpreview_repository import ColdpreviewRepository
             repository = ColdpreviewRepository()
             
             # Decode and save to filesystem
-            coldpreview_bytes = base64.b64decode(egg.coldpreview_base64)
-            relative_path, _, _, _ = repository.save_coldpreview(egg.hothash, coldpreview_bytes)
+            coldpreview_bytes = base64.b64decode(schema.coldpreview_base64)
+            relative_path, _, _, _ = repository.save_coldpreview(schema.hothash, coldpreview_bytes)
             photo.coldpreview_path = relative_path
+        elif schema.coldpreview_path:
+            # If path provided directly (alternative storage)
+            photo.coldpreview_path = schema.coldpreview_path
         
-        # Save to database
+        # Save Photo first
         self.db.add(photo)
+        self.db.flush()  # Get photo.id without committing yet
+        
+        # Create ImageFile records for each source file
+        for image_file_schema in schema.image_file_list:
+            image_file = ImageFile(
+                photo_id=photo.id,
+                filename=image_file_schema.filename,
+                file_size=image_file_schema.file_size,
+                imported_time=image_file_schema.imported_time,
+                imported_info=image_file_schema.imported_info,
+                local_storage_info=image_file_schema.local_storage_info,
+                cloud_storage_info=image_file_schema.cloud_storage_info,
+            )
+            self.db.add(image_file)
+        
+        # Commit everything (Photo + ImageFiles)
         self.db.commit()
         self.db.refresh(photo)
         
-        # TODO: Add tags if provided (implement tag association later)
+        # TODO: Add tags if provided
         # if photo_create_request.tags:
         #     for tag_name in photo_create_request.tags:
         #         # Associate tag with photo

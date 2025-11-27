@@ -475,6 +475,7 @@ async def create_photo(
         
         return PhotoCreateResponse(
             id=photo.id,
+            user_id=photo.user_id,
             hothash=photo.hothash,
             rating=photo.rating,
             visibility=photo.visibility,
@@ -493,6 +494,7 @@ async def create_photo(
         )
         return PhotoCreateResponse(
             id=existing_photo.id,
+            user_id=existing_photo.user_id,
             hothash=existing_photo.hothash,
             rating=existing_photo.rating,
             visibility=existing_photo.visibility,
