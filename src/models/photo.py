@@ -25,20 +25,20 @@ class Photo(Base, TimestampMixin):
     CREATION FLOWS:
     
     1. Desktop App (Recommended - Batch Processing):
-       - User selects files → Desktop app → imalink-core (local) → PhotoEgg
+       - User selects files → Desktop app → imalink-core (local) → PhotoCreateSchema
        - Desktop app → Backend POST /photos/photoegg → Photo created
        - Fast: Local processing, no file transfer to server
        - Original files remain on user's computer
     
     2. Web Upload (Convenience - Single Photos):
        - User uploads file → Backend POST /photos/register-image → imalink-core (server)
-       - imalink-core → PhotoEgg → Backend stores Photo
+       - imalink-core → PhotoCreateSchema → Backend stores Photo
        - Slower: File upload to server, then processing
        - Good for: Quick single uploads from phone/browser
     
     Both flows result in identical Photos:
-    - Backend NEVER processes images - only receives pre-processed PhotoEgg metadata
-    - Photo has single source of visual representation (from PhotoEgg hotpreview)
+    - Backend NEVER processes images - only receives pre-processed PhotoCreateSchema metadata
+    - Photo has single source of visual representation (from PhotoCreateSchema hotpreview)
     - hothash is content-based (SHA256 of hotpreview) - same for JPEG/RAW pairs
     - JPEG/RAW pairs naturally share same Photo (same visual content = same hash)
     - Photo metadata can be edited independently of ImageFile files
@@ -49,7 +49,7 @@ class Photo(Base, TimestampMixin):
     - id used internally for foreign key relationships (performance optimization)
     - Contains all user-facing metadata (rating, author, GPS, category)
     - Contains visual data (hotpreview, coldpreview, dimensions)
-    - Contains EXIF metadata from PhotoEgg (immutable after creation)
+    - Contains EXIF metadata from PhotoCreateSchema (immutable after creation)
     - Optimized for gallery queries and photo browsing
     """
     __tablename__ = "photos"

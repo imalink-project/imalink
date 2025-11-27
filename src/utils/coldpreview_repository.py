@@ -7,7 +7,7 @@ Coldpreviews are typically 800-1200px images that provide good quality for photo
 without requiring full resolution downloads.
 
 Backend receives pre-processed coldpreviews from:
-- PhotoEgg (from imalink-core server)
+- PhotoCreateSchema (from imalink-core server)
 - Direct upload endpoint (frontend sends processed image)
 
 Key features:
@@ -59,7 +59,7 @@ class ColdpreviewRepository:
         Save pre-processed coldpreview to filesystem
         
         Backend receives coldpreview already processed by:
-        - imalink-core server (via PhotoEgg)
+        - imalink-core server (via PhotoCreateSchema)
         - Frontend (via direct upload endpoint)
         
         No image processing done here - just stores bytes and reads dimensions.

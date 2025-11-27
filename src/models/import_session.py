@@ -45,8 +45,8 @@ class ImportSession(Base, TimestampMixin):
     CLIENT WORKFLOW:
     1. User selects folder/files to import
     2. Client creates ImportSession with user's notes
-    3. Client processes each file → creates PhotoEgg
-    4. Client sends PhotoEgg + import_session_id to backend
+    3. Client processes each file → creates PhotoCreateSchema
+    4. Client sends PhotoCreateSchema + import_session_id to backend
     5. Backend creates Photo linked to ImportSession
     """
     __tablename__ = "import_sessions"

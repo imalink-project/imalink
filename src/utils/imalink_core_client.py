@@ -1,14 +1,14 @@
 """
 Client for calling imalink-core image processing service
 
-imalink-core is a separate FastAPI server that processes images into PhotoEgg format.
+imalink-core is a separate FastAPI server that processes images into PhotoCreateSchema format.
 This client handles communication between backend and core service.
 """
 import httpx
 from typing import Optional
 
 from src.core.config import Config
-from src.schemas.photoegg_schemas import PhotoEggCreate
+from src.schemas.photo_create_schemas import PhotoCreateSchema
 
 
 class ImalinkCoreClient:
@@ -28,11 +28,11 @@ class ImalinkCoreClient:
         image_bytes: bytes, 
         filename: str,
         coldpreview_size: Optional[int] = None
-    ) -> PhotoEggCreate:
+    ) -> PhotoCreateSchema:
         """
         Send image to imalink-core for processing
         
-        imalink-core processes the image and returns PhotoEgg JSON with:
+        imalink-core processes the image and returns PhotoCreateSchema JSON with:
         - hothash (SHA256 of hotpreview)
         - hotpreview_base64 (150x150px thumbnail)
         - coldpreview_base64 (optional larger preview)
@@ -44,11 +44,11 @@ class ImalinkCoreClient:
             coldpreview_size: Optional size for coldpreview (e.g., 2560)
             
         Returns:
-            PhotoEggCreate: Validated PhotoEgg data
+            PhotoCreateSchema: Validated PhotoCreateSchema data
             
         Raises:
             httpx.HTTPStatusError: If imalink-core returns error
-            ValueError: If PhotoEgg validation fails
+            ValueError: If PhotoCreateSchema validation fails
         """
         # Prepare multipart form-data
         files = {"file": (filename, image_bytes, "image/jpeg")}
@@ -69,8 +69,8 @@ class ImalinkCoreClient:
             # Raise on HTTP errors (400, 500, etc.)
             response.raise_for_status()
             
-            # Parse and validate PhotoEgg JSON
-            photoegg_dict = response.json()
+            # Parse and validate PhotoCreateSchema JSON
+            photo_create_dict = response.json()
             
             # Validate using Pydantic schema
-            return PhotoEggCreate(**photoegg_dict)
+            return PhotoCreateSchema(**photo_create_dict)

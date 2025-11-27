@@ -5,7 +5,7 @@ Tests visibility UPDATE and ACCESS CONTROL only.
 Photo creation with visibility is tested in test_real_photoegg_usage.py
 """
 import pytest
-from tests.fixtures.real_photo_eggs import load_photoegg, BASIC
+from tests.fixtures.real_photo_eggs import load_photo_create_schema, BASIC
 
 
 class TestPhotoVisibilityUpdate:
@@ -14,11 +14,11 @@ class TestPhotoVisibilityUpdate:
     def test_update_visibility_to_public(self, authenticated_client, import_session):
         """Update photo visibility from private to public"""
         # Create private photo via PhotoEgg
-        photoegg_data = load_photoegg(BASIC)
+        photo_create_data = load_photo_create_schema(BASIC)
         create_response = authenticated_client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json={
-                "photo_egg": photoegg_data,
+                "photo_egg": photo_create_data,
                 "rating": 0,
                 "visibility": "private",
                 "tags": [],
@@ -44,11 +44,11 @@ class TestPhotoVisibilityUpdate:
     def test_update_visibility_to_authenticated(self, authenticated_client, import_session):
         """Update photo visibility to authenticated"""
         # Create private photo
-        photoegg_data = load_photoegg(BASIC)
+        photo_create_data = load_photo_create_schema(BASIC)
         create_response = authenticated_client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json={
-                "photo_egg": photoegg_data,
+                "photo_egg": photo_create_data,
                 "rating": 0,
                 "visibility": "private",
                 "tags": [],
@@ -70,11 +70,11 @@ class TestPhotoVisibilityUpdate:
     
     def test_update_visibility_invalid_value(self, authenticated_client, import_session):
         """Updating with invalid visibility should fail"""
-        photoegg_data = load_photoegg(BASIC)
+        photo_create_data = load_photo_create_schema(BASIC)
         create_response = authenticated_client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json={
-                "photo_egg": photoegg_data,
+                "photo_egg": photo_create_data,
                 "rating": 0,
                 "visibility": "private",
                 "tags": [],
@@ -99,11 +99,11 @@ class TestPhotoVisibilityAccessControl:
     
     def test_owner_sees_own_private_photo(self, authenticated_client, import_session):
         """Owner can see their own private photos"""
-        photoegg_data = load_photoegg(BASIC)
+        photo_create_data = load_photo_create_schema(BASIC)
         create_response = authenticated_client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json={
-                "photo_egg": photoegg_data,
+                "photo_egg": photo_create_data,
                 "rating": 0,
                 "visibility": "private",
                 "tags": [],
@@ -124,11 +124,11 @@ class TestPhotoVisibilityAccessControl:
     
     def test_anonymous_cannot_see_private_photo(self, client, authenticated_client, import_session):
         """Anonymous users cannot see private photos"""
-        photoegg_data = load_photoegg(BASIC)
+        photo_create_data = load_photo_create_schema(BASIC)
         create_response = authenticated_client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json={
-                "photo_egg": photoegg_data,
+                "photo_egg": photo_create_data,
                 "rating": 0,
                 "visibility": "private",
                 "tags": [],
@@ -144,11 +144,11 @@ class TestPhotoVisibilityAccessControl:
     
     def test_anonymous_can_see_public_photo(self, client, authenticated_client, import_session):
         """Anonymous users CAN see public photos"""
-        photoegg_data = load_photoegg(BASIC)
+        photo_create_data = load_photo_create_schema(BASIC)
         create_response = authenticated_client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json={
-                "photo_egg": photoegg_data,
+                "photo_egg": photo_create_data,
                 "rating": 0,
                 "visibility": "public",
                 "tags": [],
@@ -165,11 +165,11 @@ class TestPhotoVisibilityAccessControl:
     
     def test_anonymous_cannot_see_authenticated_photo(self, client, authenticated_client, import_session):
         """Anonymous users cannot see authenticated-only photos"""
-        photoegg_data = load_photoegg(BASIC)
+        photo_create_data = load_photo_create_schema(BASIC)
         create_response = authenticated_client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json={
-                "photo_egg": photoegg_data,
+                "photo_egg": photo_create_data,
                 "rating": 0,
                 "visibility": "authenticated",
                 "tags": [],
@@ -189,11 +189,11 @@ class TestPhotoVisibilitySpacePhase1:
     
     def test_space_visibility_treated_as_private(self, client, authenticated_client, import_session):
         """In Phase 1, space visibility behaves like private"""
-        photoegg_data = load_photoegg(BASIC)
+        photo_create_data = load_photo_create_schema(BASIC)
         create_response = authenticated_client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json={
-                "photo_egg": photoegg_data,
+                "photo_egg": photo_create_data,
                 "rating": 0,
                 "visibility": "space",
                 "tags": [],

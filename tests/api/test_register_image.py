@@ -2,7 +2,7 @@
 Tests for POST /api/v1/photos/register-image endpoint
 
 This endpoint accepts image uploads from web clients and forwards them to
-imalink-core for processing, then stores the resulting PhotoEgg.
+imalink-core for processing, then stores the resulting PhotoCreateSchema.
 """
 import json
 from pathlib import Path
@@ -10,15 +10,15 @@ from unittest.mock import patch, MagicMock, AsyncMock
 import pytest
 from io import BytesIO
 
-from src.schemas.photoegg_schemas import PhotoEggCreate
+from src.schemas.photo_create_schemas import PhotoCreateSchema
 
 
 class TestRegisterImageEndpoint:
     """Test the /register-image web upload endpoint"""
     
     @pytest.fixture
-    def mock_photoegg_response(self):
-        """Load a real PhotoEgg JSON fixture to use as mock response"""
+    def mock_photo_create_response(self):
+        """Load a real PhotoCreateSchema JSON fixture to use as mock response"""
         fixture_path = Path(__file__).parent.parent / "fixtures" / "photo_eggs" / "tiny.json"
         with open(fixture_path, 'r') as f:
             return json.load(f)
@@ -29,13 +29,13 @@ class TestRegisterImageEndpoint:
         return b"fake jpeg image data"
     
     def test_register_image_success(self, authenticated_client, auth_headers, import_session, 
-                                    mock_photoegg_response, fake_image_bytes):
+                                    mock_photo_create_response, fake_image_bytes):
         """Test successful web upload - mocks imalink-core response"""
         
         # Mock the ImalinkCoreClient class
         with patch('src.utils.imalink_core_client.ImalinkCoreClient') as MockClient:
             mock_instance = MockClient.return_value
-            mock_process = AsyncMock(return_value=PhotoEggCreate(**mock_photoegg_response))
+            mock_process = AsyncMock(return_value=PhotoCreateSchema(**mock_photo_create_response))
             mock_instance.process_image = mock_process
             # Prepare upload
             files = {"file": ("test.jpg", BytesIO(fake_image_bytes), "image/jpeg")}
@@ -55,9 +55,9 @@ class TestRegisterImageEndpoint:
             # Verify response
             assert response.status_code == 201
             json_data = response.json()
-            assert json_data["hothash"] == mock_photoegg_response["hothash"]
-            # Note: rating comes from PhotoEgg metadata, not from form data in this flow
-            # The rating parameter is for overriding PhotoEgg default
+            assert json_data["hothash"] == mock_photo_create_response["hothash"]
+            # Note: rating comes from PhotoCreateSchema metadata, not from form data in this flow
+            # The rating parameter is for overriding PhotoCreateSchema default
             assert json_data["visibility"] == "private"
             assert json_data["width"] == 100
             assert json_data["height"] == 100
@@ -71,13 +71,13 @@ class TestRegisterImageEndpoint:
             assert call_args.kwargs["filename"] == "test.jpg"
     
     def test_register_image_without_import_session(self, authenticated_client, auth_headers, 
-                                                   import_session, mock_photoegg_response, 
+                                                   import_session, mock_photo_create_response, 
                                                    fake_image_bytes):
         """Test that photo uses protected ImportSession when not specified"""
         
         with patch('src.utils.imalink_core_client.ImalinkCoreClient') as MockClient:
             mock_instance = MockClient.return_value
-            mock_process = AsyncMock(return_value=PhotoEggCreate(**mock_photoegg_response))
+            mock_process = AsyncMock(return_value=PhotoCreateSchema(**mock_photo_create_response))
             mock_instance.process_image = mock_process
             
             files = {"file": ("test2.jpg", BytesIO(fake_image_bytes), "image/jpeg")}
@@ -92,16 +92,16 @@ class TestRegisterImageEndpoint:
             json_data = response.json()
             # Should have auto-used protected ImportSession
             # (import_session_id is optional field in response, but photo has it in DB)
-            assert json_data["hothash"] == mock_photoegg_response["hothash"]
+            assert json_data["hothash"] == mock_photo_create_response["hothash"]
     
     def test_register_image_with_coldpreview_size(self, authenticated_client, auth_headers, 
-                                                  import_session, mock_photoegg_response, 
+                                                  import_session, mock_photo_create_response, 
                                                   fake_image_bytes):
         """Test requesting coldpreview with specific size"""
         
         with patch('src.utils.imalink_core_client.ImalinkCoreClient') as MockClient:
             mock_instance = MockClient.return_value
-            mock_process = AsyncMock(return_value=PhotoEggCreate(**mock_photoegg_response))
+            mock_process = AsyncMock(return_value=PhotoCreateSchema(**mock_photo_create_response))
             mock_instance.process_image = mock_process
             
             files = {"file": ("test3.jpg", BytesIO(fake_image_bytes), "image/jpeg")}
@@ -122,13 +122,13 @@ class TestRegisterImageEndpoint:
                    (len(call_args.args) > 2 and call_args.args[2] == 1200)
     
     def test_register_image_duplicate(self, authenticated_client, auth_headers, 
-                                      import_session, mock_photoegg_response, 
+                                      import_session, mock_photo_create_response, 
                                       fake_image_bytes):
         """Test uploading duplicate image - should return existing photo"""
         
         with patch('src.utils.imalink_core_client.ImalinkCoreClient') as MockClient:
             mock_instance = MockClient.return_value
-            mock_process = AsyncMock(return_value=PhotoEggCreate(**mock_photoegg_response))
+            mock_process = AsyncMock(return_value=PhotoCreateSchema(**mock_photo_create_response))
             mock_instance.process_image = mock_process
             
             files1 = {"file": ("original.jpg", BytesIO(fake_image_bytes), "image/jpeg")}
@@ -150,10 +150,10 @@ class TestRegisterImageEndpoint:
             )
             
             # Currently returns 201 with same photo (no duplicate detection yet in this endpoint)
-            # This is fine - duplicate detection happens at PhotoEgg level
+            # This is fine - duplicate detection happens at PhotoCreateSchema level
             assert response2.status_code in [200, 201]
             json_data = response2.json()
-            assert json_data["hothash"] == mock_photoegg_response["hothash"]
+            assert json_data["hothash"] == mock_photo_create_response["hothash"]
     
     def test_register_image_imalink_core_unavailable(self, authenticated_client, auth_headers, 
                                                       fake_image_bytes):

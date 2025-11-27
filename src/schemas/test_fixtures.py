@@ -1,5 +1,5 @@
 """
-Test Photo Fixtures - Self-contained photo "eggs" for testing.
+Test Photo Fixtures - Self-contained photo create schemas for testing.
 
 Provides a serializable format for test photos that can be:
 - Stored as JSON/YAML files
@@ -7,7 +7,7 @@ Provides a serializable format for test photos that can be:
 - Used across multiple test files
 - Version controlled alongside tests
 
-Each PhotoEgg contains all data needed to create a complete Photo instance
+Each PhotoCreateSchema contains all data needed to create a complete Photo instance
 with associated ImageFile, without requiring actual image files on disk.
 """
 from typing import Optional, Dict, Any, TYPE_CHECKING
@@ -40,7 +40,7 @@ class ImageFileEgg(BaseModel):
         }
 
 
-class PhotoEgg(BaseModel):
+class PhotoCreateSchema(BaseModel):
     """
     Self-contained photo fixture for testing.
     
@@ -51,21 +51,21 @@ class PhotoEgg(BaseModel):
     Usage:
         # Load from JSON
         with open('tests/fixtures/photos/sunset.json') as f:
-            egg = PhotoEgg.model_validate_json(f.read())
+            schema = PhotoCreateSchema.model_validate_json(f.read())
         
         # Create Photo instance
         photo = Photo(
-            hothash=egg.hothash,
-            hotpreview=base64.b64decode(egg.hotpreview_base64),
+            hothash=schema.hothash,
+            hotpreview=base64.b64decode(schema.hotpreview_base64),
             user_id=test_user.id,
-            taken_at=egg.taken_at,
-            rating=egg.rating,
-            visibility=egg.visibility
+            taken_at=schema.taken_at,
+            rating=schema.rating,
+            visibility=schema.visibility
         )
         
         # Create ImageFile instance
         image_file = ImageFile(
-            filename=egg.primary_file.filename,
+            filename=schema.primary_file.filename,
             photo=photo
         )
     """
@@ -133,7 +133,7 @@ class PhotoEgg(BaseModel):
     
     def to_photo_kwargs(self, user_id: int) -> dict:
         """
-        Convert PhotoEgg to kwargs for Photo() constructor.
+        Convert PhotoCreateSchema to kwargs for Photo() constructor.
         
         Args:
             user_id: ID of user who will own this photo
@@ -157,7 +157,7 @@ class PhotoEgg(BaseModel):
     
     def to_image_file_kwargs(self, photo_id: Optional[int] = None) -> Dict[str, Any]:
         """
-        Convert PhotoEgg to kwargs for ImageFile() constructor.
+        Convert PhotoCreateSchema to kwargs for ImageFile() constructor.
         
         Args:
             photo_id: Optional photo ID if already created
@@ -178,9 +178,9 @@ class PhotoEgg(BaseModel):
         return kwargs
 
 
-class PhotoEggCollection(BaseModel):
+class PhotoCreateCollection(BaseModel):
     """
-    Collection of PhotoEggs for organized test fixtures.
+    Collection of PhotoCreateSchemas for organized test fixtures.
     
     Allows grouping related test photos together with metadata about
     the collection itself. Can be serialized to a single JSON/YAML file.
@@ -195,18 +195,18 @@ class PhotoEggCollection(BaseModel):
     Usage:
         # Load collection
         with open('tests/fixtures/photos/scenic.json') as f:
-            collection = PhotoEggCollection.model_validate_json(f.read())
+            collection = PhotoCreateCollection.model_validate_json(f.read())
         
         # Create all photos for a user
-        for name, egg in collection.photos.items():
-            photo = Photo(**egg.to_photo_kwargs(test_user.id))
+        for name, schema in collection.photos.items():
+            photo = Photo(**schema.to_photo_kwargs(test_user.id))
             db.add(photo)
     """
     name: str = Field(..., description="Collection name (e.g. 'scenic', 'portraits')")
     description: Optional[str] = Field(None, description="What this collection contains")
     version: str = Field("1.0", description="Collection version for compatibility tracking")
     
-    photos: Dict[str, PhotoEgg] = Field(
+    photos: Dict[str, PhotoCreateSchema] = Field(
         ...,
         description="Named photo fixtures (key = fixture name for easy reference)"
     )
@@ -236,7 +236,7 @@ class PhotoEggCollection(BaseModel):
             }
         }
     
-    def get(self, name: str) -> Optional[PhotoEgg]:
+    def get(self, name: str) -> Optional[PhotoCreateSchema]:
         """Get a named photo from the collection."""
         return self.photos.get(name)
     
@@ -256,7 +256,7 @@ class PhotoEggCollection(BaseModel):
         
         created = {}
         
-        for name, egg in self.photos.items():
+        for name, schema in self.photos.items():
             # Create Photo
             photo = Photo(**egg.to_photo_kwargs(user_id))
             db_session.add(photo)
@@ -274,16 +274,16 @@ class PhotoEggCollection(BaseModel):
 
 
 # Convenience function for creating minimal test photos
-def create_test_photo_egg(
+def create_test_photo_create_schema(
     hothash: str,
     filename: str = "test.jpg",
     taken_at: Optional[datetime] = None,
     rating: int = 0,
     visibility: str = "private",
     **kwargs
-) -> PhotoEgg:
+) -> PhotoCreateSchema:
     """
-    Create a minimal PhotoEgg for testing with fake hotpreview data.
+    Create a minimal PhotoCreateSchema for testing with fake hotpreview data.
     
     Generates a tiny 1x1 pixel JPEG as hotpreview (base64 encoded).
     Useful for quick test photo creation without needing real image data.
@@ -294,10 +294,10 @@ def create_test_photo_egg(
         taken_at: When photo was taken
         rating: Star rating (0-5)
         visibility: Visibility level
-        **kwargs: Additional PhotoEgg fields
+        **kwargs: Additional PhotoCreateSchema fields
     
     Returns:
-        PhotoEgg instance with minimal valid data
+        PhotoCreateSchema instance with minimal valid data
     """
     # Minimal 1x1 red pixel JPEG (base64 encoded)
     # This is a valid JPEG that can be decoded but takes minimal space
@@ -309,7 +309,7 @@ def create_test_photo_egg(
         "AQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCwAB//2Q=="
     )
     
-    return PhotoEgg(
+    return PhotoCreateSchema(
         hothash=hothash,
         hotpreview_base64=MINIMAL_JPEG_BASE64,
         primary_file=ImageFileEgg(filename=filename),

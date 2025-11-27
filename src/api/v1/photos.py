@@ -2,16 +2,16 @@
 API endpoints for photo operations using Service Layer
 
 ARCHITECTURAL NOTE (UPDATED):
-Photos are created via POST /photos/photoegg which receives pre-processed PhotoEgg from imalink-core.
-PhotoEgg contains hotpreview (base64), metadata, and exif_dict - backend stores this data.
+Photos are created via POST /photos/create which receives pre-processed PhotoCreateSchema from imalink-core.
+PhotoCreateSchema contains hotpreview (base64), metadata, and exif_dict - backend stores this data.
 This ensures:
 - Photo-centric API (100% of operations through /photos)
-- Backend NEVER processes images - only stores metadata from PhotoEgg
+- Backend NEVER processes images - only stores metadata from PhotoCreateSchema
 - Photo.hothash is derived from hotpreview (SHA256, content-based)
 - JPEG/RAW pairs automatically share the same Photo (same hotpreview = same hash)
 
 This API provides:
-- CREATE: Upload photos via PhotoEgg (POST /photoegg)
+- CREATE: Upload photos via PhotoCreateSchema (POST /create)
 - READ: List, search, and retrieve photo metadata
 - UPDATE: Edit photo metadata (rating, visibility, tags, category, author)
 - DELETE: Remove photo and all associated image files (cascade)
@@ -30,7 +30,7 @@ from src.schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, 
     PhotoSearchRequest, TimeLocCorrectionRequest, ViewCorrectionRequest
 )
-from src.schemas.photoegg_schemas import PhotoEggRequest, PhotoEggResponse
+from src.schemas.photo_create_schemas import PhotoCreateRequest as PhotoCreateReq, PhotoCreateResponse
 from src.schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
@@ -94,7 +94,7 @@ def search_photos(
 
 
 # NOTE: /new-photo endpoint REMOVED - use POST /photoegg instead
-# PhotoEgg endpoint is the single unified way to create photos
+# PhotoCreateSchema endpoint is the single unified way to create photos
 
 
 @router.get("/{hothash}/files", response_model=List[ImageFileResponse])
@@ -447,33 +447,33 @@ def get_photo_stack(
         raise HTTPException(status_code=500, detail=f"Failed to fetch stack for photo: {str(e)}")
 
 
-@router.post("/photoegg", response_model=PhotoEggResponse, status_code=201)
-async def create_photo_from_photoegg(
-    request: PhotoEggRequest,
+@router.post("/create", response_model=PhotoCreateResponse, status_code=201)
+async def create_photo(
+    request: PhotoCreateReq,
     current_user: User = Depends(get_current_active_user),
     photo_service: PhotoService = Depends(get_photo_service)
 ):
     """
-    Create Photo from PhotoEgg (New Architecture)
+    Create Photo from PhotoCreateSchema (New Architecture)
     
-    PhotoEgg is the complete JSON package from imalink-core server containing
+    PhotoCreateSchema is the complete JSON package from imalink-core server containing
     all image processing results. Frontend sends image to imalink-core server,
-    receives PhotoEgg, then sends it here with user organization metadata.
+    receives PhotoCreateSchema, then sends it here with user organization metadata.
     
     Flow:
-    1. Frontend → imalink-core server (POST /process) → PhotoEgg
-    2. Frontend → Backend (POST /photoegg) → Photo created
+    1. Frontend → imalink-core server (POST /process) → PhotoCreateSchema
+    2. Frontend → Backend (POST /photos/create) → Photo created
     
     This replaces the old POST /photos endpoint which did image processing.
-    Backend now only stores metadata and previews from PhotoEgg.
+    Backend now only stores metadata and previews from PhotoCreateSchema.
     """
     try:
-        photo = photo_service.create_photo_from_photoegg(
-            photoegg_request=request,
+        photo = photo_service.create_photo_from_photo_create_schema(
+            photo_create_request=request,
             user_id=getattr(current_user, 'id')
         )
         
-        return PhotoEggResponse(
+        return PhotoCreateResponse(
             id=photo.id,
             hothash=photo.hothash,
             rating=photo.rating,
@@ -491,7 +491,7 @@ async def create_photo_from_photoegg(
             hothash=request.photo_egg.hothash,
             user_id=getattr(current_user, 'id')
         )
-        return PhotoEggResponse(
+        return PhotoCreateResponse(
             id=existing_photo.id,
             hothash=existing_photo.hothash,
             rating=existing_photo.rating,
@@ -505,11 +505,11 @@ async def create_photo_from_photoegg(
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Failed to create photo from PhotoEgg: {str(e)}", exc_info=True)
+        logger.error(f"Failed to create photo from PhotoCreateSchema: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to create photo: {str(e)}")
 
 
-@router.post("/register-image", response_model=PhotoEggResponse, status_code=201)
+@router.post("/register-image", response_model=PhotoCreateResponse, status_code=201)
 async def register_image(
     file: UploadFile = File(..., description="Image file to register"),
     import_session_id: Optional[int] = Query(None, description="Import session ID (uses protected 'Quick Add' if not provided)"),
@@ -529,8 +529,8 @@ async def register_image(
     Flow:
     1. Frontend uploads raw image file (multipart/form-data)
     2. Backend sends to imalink-core server (localhost:8001) for processing
-    3. imalink-core returns PhotoEgg (metadata + previews)
-    4. Backend stores PhotoEgg (same as POST /photoegg endpoint)
+    3. imalink-core returns PhotoCreateSchema (metadata + previews)
+    4. Backend stores PhotoCreateSchema (same as POST /photoegg endpoint)
     
     Note: Original image is NOT stored on server, only metadata and previews.
     
@@ -543,7 +543,7 @@ async def register_image(
         coldpreview_size: Optional size for larger preview (e.g., 2560px)
         
     Returns:
-        PhotoEggResponse: Created photo metadata
+        PhotoCreateResponse: Created photo metadata
         
     Raises:
         400: If image processing fails or invalid image
@@ -557,15 +557,15 @@ async def register_image(
         
         # Send to imalink-core for processing
         core_client = ImalinkCoreClient()
-        photoegg = await core_client.process_image(
+        photo_create_schema = await core_client.process_image(
             image_bytes=image_bytes,
             filename=file.filename or "uploaded_image.jpg",
             coldpreview_size=coldpreview_size
         )
         
-        # Build PhotoEggRequest with user metadata
-        photoegg_request = PhotoEggRequest(
-            photo_egg=photoegg,
+        # Build PhotoCreateReq with user metadata
+        photo_create_request = PhotoCreateReq(
+            photo_egg=photo_create_schema,
             import_session_id=import_session_id,  # Optional, uses protected default if None
             rating=rating,
             visibility=visibility,
@@ -573,13 +573,13 @@ async def register_image(
             author_id=author_id
         )
         
-        # Create photo using existing PhotoEgg logic
-        photo = photo_service.create_photo_from_photoegg(
-            photoegg_request=photoegg_request,
+        # Create photo using existing PhotoCreateSchema logic
+        photo = photo_service.create_photo_from_photo_create_schema(
+            photo_create_request=photo_create_request,
             user_id=getattr(current_user, 'id')
         )
         
-        return PhotoEggResponse(
+        return PhotoCreateResponse(
             id=photo.id,
             hothash=photo.hothash,
             rating=photo.rating,
@@ -594,10 +594,10 @@ async def register_image(
     except DuplicateImageError:
         # Photo already exists
         existing_photo = photo_service.get_photo_by_hothash(
-            hothash=photoegg.hothash,
+            hothash=photo_create_schema.hothash,
             user_id=getattr(current_user, 'id')
         )
-        return PhotoEggResponse(
+        return PhotoCreateResponse(
             id=existing_photo.id,
             hothash=existing_photo.hothash,
             rating=existing_photo.rating,

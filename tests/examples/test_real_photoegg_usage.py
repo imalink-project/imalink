@@ -7,7 +7,7 @@ from imalink-core instead of creating mock objects.
 
 import pytest
 from tests.fixtures.real_photo_eggs import (
-    load_photoegg, 
+    load_photo_create_schema, 
     BASIC, 
     LANDSCAPE, 
     TINY,
@@ -26,16 +26,16 @@ class TestPhotoCreationWithRealPhotoEggs:
     def test_create_photo_from_basic_photoegg(self, client, auth_headers, import_session):
         """Basic PhotoEgg → Photo creation flow"""
         
-        photoegg_data = load_photoegg(BASIC)
+        photo_create_data = load_photo_create_schema(BASIC)
         
         # Verify it has expected structure
-        assert "hothash" in photoegg_data
-        assert "hotpreview_base64" in photoegg_data
-        assert "primary_filename" in photoegg_data
+        assert "hothash" in photo_create_data
+        assert "hotpreview_base64" in photo_create_data
+        assert "primary_filename" in photo_create_data
         
         # Wrap PhotoEgg in PhotoEggRequest format
         request_body = {
-            "photo_egg": photoegg_data,
+            "photo_egg": photo_create_data,
             "rating": 0,
             "visibility": "private",
             "tags": [],
@@ -44,7 +44,7 @@ class TestPhotoCreationWithRealPhotoEggs:
         
         # Create photo via PhotoEgg API
         response = client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json=request_body,
             headers=auth_headers
         )
@@ -53,16 +53,16 @@ class TestPhotoCreationWithRealPhotoEggs:
         photo = response.json()
         
         # Photo should have same hothash
-        assert photo["hothash"] == photoegg_data["hothash"]
+        assert photo["hothash"] == photo_create_data["hothash"]
     
     
     def test_create_landscape_photo(self, client, auth_headers, import_session):
         """Create photo from landscape orientation PhotoEgg"""
         
-        photoegg_data = load_photoegg(LANDSCAPE)
+        photo_create_data = load_photo_create_schema(LANDSCAPE)
         
         request_body = {
-            "photo_egg": photoegg_data,
+            "photo_egg": photo_create_data,
             "rating": 4,
             "visibility": "public",
             "tags": ["landscape", "nature"],
@@ -70,7 +70,7 @@ class TestPhotoCreationWithRealPhotoEggs:
         }
         
         response = client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json=request_body,
             headers=auth_headers
         )
@@ -79,8 +79,8 @@ class TestPhotoCreationWithRealPhotoEggs:
         photo = response.json()
         
         # Verify landscape dimensions
-        assert photo["width"] == photoegg_data["width"]
-        assert photo["height"] == photoegg_data["height"]
+        assert photo["width"] == photo_create_data["width"]
+        assert photo["height"] == photo_create_data["height"]
         assert photo["rating"] == 4
         assert photo["visibility"] == "public"
     
@@ -88,13 +88,13 @@ class TestPhotoCreationWithRealPhotoEggs:
     def test_create_photo_with_coldpreview(self, client, auth_headers, import_session):
         """Create photo that includes coldpreview"""
         
-        photoegg_data = load_photoegg(FUJI_WITH_COLDPREVIEW)
+        photo_create_data = load_photo_create_schema(FUJI_WITH_COLDPREVIEW)
         
         # This PhotoEgg has coldpreview
-        assert photoegg_data["coldpreview_base64"] is not None
+        assert photo_create_data["coldpreview_base64"] is not None
         
         request_body = {
-            "photo_egg": photoegg_data,
+            "photo_egg": photo_create_data,
             "rating": 5,
             "visibility": "private",
             "tags": [],
@@ -102,7 +102,7 @@ class TestPhotoCreationWithRealPhotoEggs:
         }
         
         response = client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json=request_body,
             headers=auth_headers
         )
@@ -111,17 +111,17 @@ class TestPhotoCreationWithRealPhotoEggs:
         photo = response.json()
         
         # Photo created successfully
-        assert photo["hothash"] == photoegg_data["hothash"]
+        assert photo["hothash"] == photo_create_data["hothash"]
         assert photo["rating"] == 5
     
     
     def test_create_tiny_image(self, client, auth_headers, import_session):
         """Create photo from tiny test image"""
         
-        photoegg_data = load_photoegg(TINY)
+        photo_create_data = load_photo_create_schema(TINY)
         
         request_body = {
-            "photo_egg": photoegg_data,
+            "photo_egg": photo_create_data,
             "rating": 0,
             "visibility": "private",
             "tags": [],
@@ -129,7 +129,7 @@ class TestPhotoCreationWithRealPhotoEggs:
         }
         
         response = client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json=request_body,
             headers=auth_headers
         )
@@ -138,17 +138,17 @@ class TestPhotoCreationWithRealPhotoEggs:
         photo = response.json()
         
         # Small image dimensions should be preserved
-        assert photo["width"] == photoegg_data["width"]
-        assert photo["height"] == photoegg_data["height"]
+        assert photo["width"] == photo_create_data["width"]
+        assert photo["height"] == photo_create_data["height"]
     
     
     def test_duplicate_photoegg_rejected(self, client, auth_headers, import_session):
         """Uploading same PhotoEgg twice should detect duplicate"""
         
-        photoegg_data = load_photoegg(BASIC)
+        photo_create_data = load_photo_create_schema(BASIC)
         
         request_body = {
-            "photo_egg": photoegg_data,
+            "photo_egg": photo_create_data,
             "rating": 0,
             "visibility": "private",
             "tags": [],
@@ -157,7 +157,7 @@ class TestPhotoCreationWithRealPhotoEggs:
         
         # First upload succeeds
         response1 = client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json=request_body,
             headers=auth_headers
         )
@@ -167,7 +167,7 @@ class TestPhotoCreationWithRealPhotoEggs:
         
         # Second upload of SAME hothash returns existing with is_duplicate=True
         response2 = client.post(
-            "/api/v1/photos/photoegg",
+            "/api/v1/photos/create",
             json=request_body,
             headers=auth_headers
         )
@@ -176,7 +176,7 @@ class TestPhotoCreationWithRealPhotoEggs:
         assert response2.status_code == 201
         photo2 = response2.json()
         assert photo2["is_duplicate"] == True
-        assert photo2["hothash"] == photoegg_data["hothash"]
+        assert photo2["hothash"] == photo_create_data["hothash"]
         assert photo2["id"] == photo1["id"]  # Same photo returned
 
 
@@ -211,7 +211,7 @@ class TestCompareWithMockData:
     def test_real_photoegg_new_way(self, client, auth_headers):
         """NEW WAY: Using real PhotoEgg from imalink-core"""
         
-        photoegg = load_photoegg(BASIC)
+        photoegg = load_photo_create_schema(BASIC)
         
         # Real hothash (SHA256 of actual hotpreview)
         assert len(photoegg["hothash"]) == 64
@@ -231,13 +231,13 @@ class TestCompareWithMockData:
 @pytest.fixture
 def sample_photoegg():
     """Fixture providing a real PhotoEgg for tests"""
-    return load_photoegg(BASIC)
+    return load_photo_create_schema(BASIC)
 
 
 @pytest.fixture
 def landscape_photoegg():
     """Fixture providing a landscape PhotoEgg"""
-    return load_photoegg(LANDSCAPE)
+    return load_photo_create_schema(LANDSCAPE)
 
 
 # Usage in parametrized tests
@@ -249,10 +249,10 @@ def landscape_photoegg():
 def test_create_photos_parametrized(fixture_name, client, auth_headers, import_session):
     """Create photos using different PhotoEgg fixtures"""
     
-    photoegg_data = load_photoegg(fixture_name)
+    photo_create_data = load_photo_create_schema(fixture_name)
     
     request_body = {
-        "photo_egg": photoegg_data,
+        "photo_egg": photo_create_data,
         "rating": 0,
         "visibility": "private",
         "tags": [],
@@ -260,11 +260,11 @@ def test_create_photos_parametrized(fixture_name, client, auth_headers, import_s
     }
     
     response = client.post(
-        "/api/v1/photos/photoegg",
+        "/api/v1/photos/create",
         json=request_body,
         headers=auth_headers
     )
     
     assert response.status_code == 201
     photo = response.json()
-    assert photo["hothash"] == photoegg_data["hothash"]
+    assert photo["hothash"] == photo_create_data["hothash"]

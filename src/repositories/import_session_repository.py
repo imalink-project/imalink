@@ -31,7 +31,7 @@ class ImportSessionRepository:
         """
         Get user's protected ImportSession (default session for quick uploads)
         
-        Used when import_session_id is not provided in PhotoEgg API.
+        Used when import_session_id is not provided in PhotoCreateSchema API.
         """
         query = (
             self.db.query(ImportSession)

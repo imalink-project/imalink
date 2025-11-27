@@ -1,19 +1,19 @@
 """
 Example test photo fixture collections.
 
-Demonstrates how to use PhotoEgg and PhotoEggCollection for organized test data.
+Demonstrates how to use PhotoCreateSchema and PhotoCreateCollection for organized test data.
 """
 from datetime import datetime, timezone
-from src.schemas.test_fixtures import PhotoEgg, PhotoEggCollection, ImageFileEgg, create_test_photo_egg
+from src.schemas.test_fixtures import PhotoCreateSchema, PhotoCreateCollection, ImageFileEgg, create_test_photo_create_schema
 
 
 # Example 1: Simple timeline test collection
-timeline_photos = PhotoEggCollection(
+timeline_photos = PhotoCreateCollection(
     name="timeline_test_photos",
     description="Photos spanning different years and months for timeline API testing",
     version="1.0",
     photos={
-        "summer_2024_beach": create_test_photo_egg(
+        "summer_2024_beach": create_test_photo_create_schema(
             hothash="a" * 64,
             filename="beach_2024.jpg",
             taken_at=datetime(2024, 6, 15, 14, 30, 0, tzinfo=timezone.utc),
@@ -26,7 +26,7 @@ timeline_photos = PhotoEggCollection(
             description="Summer beach photo from 2024"
         ),
         
-        "winter_2024_mountains": create_test_photo_egg(
+        "winter_2024_mountains": create_test_photo_create_schema(
             hothash="b" * 64,
             filename="mountains_2024.jpg",
             taken_at=datetime(2024, 12, 20, 10, 0, 0, tzinfo=timezone.utc),
@@ -37,7 +37,7 @@ timeline_photos = PhotoEggCollection(
             description="Winter mountain photo from 2024"
         ),
         
-        "autumn_2023_forest": create_test_photo_egg(
+        "autumn_2023_forest": create_test_photo_create_schema(
             hothash="c" * 64,
             filename="forest_2023.jpg",
             taken_at=datetime(2023, 10, 10, 16, 45, 0, tzinfo=timezone.utc),
@@ -48,7 +48,7 @@ timeline_photos = PhotoEggCollection(
             description="Autumn forest photo from 2023"
         ),
         
-        "spring_2023_flowers": create_test_photo_egg(
+        "spring_2023_flowers": create_test_photo_create_schema(
             hothash="d" * 64,
             filename="flowers_2023.jpg",
             taken_at=datetime(2023, 4, 5, 12, 0, 0, tzinfo=timezone.utc),
@@ -61,12 +61,12 @@ timeline_photos = PhotoEggCollection(
 
 
 # Example 2: Visibility test collection
-visibility_photos = PhotoEggCollection(
+visibility_photos = PhotoCreateCollection(
     name="visibility_test_photos",
     description="Photos with different visibility levels for access control testing",
     version="1.0",
     photos={
-        "private_family": create_test_photo_egg(
+        "private_family": create_test_photo_create_schema(
             hothash="private_hash_001",
             filename="family_dinner.jpg",
             taken_at=datetime(2024, 1, 1, 18, 0, 0, tzinfo=timezone.utc),
@@ -74,7 +74,7 @@ visibility_photos = PhotoEggCollection(
             description="Private family photo - only owner should see"
         ),
         
-        "authenticated_event": create_test_photo_egg(
+        "authenticated_event": create_test_photo_create_schema(
             hothash="auth_hash_001",
             filename="company_event.jpg",
             taken_at=datetime(2024, 2, 1, 14, 0, 0, tzinfo=timezone.utc),
@@ -82,7 +82,7 @@ visibility_photos = PhotoEggCollection(
             description="Authenticated photo - all logged-in users can see"
         ),
         
-        "public_landscape": create_test_photo_egg(
+        "public_landscape": create_test_photo_create_schema(
             hothash="public_hash_001",
             filename="oslo_sunset.jpg",
             taken_at=datetime(2024, 3, 1, 19, 30, 0, tzinfo=timezone.utc),
@@ -95,33 +95,33 @@ visibility_photos = PhotoEggCollection(
 
 
 # Example 3: Rating test collection
-rating_photos = PhotoEggCollection(
+rating_photos = PhotoCreateCollection(
     name="rating_test_photos",
     description="Photos with different ratings for preview selection testing",
     version="1.0",
     photos={
-        "five_star": create_test_photo_egg(
+        "five_star": create_test_photo_create_schema(
             hothash="rating_5_hash",
             filename="masterpiece.jpg",
             rating=5,
             description="5-star photo - should be selected as preview"
         ),
         
-        "four_star": create_test_photo_egg(
+        "four_star": create_test_photo_create_schema(
             hothash="rating_4_hash",
             filename="great_shot.jpg",
             rating=4,
             description="4-star photo - good quality"
         ),
         
-        "three_star": create_test_photo_egg(
+        "three_star": create_test_photo_create_schema(
             hothash="rating_3_hash",
             filename="ok_photo.jpg",
             rating=3,
             description="3-star photo - average"
         ),
         
-        "no_rating": create_test_photo_egg(
+        "no_rating": create_test_photo_create_schema(
             hothash="rating_0_hash",
             filename="unrated.jpg",
             rating=0,
@@ -132,12 +132,12 @@ rating_photos = PhotoEggCollection(
 
 
 # Example 4: GPS test collection
-gps_photos = PhotoEggCollection(
+gps_photos = PhotoCreateCollection(
     name="gps_test_photos",
     description="Photos with and without GPS coordinates for location testing",
     version="1.0",
     photos={
-        "oslo_location": create_test_photo_egg(
+        "oslo_location": create_test_photo_create_schema(
             hothash="gps_oslo_hash",
             filename="oslo_city.jpg",
             gps_latitude=59.9139,
@@ -145,7 +145,7 @@ gps_photos = PhotoEggCollection(
             description="Photo taken in Oslo with GPS"
         ),
         
-        "bergen_location": create_test_photo_egg(
+        "bergen_location": create_test_photo_create_schema(
             hothash="gps_bergen_hash",
             filename="bergen_harbor.jpg",
             gps_latitude=60.3913,
@@ -153,7 +153,7 @@ gps_photos = PhotoEggCollection(
             description="Photo taken in Bergen with GPS"
         ),
         
-        "no_gps": create_test_photo_egg(
+        "no_gps": create_test_photo_create_schema(
             hothash="no_gps_hash",
             filename="studio_portrait.jpg",
             description="Studio photo without GPS coordinates"

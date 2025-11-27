@@ -606,18 +606,18 @@ class PhotoService:
         """Generate SHA256 hash from hotpreview bytes"""
         return hashlib.sha256(hotpreview_bytes).hexdigest()
 
-    def create_photo_from_photoegg(self, photoegg_request, user_id: int) -> Photo:
+    def create_photo_from_photo_create_schema(self, photo_create_request, user_id: int) -> Photo:
         """
-        Create Photo from PhotoEgg (new architecture)
+        Create Photo from PhotoCreateSchema (new architecture)
         
-        PhotoEgg comes from imalink-core server and contains all image processing results.
+        PhotoCreateSchema comes from imalink-core server and contains all image processing results.
         Backend only stores metadata and previews.
         
         If import_session_id is not provided in the request, automatically uses the user's
         protected default session. This allows immediate photo uploads without setup.
         
         Args:
-            photoegg_request: PhotoEggRequest with photo_egg and user metadata
+            photo_create_request: PhotoCreateSchemaRequest with photo_egg and user metadata
             user_id: Owner user ID
             
         Returns:
@@ -630,10 +630,10 @@ class PhotoService:
         import base64
         from src.repositories.import_session_repository import ImportSessionRepository
         
-        egg = photoegg_request.photo_egg
+        egg = photo_create_request.photo_egg
         
         # Resolve import_session_id - use protected default if not provided
-        import_session_id = photoegg_request.import_session_id
+        import_session_id = photo_create_request.import_session_id
         if import_session_id is None:
             # Find user's protected default session
             import_repo = ImportSessionRepository(self.db)
@@ -648,7 +648,7 @@ class PhotoService:
             import_session_id = default_session.id
         
         # Resolve author_id - use user's default self-author if not provided
-        author_id = photoegg_request.author_id
+        author_id = photo_create_request.author_id
         if author_id is None:
             # Find user's default self-author
             from src.repositories.user_repository import UserRepository
@@ -671,11 +671,11 @@ class PhotoService:
         # Decode base64 hotpreview
         hotpreview_bytes = base64.b64decode(egg.hotpreview_base64)
         
-        # Build exif_dict - PhotoEgg's exif_dict is complete EXIF "DNA"
+        # Build exif_dict - PhotoCreateSchema's exif_dict is complete EXIF "DNA"
         # We store it readonly, never modify it
         exif_dict = egg.exif_dict or {}
         
-        # Add PhotoEgg fields to exif_dict for complete preservation
+        # Add PhotoCreateSchema fields to exif_dict for complete preservation
         # (These are also stored in indexed columns for queries)
         if egg.camera_make:
             exif_dict['camera_make'] = egg.camera_make
@@ -698,7 +698,7 @@ class PhotoService:
         if egg.gps_longitude:
             exif_dict['gps_longitude'] = egg.gps_longitude
         
-        # Create Photo with direct field mapping (PhotoEgg is flat!)
+        # Create Photo with direct field mapping (PhotoCreateSchema is flat!)
         photo = Photo(
             user_id=user_id,
             hothash=egg.hothash,
@@ -718,8 +718,8 @@ class PhotoService:
             import_session_id=import_session_id,
             
             # User organization
-            rating=photoegg_request.rating,
-            visibility=photoegg_request.visibility,
+            rating=photo_create_request.rating,
+            visibility=photo_create_request.visibility,
             author_id=author_id,  # Resolved to default if not provided
         )
         
@@ -739,8 +739,8 @@ class PhotoService:
         self.db.refresh(photo)
         
         # TODO: Add tags if provided (implement tag association later)
-        # if photoegg_request.tags:
-        #     for tag_name in photoegg_request.tags:
+        # if photo_create_request.tags:
+        #     for tag_name in photo_create_request.tags:
         #         # Associate tag with photo
         #         pass
         

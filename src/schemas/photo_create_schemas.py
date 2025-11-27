@@ -1,10 +1,10 @@
 """
-PhotoEgg Schemas - Pydantic models for PhotoEgg API
+PhotoCreateSchema - Pydantic models for Photo creation API
 
-PhotoEgg is the complete JSON package from imalink-core server containing
+PhotoCreateSchema is the complete JSON package from imalink-core server containing
 all image processing results (previews, metadata, hashes).
 
-STRUCTURE: PhotoEgg has FLAT structure matching imalink-core output.
+STRUCTURE: PhotoCreateSchema has FLAT structure matching imalink-core output.
 All EXIF fields are at root level for direct access.
 """
 from typing import Optional, Dict, Any
@@ -12,9 +12,9 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 
-class PhotoEggCreate(BaseModel):
+class PhotoCreateSchema(BaseModel):
     """
-    PhotoEgg from imalink-core server (FLAT structure)
+    PhotoCreateSchema from imalink-core server (FLAT structure)
     
     This matches the actual JSON from imalink-core service.
     All EXIF metadata is at root level (not nested).
@@ -67,17 +67,17 @@ class PhotoEggCreate(BaseModel):
     file_size_bytes: int = Field(0, description="Original file size in bytes")
 
 
-class PhotoEggRequest(BaseModel):
+class PhotoCreateRequest(BaseModel):
     """
-    Complete request to create Photo from PhotoEgg
+    Complete request to create Photo from PhotoCreateSchema
     
-    Combines PhotoEgg data with user-specific organization metadata.
+    Combines PhotoCreateSchema data with user-specific organization metadata.
     
     If import_session_id is not provided, the user's default "Quick Add" session is used.
     This allows immediate photo uploads without requiring import session setup.
     """
-    # PhotoEgg from imalink-core
-    photo_egg: PhotoEggCreate
+    # PhotoCreateSchema from imalink-core
+    photo_egg: PhotoCreateSchema
     
     # Import context (OPTIONAL) - defaults to user's "Quick Add" session if not provided
     import_session_id: Optional[int] = Field(
@@ -92,9 +92,9 @@ class PhotoEggRequest(BaseModel):
     author_id: Optional[int] = Field(None, description="Optional author association")
 
 
-class PhotoEggResponse(BaseModel):
+class PhotoCreateResponse(BaseModel):
     """
-    Response after creating Photo from PhotoEgg
+    Response after creating Photo from PhotoCreateSchema
     """
     id: int
     hothash: str

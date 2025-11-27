@@ -76,7 +76,7 @@ class TestPhotosAPI:
         
         assert response.status_code == 404
     
-    # NOTE: /new-photo endpoint removed - use POST /photoegg instead
+    # NOTE: /new-photo endpoint removed - use POST /create instead
     # Tests for photo creation now in test_real_photoegg_usage.py
 
 
@@ -115,10 +115,10 @@ class TestPhotosErrorHandling:
 class TestPhotosArchitecture:
     """Test 100% Photo-centric architecture principles"""
     
-    def test_photoegg_endpoint_exists(self, authenticated_client):
-        """POST /photoegg endpoint should be accessible"""
+    def test_create_endpoint_exists(self, authenticated_client):
+        """POST /create endpoint should be accessible"""
         # Should return validation error (not 404 or 405)
-        response = authenticated_client.post("/api/v1/photos/photoegg", json={}, headers=authenticated_client.auth_headers)
+        response = authenticated_client.post("/api/v1/photos/create", json={}, headers=authenticated_client.auth_headers)
         
         assert response.status_code in [400, 422]
     
