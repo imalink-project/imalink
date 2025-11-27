@@ -617,7 +617,7 @@ class PhotoService:
         protected default session. This allows immediate photo uploads without setup.
         
         Args:
-            photo_create_request: PhotoCreateSchemaRequest with photo_egg and user metadata
+            photo_create_request: PhotoCreateSchemaRequest with photo_create_schema and user metadata
             user_id: Owner user ID
             
         Returns:
@@ -630,7 +630,7 @@ class PhotoService:
         import base64
         from src.repositories.import_session_repository import ImportSessionRepository
         
-        egg = photo_create_request.photo_egg
+        egg = photo_create_request.photo_create_schema
         
         # Resolve import_session_id - use protected default if not provided
         import_session_id = photo_create_request.import_session_id

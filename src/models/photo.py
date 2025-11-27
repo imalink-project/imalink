@@ -26,7 +26,7 @@ class Photo(Base, TimestampMixin):
     
     1. Desktop App (Recommended - Batch Processing):
        - User selects files → Desktop app → imalink-core (local) → PhotoCreateSchema
-       - Desktop app → Backend POST /photos/photoegg → Photo created
+       - Desktop app → Backend POST /photos/create → Photo created
        - Fast: Local processing, no file transfer to server
        - Original files remain on user's computer
     

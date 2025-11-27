@@ -93,7 +93,7 @@ def search_photos(
         raise HTTPException(status_code=500, detail=f"Failed to search photos: {str(e)}")
 
 
-# NOTE: /new-photo endpoint REMOVED - use POST /photoegg instead
+# NOTE: /new-photo endpoint REMOVED - use POST /create instead
 # PhotoCreateSchema endpoint is the single unified way to create photos
 
 
@@ -488,7 +488,7 @@ async def create_photo(
     except DuplicateImageError as e:
         # Photo with this hothash already exists - return existing
         existing_photo = photo_service.get_photo_by_hothash(
-            hothash=request.photo_egg.hothash,
+            hothash=request.photo_create_schema.hothash,
             user_id=getattr(current_user, 'id')
         )
         return PhotoCreateResponse(
@@ -530,7 +530,7 @@ async def register_image(
     1. Frontend uploads raw image file (multipart/form-data)
     2. Backend sends to imalink-core server (localhost:8001) for processing
     3. imalink-core returns PhotoCreateSchema (metadata + previews)
-    4. Backend stores PhotoCreateSchema (same as POST /photoegg endpoint)
+    4. Backend stores PhotoCreateSchema (same as POST /create endpoint)
     
     Note: Original image is NOT stored on server, only metadata and previews.
     
@@ -565,7 +565,7 @@ async def register_image(
         
         # Build PhotoCreateReq with user metadata
         photo_create_request = PhotoCreateReq(
-            photo_egg=photo_create_schema,
+            photo_create_schema=photo_create_schema,
             import_session_id=import_session_id,  # Optional, uses protected default if None
             rating=rating,
             visibility=visibility,

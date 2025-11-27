@@ -2,10 +2,10 @@
 Tests for Photo visibility feature (Phase 1)
 
 Tests visibility UPDATE and ACCESS CONTROL only.
-Photo creation with visibility is tested in test_real_photoegg_usage.py
+Photo creation with visibility is tested in test_real_photo_create_schema_usage.py
 """
 import pytest
-from tests.fixtures.real_photo_eggs import load_photo_create_schema, BASIC
+from tests.fixtures.real_photo_create_schemas import load_photo_create_schema, BASIC
 
 
 class TestPhotoVisibilityUpdate:
@@ -13,12 +13,12 @@ class TestPhotoVisibilityUpdate:
     
     def test_update_visibility_to_public(self, authenticated_client, import_session):
         """Update photo visibility from private to public"""
-        # Create private photo via PhotoEgg
+        # Create private photo via PhotoCreateSchema
         photo_create_data = load_photo_create_schema(BASIC)
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
-                "photo_egg": photo_create_data,
+                "photo_create_schema": photo_create_data,
                 "rating": 0,
                 "visibility": "private",
                 "tags": [],
@@ -48,7 +48,7 @@ class TestPhotoVisibilityUpdate:
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
-                "photo_egg": photo_create_data,
+                "photo_create_schema": photo_create_data,
                 "rating": 0,
                 "visibility": "private",
                 "tags": [],
@@ -74,7 +74,7 @@ class TestPhotoVisibilityUpdate:
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
-                "photo_egg": photo_create_data,
+                "photo_create_schema": photo_create_data,
                 "rating": 0,
                 "visibility": "private",
                 "tags": [],
@@ -103,7 +103,7 @@ class TestPhotoVisibilityAccessControl:
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
-                "photo_egg": photo_create_data,
+                "photo_create_schema": photo_create_data,
                 "rating": 0,
                 "visibility": "private",
                 "tags": [],
@@ -128,7 +128,7 @@ class TestPhotoVisibilityAccessControl:
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
-                "photo_egg": photo_create_data,
+                "photo_create_schema": photo_create_data,
                 "rating": 0,
                 "visibility": "private",
                 "tags": [],
@@ -148,7 +148,7 @@ class TestPhotoVisibilityAccessControl:
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
-                "photo_egg": photo_create_data,
+                "photo_create_schema": photo_create_data,
                 "rating": 0,
                 "visibility": "public",
                 "tags": [],
@@ -169,7 +169,7 @@ class TestPhotoVisibilityAccessControl:
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
-                "photo_egg": photo_create_data,
+                "photo_create_schema": photo_create_data,
                 "rating": 0,
                 "visibility": "authenticated",
                 "tags": [],
@@ -193,7 +193,7 @@ class TestPhotoVisibilitySpacePhase1:
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
-                "photo_egg": photo_create_data,
+                "photo_create_schema": photo_create_data,
                 "rating": 0,
                 "visibility": "space",
                 "tags": [],

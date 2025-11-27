@@ -19,7 +19,7 @@ class TestRegisterImageEndpoint:
     @pytest.fixture
     def mock_photo_create_response(self):
         """Load a real PhotoCreateSchema JSON fixture to use as mock response"""
-        fixture_path = Path(__file__).parent.parent / "fixtures" / "photo_eggs" / "tiny.json"
+        fixture_path = Path(__file__).parent.parent / "fixtures" / "photo_create_schemas" / "tiny.json"
         with open(fixture_path, 'r') as f:
             return json.load(f)
     

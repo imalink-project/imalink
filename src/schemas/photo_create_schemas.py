@@ -77,7 +77,7 @@ class PhotoCreateRequest(BaseModel):
     This allows immediate photo uploads without requiring import session setup.
     """
     # PhotoCreateSchema from imalink-core
-    photo_egg: PhotoCreateSchema
+    photo_create_schema: PhotoCreateSchema
     
     # Import context (OPTIONAL) - defaults to user's "Quick Add" session if not provided
     import_session_id: Optional[int] = Field(

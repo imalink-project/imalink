@@ -77,7 +77,7 @@ class TestPhotosAPI:
         assert response.status_code == 404
     
     # NOTE: /new-photo endpoint removed - use POST /create instead
-    # Tests for photo creation now in test_real_photoegg_usage.py
+    # Tests for photo creation now in test_real_photo_create_schema_usage.py
 
 
 class TestPhotosErrorHandling:
