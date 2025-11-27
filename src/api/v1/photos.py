@@ -30,7 +30,7 @@ from src.schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, 
     PhotoSearchRequest, TimeLocCorrectionRequest, ViewCorrectionRequest
 )
-from src.schemas.photo_create_schemas import PhotoCreateRequest as PhotoCreateReq, PhotoCreateResponse
+from src.schemas.photo_create_schemas import PhotoCreateRequest as PhotoCreateReq, PhotoCreateResponse, PhotoCreateSchema
 from src.schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
@@ -565,14 +565,18 @@ async def register_image(
             coldpreview_size=coldpreview_size
         )
         
-        # Build PhotoCreateReq with user metadata
+        # Set user organization fields (user_id will be set by service from authenticated user)
+        photo_create_schema_dict = photo_create_schema.model_dump()
+        photo_create_schema_dict["rating"] = rating
+        photo_create_schema_dict["visibility"] = visibility
+        photo_create_schema_dict["import_session_id"] = import_session_id
+        photo_create_schema_dict["author_id"] = author_id
+        photo_create_schema = PhotoCreateSchema(**photo_create_schema_dict)
+        
+        # Build PhotoCreateReq
         photo_create_request = PhotoCreateReq(
             photo_create_schema=photo_create_schema,
-            import_session_id=import_session_id,  # Optional, uses protected default if None
-            rating=rating,
-            visibility=visibility,
             tags=[],  # No tags for quick upload
-            author_id=author_id
         )
         
         # Create photo using existing PhotoCreateSchema logic

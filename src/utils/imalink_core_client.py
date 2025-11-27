@@ -72,5 +72,14 @@ class ImalinkCoreClient:
             # Parse and validate PhotoCreateSchema JSON
             photo_create_dict = response.json()
             
+            # imalink-core returns old PhotoEgg format (v1), adapt to new PhotoCreateSchema (v2)
+            # Note: user_id NOT included - backend sets it from JWT token
+            from src.utils.schema_adapter import adapt_old_photo_create_schema
+            adapted_dict = adapt_old_photo_create_schema(
+                old_schema=photo_create_dict,
+                rating=0,
+                visibility="private"
+            )
+            
             # Validate using Pydantic schema
-            return PhotoCreateSchema(**photo_create_dict)
+            return PhotoCreateSchema(**adapted_dict)

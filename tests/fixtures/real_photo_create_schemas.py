@@ -29,7 +29,6 @@ FIXTURES_DIR = Path(__file__).parent / "photo_create_schemas"
 
 def load_photo_create_schema(
     name: str,
-    user_id: int = 1,
     rating: int = 0,
     category: str | None = None,
     visibility: str = "private",
@@ -40,11 +39,12 @@ def load_photo_create_schema(
     Load a real PhotoCreateSchema fixture by name.
     
     ⚠️ NOTE: Fixtures are from imalink-core v1 (old format).
-    This function automatically adapts them to v2 structure (imalink-schemas).
+    This function automatically adapts them to v2 structure.
+    
+    IMPORTANT: user_id is NOT included - backend sets it from JWT token.
     
     Args:
         name: Fixture name without .json extension (e.g., "basic", "gps")
-        user_id: User ID for the photo (default: 1)
         rating: Star rating 0-5 (default: 0)
         category: Photo category (default: None)
         visibility: Visibility level (default: "private")
@@ -52,17 +52,17 @@ def load_photo_create_schema(
         author_id: Author ID (default: None)
         
     Returns:
-        PhotoCreateSchema dict matching imalink-schemas v2 format
+        PhotoCreateSchema dict (WITHOUT user_id - backend adds it)
         
     Raises:
         FileNotFoundError: If fixture doesn't exist
         
     Examples:
-        >>> schema = load_photo_create_schema("basic", user_id=1, rating=4)
+        >>> schema = load_photo_create_schema("basic", rating=4)
         >>> schema["hothash"]  # Real SHA256 hash
         'abc123...'
-        >>> schema["user_id"]  # Now included
-        1
+        >>> "user_id" in schema  # False - backend sets it
+        False
     """
     from tests.fixtures.schema_adapter import adapt_old_photo_create_schema
     
@@ -83,10 +83,9 @@ def load_photo_create_schema(
     with open(fixture_path) as f:
         old_schema = json.load(f)
     
-    # Adapt old format to new imalink-schemas v2 format
+    # Adapt old format to new format (WITHOUT user_id)
     return adapt_old_photo_create_schema(
         old_schema,
-        user_id=user_id,
         rating=rating,
         category=category,
         visibility=visibility,

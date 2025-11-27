@@ -634,10 +634,8 @@ class PhotoService:
         
         schema = photo_create_request.photo_create_schema
         
-        # Security: Override user_id from request (use authenticated user)
-        # Frontend sets this, but we verify it matches current_user
-        if schema.user_id != user_id:
-            raise ValueError(f"user_id mismatch: schema has {schema.user_id}, but authenticated user is {user_id}")
+        # Security: user_id is set from authenticated user (NOT from schema)
+        # PhotoCreateSchema does NOT contain user_id - backend adds it
         
         # Resolve import_session_id - use protected default if not provided
         import_session_id = schema.import_session_id
@@ -718,9 +716,6 @@ class PhotoService:
             coldpreview_bytes = base64.b64decode(schema.coldpreview_base64)
             relative_path, _, _, _ = repository.save_coldpreview(schema.hothash, coldpreview_bytes)
             photo.coldpreview_path = relative_path
-        elif schema.coldpreview_path:
-            # If path provided directly (alternative storage)
-            photo.coldpreview_path = schema.coldpreview_path
         
         # Save Photo first
         self.db.add(photo)

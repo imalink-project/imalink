@@ -11,12 +11,12 @@ from tests.fixtures.real_photo_create_schemas import load_photo_create_schema, B
 class TestPhotoVisibilityUpdate:
     """Test updating photo visibility"""
     
-    def test_update_visibility_to_public(self, authenticated_client, import_session, test_user):
+    def test_update_visibility_to_public(self, authenticated_client, import_session):
         """Update photo visibility from private to public"""
         # Create private photo via PhotoCreateSchema
         photo_create_data = load_photo_create_schema(
             BASIC,
-            user_id=test_user.id,
+            
             rating=0,
             visibility="private",
             import_session_id=import_session.id
@@ -47,15 +47,18 @@ class TestPhotoVisibilityUpdate:
     def test_update_visibility_to_authenticated(self, authenticated_client, import_session):
         """Update photo visibility to authenticated"""
         # Create private photo
-        photo_create_data = load_photo_create_schema(BASIC)
+        photo_create_data = load_photo_create_schema(
+            BASIC,
+            
+            rating=0,
+            visibility="private",
+            import_session_id=import_session.id
+        )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
                 "photo_create_schema": photo_create_data,
-                "rating": 0,
-                "visibility": "private",
-                "tags": [],
-                "import_session_id": import_session.id
+                "tags": []
             },
             headers=authenticated_client.auth_headers
         )
@@ -73,15 +76,18 @@ class TestPhotoVisibilityUpdate:
     
     def test_update_visibility_invalid_value(self, authenticated_client, import_session):
         """Updating with invalid visibility should fail"""
-        photo_create_data = load_photo_create_schema(BASIC)
+        photo_create_data = load_photo_create_schema(
+            BASIC,
+            
+            rating=0,
+            visibility="private",
+            import_session_id=import_session.id
+        )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
                 "photo_create_schema": photo_create_data,
-                "rating": 0,
-                "visibility": "private",
-                "tags": [],
-                "import_session_id": import_session.id
+                "tags": []
             },
             headers=authenticated_client.auth_headers
         )
@@ -102,15 +108,18 @@ class TestPhotoVisibilityAccessControl:
     
     def test_owner_sees_own_private_photo(self, authenticated_client, import_session):
         """Owner can see their own private photos"""
-        photo_create_data = load_photo_create_schema(BASIC)
+        photo_create_data = load_photo_create_schema(
+            BASIC,
+            
+            rating=0,
+            visibility="private",
+            import_session_id=import_session.id
+        )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
                 "photo_create_schema": photo_create_data,
-                "rating": 0,
-                "visibility": "private",
-                "tags": [],
-                "import_session_id": import_session.id
+                "tags": []
             },
             headers=authenticated_client.auth_headers
         )
@@ -127,15 +136,18 @@ class TestPhotoVisibilityAccessControl:
     
     def test_anonymous_cannot_see_private_photo(self, client, authenticated_client, import_session):
         """Anonymous users cannot see private photos"""
-        photo_create_data = load_photo_create_schema(BASIC)
+        photo_create_data = load_photo_create_schema(
+            BASIC,
+            
+            rating=0,
+            visibility="private",
+            import_session_id=import_session.id
+        )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
                 "photo_create_schema": photo_create_data,
-                "rating": 0,
-                "visibility": "private",
-                "tags": [],
-                "import_session_id": import_session.id
+                "tags": []
             },
             headers=authenticated_client.auth_headers
         )
@@ -147,15 +159,18 @@ class TestPhotoVisibilityAccessControl:
     
     def test_anonymous_can_see_public_photo(self, client, authenticated_client, import_session):
         """Anonymous users CAN see public photos"""
-        photo_create_data = load_photo_create_schema(BASIC)
+        photo_create_data = load_photo_create_schema(
+            BASIC,
+            
+            rating=0,
+            visibility="public",
+            import_session_id=import_session.id
+        )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
                 "photo_create_schema": photo_create_data,
-                "rating": 0,
-                "visibility": "public",
-                "tags": [],
-                "import_session_id": import_session.id
+                "tags": []
             },
             headers=authenticated_client.auth_headers
         )
@@ -168,15 +183,18 @@ class TestPhotoVisibilityAccessControl:
     
     def test_anonymous_cannot_see_authenticated_photo(self, client, authenticated_client, import_session):
         """Anonymous users cannot see authenticated-only photos"""
-        photo_create_data = load_photo_create_schema(BASIC)
+        photo_create_data = load_photo_create_schema(
+            BASIC,
+            
+            rating=0,
+            visibility="authenticated",
+            import_session_id=import_session.id
+        )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
                 "photo_create_schema": photo_create_data,
-                "rating": 0,
-                "visibility": "authenticated",
-                "tags": [],
-                "import_session_id": import_session.id
+                "tags": []
             },
             headers=authenticated_client.auth_headers
         )
@@ -192,15 +210,18 @@ class TestPhotoVisibilitySpacePhase1:
     
     def test_space_visibility_treated_as_private(self, client, authenticated_client, import_session):
         """In Phase 1, space visibility behaves like private"""
-        photo_create_data = load_photo_create_schema(BASIC)
+        photo_create_data = load_photo_create_schema(
+            BASIC,
+            
+            rating=0,
+            visibility="space",
+            import_session_id=import_session.id
+        )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
             json={
                 "photo_create_schema": photo_create_data,
-                "rating": 0,
-                "visibility": "space",
-                "tags": [],
-                "import_session_id": import_session.id
+                "tags": []
             },
             headers=authenticated_client.auth_headers
         )
