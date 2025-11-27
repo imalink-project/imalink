@@ -26,20 +26,23 @@ class TestPhotoCreationWithRealPhotoCreateSchemas:
     def test_create_photo_from_basic_photo_create_schema(self, client, auth_headers, import_session):
         """Basic PhotoCreateSchema → Photo creation flow"""
         
-        photo_create_data = load_photo_create_schema(BASIC)
+        photo_create_data = load_photo_create_schema(
+            BASIC,
+            rating=0,
+            visibility="private",
+            import_session_id=import_session.id
+        )
         
-        # Verify it has expected structure
+        # Verify it has expected NEW structure
         assert "hothash" in photo_create_data
         assert "hotpreview_base64" in photo_create_data
-        assert "primary_filename" in photo_create_data
+        assert "image_file_list" in photo_create_data  # NEW: replaces primary_filename
+        assert "exif_dict" in photo_create_data        # NEW: camera data here
         
-        # Wrap PhotoCreateSchema in PhotoCreateSchemaRequest format
+        # PhotoCreateRequest format (simplified - PhotoCreateSchema contains all fields)
         request_body = {
             "photo_create_schema": photo_create_data,
-            "rating": 0,
-            "visibility": "private",
-            "tags": [],
-            "import_session_id": import_session.id
+            "tags": []
         }
         
         # Create photo via PhotoCreateSchema API
@@ -59,14 +62,16 @@ class TestPhotoCreationWithRealPhotoCreateSchemas:
     def test_create_landscape_photo(self, client, auth_headers, import_session):
         """Create photo from landscape orientation PhotoCreateSchema"""
         
-        photo_create_data = load_photo_create_schema(LANDSCAPE)
+        photo_create_data = load_photo_create_schema(
+            LANDSCAPE,
+            rating=4,
+            visibility="public",
+            import_session_id=import_session.id
+        )
         
         request_body = {
             "photo_create_schema": photo_create_data,
-            "rating": 4,
-            "visibility": "public",
-            "tags": ["landscape", "nature"],
-            "import_session_id": import_session.id
+            "tags": ["landscape", "nature"]
         }
         
         response = client.post(
@@ -88,17 +93,19 @@ class TestPhotoCreationWithRealPhotoCreateSchemas:
     def test_create_photo_with_coldpreview(self, client, auth_headers, import_session):
         """Create photo that includes coldpreview"""
         
-        photo_create_data = load_photo_create_schema(FUJI_WITH_COLDPREVIEW)
+        photo_create_data = load_photo_create_schema(
+            FUJI_WITH_COLDPREVIEW,
+            rating=5,
+            visibility="private",
+            import_session_id=import_session.id
+        )
         
         # This PhotoCreateSchema has coldpreview
         assert photo_create_data["coldpreview_base64"] is not None
         
         request_body = {
             "photo_create_schema": photo_create_data,
-            "rating": 5,
-            "visibility": "private",
-            "tags": [],
-            "import_session_id": import_session.id
+            "tags": []
         }
         
         response = client.post(

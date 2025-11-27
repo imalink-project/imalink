@@ -594,6 +594,7 @@ async def register_image(
             height=photo.height,
             taken_at=photo.taken_at,
             created_at=photo.created_at,
+            user_id=photo.user_id,
             is_duplicate=False
         )
         
@@ -612,6 +613,7 @@ async def register_image(
             height=existing_photo.height,
             taken_at=existing_photo.taken_at,
             created_at=existing_photo.created_at,
+            user_id=existing_photo.user_id,
             is_duplicate=True
         )
     except httpx.HTTPStatusError as e:
