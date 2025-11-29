@@ -36,10 +36,10 @@ def load_photo_create_schema(
     author_id: int | None = None,
 ) -> Dict[str, Any]:
     """
-    Load a real PhotoCreateSchema fixture by name.
+    Load a PhotoCreateSchema fixture by name and add user metadata.
     
-    ⚠️ NOTE: Fixtures are from imalink-core v1 (old format).
-    This function automatically adapts them to v2 structure.
+    Fixtures are stored in OLD format (imalink-core v1) and need manual conversion.
+    TODO: Regenerate fixtures in new format when imalink-core is updated.
     
     IMPORTANT: user_id is NOT included - backend sets it from JWT token.
     
@@ -64,8 +64,6 @@ def load_photo_create_schema(
         >>> "user_id" in schema  # False - backend sets it
         False
     """
-    from tests.fixtures.schema_adapter import adapt_old_photo_create_schema
-    
     fixture_path = FIXTURES_DIR / f"{name}.json"
     
     if not fixture_path.exists():
@@ -73,7 +71,7 @@ def load_photo_create_schema(
         if not available:
             raise FileNotFoundError(
                 f"No PhotoCreateSchema fixtures found in {FIXTURES_DIR}. "
-                "Run: uv run python scripts/generate_photo_create_schema_fixtures.py"
+                "Fixtures need to be regenerated in new format."
             )
         raise FileNotFoundError(
             f"PhotoCreateSchema fixture '{name}' not found. "
@@ -83,15 +81,50 @@ def load_photo_create_schema(
     with open(fixture_path) as f:
         old_schema = json.load(f)
     
-    # Adapt old format to new format (WITHOUT user_id)
-    return adapt_old_photo_create_schema(
-        old_schema,
-        rating=rating,
-        category=category,
-        visibility=visibility,
-        import_session_id=import_session_id,
-        author_id=author_id,
-    )
+    # Manual conversion from old format to new format
+    # (inline version of removed schema_adapter)
+    exif_dict = old_schema.get("exif_dict", {}).copy()
+    
+    # Move camera fields into exif_dict if at root level
+    for field in ["camera_make", "camera_model", "iso", "aperture", "shutter_speed", 
+                  "focal_length", "lens_model", "lens_make"]:
+        if field in old_schema and field not in exif_dict:
+            exif_dict[field] = old_schema[field]
+    
+    # Build image_file_list from primary_filename
+    image_file_list = []
+    if "primary_filename" in old_schema:
+        image_file_list.append({
+            "filename": old_schema["primary_filename"],
+            "file_size": old_schema.get("file_size_bytes", 0),
+        })
+    
+    # Build new format schema
+    new_schema = {
+        "hothash": old_schema["hothash"],
+        "hotpreview_base64": old_schema["hotpreview_base64"],
+        "exif_dict": exif_dict if exif_dict else None,
+        "width": old_schema["width"],
+        "height": old_schema["height"],
+        "taken_at": old_schema.get("taken_at"),
+        "gps_latitude": old_schema.get("gps_latitude"),
+        "gps_longitude": old_schema.get("gps_longitude"),
+        "rating": rating,
+        "category": category,
+        "visibility": visibility,
+        "import_session_id": import_session_id,
+        "author_id": author_id,
+        "stack_id": None,
+        "timeloc_correction": None,
+        "view_correction": None,
+        "image_file_list": image_file_list,
+    }
+    
+    # Optional coldpreview
+    if "coldpreview_base64" in old_schema:
+        new_schema["coldpreview_base64"] = old_schema["coldpreview_base64"]
+    
+    return new_schema
 
 
 def load_photo_create_schema_bytes(name: str) -> bytes:
