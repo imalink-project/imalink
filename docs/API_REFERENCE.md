@@ -1,17 +1,19 @@
-# ImaLink API Reference v2.3 (PhotoEgg Architecture)
+# ImaLink API Reference v2.4 (PhotoCreateSchema Architecture)
 
 **Base URL**: `http://localhost:8000/api/v1`  
 **Authentication**: JWT Bearer tokens required for most endpoints (see individual endpoints for details)
 
-**What's New in v2.3:**
-- **PhotoEgg Architecture**: All photo creation now uses pre-processed PhotoEgg format
-- **Desktop App Flow**: Process images locally with imalink-core → Send PhotoEgg to backend (fast, no upload)
-- **Web Upload Flow**: Upload image → Backend forwards to imalink-core server → PhotoEgg stored
+**What's New in v2.4:**
+- **PhotoCreateSchema Architecture**: All photo creation now uses PhotoCreateSchema from imalink-schemas package
+- **Desktop App Flow**: Process images locally with imalink-core → Send PhotoCreateSchema to backend (fast, no upload)
+- **Web Upload Flow**: Upload image → Backend forwards to imalink-core server → PhotoCreateSchema stored
 - **Backend Never Processes Images**: All image processing delegated to imalink-core service
+- **Security Enhancement**: user_id is NEVER in PhotoCreateSchema - backend sets it from JWT token
+- **Shared Schema Package**: PhotoCreateSchema now in imalink-schemas v2.1.0+ (shared across all imalink modules)
 - **Category Field**: User-defined photo categorization (e.g., "vacation", "work", "family")
 - **Protected ImportSessions**: Auto-created "Quick Add" session per user (cannot be deleted)
 
-**Important Change in v2.3:** `POST /api/v1/photos/new-photo` has been removed. Use `POST /api/v1/photos/photoegg` (desktop app) or `POST /api/v1/photos/register-image` (web app) instead. See [Migration Guide](API_CHANGELOG_2025_11_12.md) for details.
+**Important Change in v2.4:** `POST /api/v1/photos/new-photo` has been removed. Use `POST /api/v1/photos/create` (primary) or `POST /api/v1/photos/register-image` (web upload) instead.
 
 ---
 
@@ -1121,83 +1123,90 @@ Authorization: Bearer <token>
 }
 ```
 
-### Create Photo from PhotoEgg (Desktop App - PRIMARY METHOD)
+### Create Photo from PhotoCreateSchema (Desktop App - PRIMARY METHOD)
 ```http
-POST /api/v1/photos/photoegg
+POST /api/v1/photos/create
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "photo_egg": {
+  "photo_create_schema": {
     "hothash": "a6317d064f4d83ff419b9deaf35ba537ff6a31e6722d7df66510d8a3b5d2e281",
     "hotpreview_base64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUDBAQEAwUE...",
     "coldpreview_base64": null,
     "width": 4000,
     "height": 3000,
-    "primary_filename": "IMG_001.jpg",
     "taken_at": "2025-10-15T14:30:00Z",
-    "camera_make": "Canon",
-    "camera_model": "EOS R5",
     "gps_latitude": 59.9139,
     "gps_longitude": 10.7522,
-    "has_gps": true,
-    "iso": 400,
-    "aperture": 2.8,
-    "shutter_speed": "1/250",
-    "focal_length": 50,
-    "lens_model": "RF 50mm F1.2 L USM",
-    "lens_make": "Canon"
+    "exif_dict": {
+      "camera_make": "Canon",
+      "camera_model": "EOS R5",
+      "iso": 400,
+      "aperture": 2.8,
+      "shutter_speed": "1/250",
+      "focal_length": 50,
+      "lens_model": "RF 50mm F1.2 L USM",
+      "lens_make": "Canon",
+      "has_gps": true
+    },
+    "image_file_list": [
+      {
+        "filename": "IMG_001.jpg",
+        "file_size": 8234567
+      }
+    ],
+    "rating": 0,
+    "visibility": "private",
+    "import_session_id": 5,
+    "author_id": null,
+    "category": null
   },
-  "import_session_id": 5,
-  "image_file": {
-    "filename": "IMG_001.jpg",
-    "file_path": "/Users/kjell/Photos/2024/IMG_001.jpg",
-    "file_size": 8234567,
-    "file_format": "JPEG"
-  },
-  "rating": 0,
-  "visibility": "private",
-  "author_id": null,
-  "category": null
+  "tags": []
 }
 ```
 
-**Description:** Create a Photo from a pre-processed PhotoEgg. This is the **primary method** for desktop applications. The desktop app processes images locally with imalink-core and sends only metadata to the server.
+**Description:** Create a Photo from a pre-processed PhotoCreateSchema. This is the **primary method** for desktop applications. The desktop app processes images locally with imalink-core and sends only metadata to the server.
 
 **Architecture:**
-1. Desktop app → Local imalink-core → PhotoEgg JSON
-2. Desktop app → Backend POST /photoegg → Photo created
+1. Desktop app → Local imalink-core → PhotoCreateSchema JSON
+2. Desktop app → Backend POST /photos/create → Photo created
 3. Original files remain on user's computer
+4. **user_id is NOT in PhotoCreateSchema** - backend sets it from JWT token (security)
 
 **Required Fields:**
-- `photo_egg` (PhotoEggCreate): Pre-processed photo metadata from imalink-core
+- `photo_create_schema` (PhotoCreateSchema): Pre-processed photo metadata from imalink-core
   - `hothash` (string): SHA256 hash of hotpreview (unique identifier)
-  - `hotpreview_base64` (string): Base64-encoded 150x150px JPEG thumbnail
+  - `hotpreview_base64` (string): Base64-encoded JPEG preview (~200px)
   - `width` (integer): Original image width
   - `height` (integer): Original image height
-  - `primary_filename` (string): Original filename
+  - `image_file_list` (array): List of source files
+    - `filename` (string): Original filename
+    - `file_size` (integer): File size in bytes (default: 0)
+- `tags` (array): Tag names to associate with photo (default: [])
 
-**Optional Fields:**
-- `import_session_id` (integer): Import batch ID (defaults to user's "Quick Add" session if not provided)
-- `image_file` (ImageFileCreate): File tracking metadata
-  - `filename` (string): Original filename
-  - `file_path` (string): Local file path (for desktop app reference)
-  - `file_size` (integer): File size in bytes
-  - `file_format` (string): Format (JPEG, PNG, CR2, etc.)
-- `rating` (integer): 0-5 star rating
-- `visibility` (string): private|space|authenticated|public
-- `author_id` (integer): Photographer ID (defaults to user's self-author if not provided)
+**Optional Fields in PhotoCreateSchema:**
+- `exif_dict` (object): Complete EXIF metadata (flexible JSON)
+  - `camera_make`, `camera_model`, `iso`, `aperture`, `shutter_speed`, `focal_length`, etc.
+- `taken_at` (datetime): When photo was taken (indexed for timeline queries)
+- `gps_latitude`, `gps_longitude` (float): GPS coordinates (indexed for map queries)
+- `coldpreview_base64` (string): Optional larger preview
+- `rating` (integer): 0-5 star rating (default: 0)
+- `visibility` (string): private|space|authenticated|public (default: private)
+- `import_session_id` (integer): Import batch ID (defaults to user's "Quick Add" session)
+- `author_id` (integer): Photographer ID (defaults to user's self-author)
 - `category` (string): User-defined category (e.g., "vacation", "work")
+- `stack_id` (integer): Photo stack ID for related images
+- `timeloc_correction` (object): Time/location corrections
+- `view_correction` (object): Visual adjustments
 
 **Automatic Defaults:**
 - If `import_session_id` is not provided, uses the user's protected "Quick Add" session
 - If `author_id` is not provided, uses the user's default self-author (created at registration)
 - This allows immediate photo uploads without manual setup
 
-**PhotoEgg Metadata** (all optional):
-- `coldpreview_base64` (string): Larger preview (800-1200px)
-- `taken_at` (datetime): When photo was taken
-- `camera_make`, `camera_model` (string): Camera info
+**PhotoCreateSchema Metadata:**
+All EXIF metadata is stored in flexible `exif_dict` JSON field. Common fields:
 - `gps_latitude`, `gps_longitude` (float): GPS coordinates
 - `has_gps` (boolean): GPS availability flag
 - `iso`, `aperture`, `focal_length` (number): Camera settings
@@ -1225,7 +1234,7 @@ Content-Type: application/json
 
 **Error Responses:**
 - `409 Conflict` - Photo with this hothash already exists (duplicate)
-- `400 Bad Request` - Invalid PhotoEgg or validation error
+- `400 Bad Request` - Invalid PhotoCreateSchema or validation error
 - `422 Unprocessable Entity` - Invalid field values
 
 ### Register Image via Web Upload (Web App - CONVENIENCE)
@@ -1237,9 +1246,11 @@ Content-Type: multipart/form-data
 file: <binary image data>
 ```
 
-**Description:** Quick web upload for when user doesn't have desktop app. Backend forwards image to imalink-core server for processing, then stores the PhotoEgg.
+**Description:** Quick web upload for when user doesn't have desktop app. Backend forwards image to imalink-core server for processing, then stores the PhotoCreateSchema.
 
 **⚠️ NOT RECOMMENDED FOR:** Batch imports (use desktop app with local imalink-core instead)
+
+**Security:** Backend sets `user_id` from JWT token - it is NOT in PhotoCreateSchema.
 
 **Query Parameters:**
 - `import_session_id` (integer, optional): Import session (defaults to "Quick Add" if not provided)
@@ -1254,10 +1265,11 @@ file: <binary image data>
 **Flow:**
 1. Web app uploads file → Backend
 2. Backend → imalink-core server (https://core.trollfjell.com)
-3. imalink-core → PhotoEgg
+3. imalink-core → PhotoCreateSchema
 4. Backend stores photo metadata
+5. user_id set from JWT token (not in PhotoCreateSchema)
 
-**Response** (`201 Created`): Same as /photoegg endpoint
+**Response** (`201 Created`): Same as POST /photos/create endpoint
 
 **Error Responses:**
 - `400 Bad Request` - Invalid image or imalink-core processing failed
