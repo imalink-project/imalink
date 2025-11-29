@@ -8,7 +8,7 @@ import httpx
 from typing import Optional
 
 from src.core.config import Config
-from src.schemas.photo_create_schemas import PhotoCreateSchema
+from imalink_schemas import PhotoCreateSchema
 
 
 class ImalinkCoreClient:

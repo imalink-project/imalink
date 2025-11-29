@@ -10,7 +10,7 @@ from unittest.mock import patch, MagicMock, AsyncMock
 import pytest
 from io import BytesIO
 
-from src.schemas.photo_create_schemas import PhotoCreateSchema
+from imalink_schemas import PhotoCreateSchema, ImageFileCreateSchema
 
 
 class TestRegisterImageEndpoint:

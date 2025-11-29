@@ -30,7 +30,8 @@ from src.schemas.photo_schemas import (
     PhotoResponse, PhotoCreateRequest, PhotoUpdateRequest, 
     PhotoSearchRequest, TimeLocCorrectionRequest, ViewCorrectionRequest
 )
-from src.schemas.photo_create_schemas import PhotoCreateRequest as PhotoCreateReq, PhotoCreateResponse, PhotoCreateSchema
+from imalink_schemas import PhotoCreateSchema, ImageFileCreateSchema
+from src.schemas.photo_create_schemas import PhotoCreateRequest as PhotoCreateReq, PhotoCreateResponse
 from src.schemas.image_file_upload_schemas import (
     ImageFileNewPhotoRequest, ImageFileAddToPhotoRequest, ImageFileUploadResponse
 )
