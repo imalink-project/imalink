@@ -546,7 +546,7 @@ requires-dist = [
     { name = "email-validator", specifier = ">=2.3.0" },
     { name = "fastapi", specifier = ">=0.118.0" },
     { name = "flet", specifier = ">=0.28.3" },
-    { name = "imalink-schemas", git = "https://github.com/kjelkols/imalink-schemas.git?rev=v2.1.0" },
+    { name = "imalink-schemas", git = "https://github.com/kjelkols/imalink-schemas.git?rev=v3.0.0" },
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7.4" },
     { name = "psycopg2-binary", specifier = ">=2.9.9" },
     { name = "pydantic", specifier = ">=2.11.10" },
@@ -571,8 +571,8 @@ dev = [
 
 [[package]]
 name = "imalink-schemas"
-version = "2.0.0"
-source = { git = "https://github.com/kjelkols/imalink-schemas.git?rev=v2.1.0#d75b1aa7c467cfa96cd83c468036b1be765df503" }
+version = "3.0.0"
+source = { git = "https://github.com/kjelkols/imalink-schemas.git?rev=v3.0.0#8b399dcde6c1e0cd78dc976ec13a4828110b2a60" }
 dependencies = [
     { name = "pydantic" },
     { name = "pydantic-settings" },

@@ -152,7 +152,7 @@ class PhotoRepository:
         - exif_dict: Full EXIF metadata from master file
         - GPS, dimensions, taken_at: Extracted metadata for fast queries
         - rating, author: User-editable metadata
-        - import_session_id: Which import session created this photo
+        - input_channel_id: Which input channel created this photo
         - visibility: 'private' or 'public' (defaults to 'private')
         """
         photo = Photo(
@@ -168,7 +168,7 @@ class PhotoRepository:
             rating=photo_data.rating or 0,
             visibility=photo_data.visibility or 'private',  # Default to private for backwards compatibility
             author_id=photo_data.author_id,
-            import_session_id=photo_data.import_session_id
+            input_channel_id=photo_data.input_channel_id
         )
         
         self.db.add(photo)
@@ -270,9 +270,9 @@ class PhotoRepository:
         if search_params.author_id:
             query = query.filter(Photo.author_id == search_params.author_id)
         
-        # Filter by import_session_id
-        if search_params.import_session_id:
-            query = query.filter(Photo.import_session_id == search_params.import_session_id)
+        # Filter by input_channel_id
+        if search_params.input_channel_id:
+            query = query.filter(Photo.input_channel_id == search_params.input_channel_id)
         
         # Filter by tags (OR logic: photos with ANY of the specified tags)
         if search_params.tag_ids:

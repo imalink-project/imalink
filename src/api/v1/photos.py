@@ -85,7 +85,7 @@ def search_photos(
     """
     try:
         # Delegate to PhotoSearchService for consistency
-        from services.photo_search_service import PhotoSearchService
+        from src.services.photo_search_service import PhotoSearchService
         search_service = PhotoSearchService(photo_service.db)
         return search_service.execute_adhoc_search(search_request, getattr(current_user, 'id'))
     except ValidationError as e:
