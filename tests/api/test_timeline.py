@@ -35,7 +35,7 @@ class TestTimelineYearAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="year2024_2",
@@ -43,7 +43,7 @@ class TestTimelineYearAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 8, 20, 14, 30, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="year2023_1",
@@ -51,7 +51,7 @@ class TestTimelineYearAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2023, 3, 10, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
         ]
         
@@ -101,7 +101,7 @@ class TestTimelineYearAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 5, 1, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="public",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="private_2024",
@@ -109,7 +109,7 @@ class TestTimelineYearAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 1, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="authenticated_2023",
@@ -117,7 +117,7 @@ class TestTimelineYearAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2023, 7, 1, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="authenticated",
-                import_session_id=1
+                input_channel_id=1
             ),
         ]
         
@@ -169,7 +169,7 @@ class TestTimelineYearAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="user2_photo",
@@ -177,7 +177,7 @@ class TestTimelineYearAggregation:
                 user_id=second_user.id,
                 taken_at=datetime(2024, 2, 1, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
         ]
         
@@ -215,7 +215,7 @@ class TestTimelineMonthAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 5, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="jan_photo2",
@@ -223,7 +223,7 @@ class TestTimelineMonthAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 20, 15, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="feb_photo",
@@ -231,7 +231,7 @@ class TestTimelineMonthAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 2, 10, 12, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="dec_photo",
@@ -239,7 +239,7 @@ class TestTimelineMonthAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 12, 25, 18, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
         ]
         
@@ -314,7 +314,7 @@ class TestTimelineMonthAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="public",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="private_jan",
@@ -322,7 +322,7 @@ class TestTimelineMonthAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
         ]
         
@@ -363,7 +363,7 @@ class TestTimelineDayAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 1, 8, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="day1_photo2",
@@ -371,7 +371,7 @@ class TestTimelineDayAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 1, 18, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="day15_photo",
@@ -379,7 +379,7 @@ class TestTimelineDayAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 15, 12, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
         ]
         
@@ -466,7 +466,7 @@ class TestTimelineHourAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 15, 9, 15, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="hour9_photo2",
@@ -474,7 +474,7 @@ class TestTimelineHourAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 15, 9, 45, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="hour14_photo",
@@ -482,7 +482,7 @@ class TestTimelineHourAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 15, 14, 30, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="hour23_photo",
@@ -490,7 +490,7 @@ class TestTimelineHourAggregation:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 6, 15, 23, 59, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
         ]
         
@@ -674,7 +674,7 @@ class TestTimelinePreviewSelection:
             user_id=test_user.id,
             taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
             visibility="private",
-                import_session_id=1
+                input_channel_id=1
         )
         test_db_session.add(photo)
         test_db_session.commit()
@@ -710,7 +710,7 @@ class TestTimelineEdgeCases:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="no_date",
@@ -718,7 +718,7 @@ class TestTimelineEdgeCases:
                 user_id=test_user.id,
                 taken_at=None,
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
         ]
         
@@ -748,7 +748,7 @@ class TestTimelineEdgeCases:
             user_id=test_user.id,
             taken_at=datetime(2024, 2, 29, 12, 0, 0, tzinfo=timezone.utc),  # 2024 is leap year
             visibility="private",
-                import_session_id=1
+                input_channel_id=1
         )
         test_db_session.add(photo)
         test_db_session.commit()
@@ -779,7 +779,7 @@ class TestTimelineEdgeCases:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 1, 23, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
         ]
         
@@ -813,7 +813,7 @@ class TestTimelineEdgeCases:
             user_id=test_user.id,
             taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
             visibility="private",
-                import_session_id=1
+                input_channel_id=1
         )
         test_db_session.add(photo)
         test_db_session.commit()
@@ -860,7 +860,7 @@ class TestTimelineEdgeCases:
                 user_id=test_user.id,
                 taken_at=datetime(year, month, 15, 12, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             )
             photos.append(photo)
         
@@ -896,7 +896,7 @@ class TestTimelineVisibilityIntegration:
                 user_id=second_user.id,
                 taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="authenticated",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="user2_private",
@@ -904,7 +904,7 @@ class TestTimelineVisibilityIntegration:
                 user_id=second_user.id,
                 taken_at=datetime(2024, 2, 1, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
         ]
         
@@ -934,7 +934,7 @@ class TestTimelineVisibilityIntegration:
             user_id=test_user.id,
             taken_at=datetime(2024, 1, 1, 10, 0, 0, tzinfo=timezone.utc),
             visibility="public",
-                import_session_id=1
+                input_channel_id=1
         )
         test_db_session.add(photo)
         test_db_session.commit()
@@ -964,7 +964,7 @@ class TestTimelineVisibilityIntegration:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 5, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="private",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="authenticated_jan",
@@ -972,7 +972,7 @@ class TestTimelineVisibilityIntegration:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 15, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="authenticated",
-                import_session_id=1
+                input_channel_id=1
             ),
             Photo(
                 hothash="public_jan",
@@ -980,7 +980,7 @@ class TestTimelineVisibilityIntegration:
                 user_id=test_user.id,
                 taken_at=datetime(2024, 1, 25, 10, 0, 0, tzinfo=timezone.utc),
                 visibility="public",
-                import_session_id=1
+                input_channel_id=1
             ),
         ]
         

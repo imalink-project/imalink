@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 from sqlalchemy.orm import Session
 
 from src.models.user import User
-from src.models.import_session import ImportSession
+from src.models.input_channel import InputChannel
 from src.repositories.user_repository import UserRepository
 from src.utils.security import verify_password, create_access_token
 from src.schemas.user import UserCreate, UserResponse
@@ -68,11 +68,11 @@ class AuthService:
     
     def register_user(self, user_data: UserCreate) -> User:
         """
-        Register a new user and create default Author + ImportSession
+        Register a new user and create default Author + InputChannel
         
         Automatically creates:
         1. Default Author (self-author) representing the user as photographer
-        2. 'Quick Add' ImportSession for immediate photo uploads
+        2. 'Quick Channel' InputChannel for immediate photo uploads
         
         The self-author:
         - Has same name as user's display_name (or username if no display_name)
@@ -80,7 +80,7 @@ class AuthService:
         - Set as user's default_author_id
         - Used automatically when author_id not specified in photo imports
         
-        The default session:
+        The default channel:
         - Cannot be deleted (is_protected=True)
         - Allows users to upload photos immediately without setup
         
@@ -118,17 +118,17 @@ class AuthService:
         # Set user's default_author_id
         user.default_author_id = self_author.id
         
-        # Create default ImportSession for quick uploads
+        # Create default InputChannel for quick uploads
         # is_protected=True prevents deletion (user can edit title/description)
-        default_session = ImportSession(
+        default_channel = InputChannel(
             user_id=user.id,
-            title="Quick Add",
-            description="Default session for quick photo uploads.",
+            title="Quick Channel",
+            description="Default channel for quick photo uploads.",
             imported_at=datetime.utcnow(),
             is_protected=True  # Cannot be deleted by user
         )
         
-        self.db.add(default_session)
+        self.db.add(default_channel)
         self.db.commit()
         self.db.refresh(user)
         

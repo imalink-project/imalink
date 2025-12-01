@@ -11,7 +11,7 @@
 - **Security Enhancement**: user_id is NEVER in PhotoCreateSchema - backend sets it from JWT token
 - **Shared Schema Package**: PhotoCreateSchema now in imalink-schemas v2.1.0+ (shared across all imalink modules)
 - **Category Field**: User-defined photo categorization (e.g., "vacation", "work", "family")
-- **Protected ImportSessions**: Auto-created "Quick Add" session per user (cannot be deleted)
+- **Protected InputChannels**: Auto-created "Quick Channel" per user (cannot be deleted)
 
 **Important Change in v2.4:** `POST /api/v1/photos/new-photo` has been removed. Use `POST /api/v1/photos/create` (primary) or `POST /api/v1/photos/register-image` (web upload) instead.
 
@@ -69,7 +69,7 @@ Content-Type: application/json
 **Automatic Setup:**
 Registration automatically creates:
 1. **Default Author** - Author with same name as user, marked with `is_self=true`
-2. **Default Import Session** - Protected "Quick Add" session for immediate uploads
+2. **Default Input Channel** - Protected "Quick Channel" for immediate uploads
 3. **User account** - With `default_author_id` pointing to the self-author
 
 This allows immediate photo uploads without manual setup.
@@ -190,7 +190,7 @@ const response = await fetch('http://localhost:8000/api/v1/photos/photoegg', {
   },
   body: JSON.stringify({
     photo_egg: photoegg,
-    import_session_id: 5,  // Track import batch
+    input_channel_id: 5,  // Track input channel
     image_file: {
       filename: 'my_photo.jpg',
       file_path: '/path/to/my_photo.jpg',
@@ -1158,7 +1158,7 @@ Content-Type: application/json
     ],
     "rating": 0,
     "visibility": "private",
-    "import_session_id": 5,
+    "input_channel_id": 5,
     "author_id": null,
     "category": null
   },
@@ -1193,7 +1193,7 @@ Content-Type: application/json
 - `coldpreview_base64` (string): Optional larger preview
 - `rating` (integer): 0-5 star rating (default: 0)
 - `visibility` (string): private|space|authenticated|public (default: private)
-- `import_session_id` (integer): Import batch ID (defaults to user's "Quick Add" session)
+- `input_channel_id` (integer): Input channel ID (defaults to user's "Quick Channel")
 - `author_id` (integer): Photographer ID (defaults to user's self-author)
 - `category` (string): User-defined category (e.g., "vacation", "work")
 - `stack_id` (integer): Photo stack ID for related images
@@ -1201,7 +1201,7 @@ Content-Type: application/json
 - `view_correction` (object): Visual adjustments
 
 **Automatic Defaults:**
-- If `import_session_id` is not provided, uses the user's protected "Quick Add" session
+- If `input_channel_id` is not provided, uses the user's protected "Quick Channel"
 - If `author_id` is not provided, uses the user's default self-author (created at registration)
 - This allows immediate photo uploads without manual setup
 
@@ -1253,7 +1253,7 @@ file: <binary image data>
 **Security:** Backend sets `user_id` from JWT token - it is NOT in PhotoCreateSchema.
 
 **Query Parameters:**
-- `import_session_id` (integer, optional): Import session (defaults to "Quick Add" if not provided)
+- `input_channel_id` (integer, optional): Input channel (defaults to "Quick Channel" if not provided)
 - `rating` (integer, optional): 0-5 star rating
 - `visibility` (string, optional): private|space|authenticated|public
 - `author_id` (integer, optional): Photographer ID (defaults to user's self-author if not provided)
@@ -1285,7 +1285,7 @@ Content-Type: application/json
 {
   "filename": "IMG_001.CR2",
   "file_size": 25000000,
-  "import_session_id": 5,
+  "input_channel_id": 5,
   "imported_info": {
     "original_path": "/path/to/original.CR2"
   },
@@ -1305,7 +1305,7 @@ Content-Type: application/json
 
 **Optional Fields:**
 - `file_size` (integer): File size in bytes
-- `import_session_id` (integer): ID of import session
+- `input_channel_id` (integer): ID of input channel
 - `imported_info` (object): Import context
 - `local_storage_info` (object): Local storage metadata
 - `cloud_storage_info` (object): Cloud storage metadata
@@ -1912,20 +1912,20 @@ Authorization: Bearer <token>
 
 ---
 
-## 📦 Import Sessions
+## 📦 Input Channels
 
-Track bulk photo import operations.
+User-defined channels for organizing photo uploads.
 
-### Create Import Session
+### Create Input Channel
 ```http
-POST /api/v1/import-sessions
+POST /api/v1/input-channels
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "source_path": "/media/sdcard/DCIM",
-  "description": "Birthday party photos",
-  "author_id": 1
+  "title": "Birthday party photos",
+  "description": "Photos from birthday celebration",
+  "default_author_id": 1
 }
 ```
 
@@ -1933,46 +1933,41 @@ Content-Type: application/json
 ```json
 {
   "id": 1,
-  "source_path": "/media/sdcard/DCIM",
-  "description": "Birthday party photos",
-  "author_id": 1,
-  "status": "pending",
-  "total_files": 0,
-  "processed_files": 0,
-  "failed_files": 0,
-  "created_at": "2025-10-20T10:00:00Z",
-  "updated_at": "2025-10-20T10:00:00Z"
+  "title": "Birthday party photos",
+  "description": "Photos from birthday celebration",
+  "default_author_id": 1,
+  "imported_at": "2025-10-20T10:00:00Z",
+  "images_count": 0
 }
 ```
 
-### Get Import Session
+### Get Input Channel
 ```http
-GET /api/v1/import-sessions/{import_id}
+GET /api/v1/input-channels/{channel_id}
 Authorization: Bearer <token>
 ```
 
-### List Import Sessions
+### List Input Channels
 ```http
-GET /api/v1/import-sessions?offset=0&limit=50
+GET /api/v1/input-channels?offset=0&limit=50
 Authorization: Bearer <token>
 ```
 
-### Update Import Session Status
+### Update Input Channel
 ```http
-PATCH /api/v1/import-sessions/{import_id}
+PATCH /api/v1/input-channels/{channel_id}
 Authorization: Bearer <token>
 Content-Type: application/json
 
 {
-  "status": "completed",
-  "processed_files": 150,
-  "failed_files": 2
+  "title": "Updated title",
+  "description": "Updated description"
 }
 ```
 
-### Delete Import Session
+### Delete Input Channel
 ```http
-DELETE /api/v1/import-sessions/{import_id}
+DELETE /api/v1/input-channels/{channel_id}
 Authorization: Bearer <token>
 ```
 
@@ -2273,9 +2268,9 @@ As of v2.3, all photo creation uses PhotoEgg pattern:
 - ✅ **Added:** `POST /api/v1/photos/photoegg` - Create photo from pre-processed PhotoEgg (desktop app)
 - ✅ **Added:** `POST /api/v1/photos/register-image` - Web upload convenience endpoint
 - ✅ **Added:** `category` field to Photo model (user-defined categorization)
-- ✅ **Added:** `is_protected` field to ImportSession (prevent deletion of default sessions)
-- ✅ **Added:** Protected "Quick Add" ImportSession created automatically per user
-- ✅ **Added:** Auto-use protected ImportSession when import_session_id not provided
+- ✅ **Added:** `is_protected` field to InputChannel (prevent deletion of default channels)
+- ✅ **Added:** Protected "Quick Channel" created automatically per user
+- ✅ **Added:** Auto-use protected InputChannel when input_channel_id not provided
 - ✅ **Added:** Self-Author pattern - default Author created automatically at registration
 - ✅ **Added:** `User.default_author_id` - points to user's self-author
 - ✅ **Added:** `Author.is_self` - marks authors that represent users
@@ -2284,7 +2279,7 @@ As of v2.3, all photo creation uses PhotoEgg pattern:
 **Architecture Changes:**
 - 🔄 **Changed:** Backend no longer processes images directly
 - 🔄 **Changed:** All image processing done by imalink-core (local or server)
-- 🔄 **Changed:** New user registration creates Author + ImportSession automatically
+- 🔄 **Changed:** New user registration creates Author + InputChannel automatically
 - 🔄 **Changed:** PhotoEgg is now the single photo creation format
 - 🔄 **Changed:** Desktop app uses local imalink-core (fast, no upload)
 - 🔄 **Changed:** Web app uploads to backend → server imalink-core (convenience)
@@ -2406,8 +2401,8 @@ GET /api/v1/database-stats
       "size_bytes": 24576,
       "size_mb": 0.02
     },
-    "import_sessions": {
-      "name": "import_sessions",
+    "input_channels": {
+      "name": "input_channels",
       "record_count": 1,
       "size_bytes": 4096,
       "size_mb": 0.0

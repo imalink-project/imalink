@@ -11,7 +11,7 @@ from tests.fixtures.real_photo_create_schemas import load_photo_create_schema, B
 class TestPhotoVisibilityUpdate:
     """Test updating photo visibility"""
     
-    def test_update_visibility_to_public(self, authenticated_client, import_session):
+    def test_update_visibility_to_public(self, authenticated_client, input_channel):
         """Update photo visibility from private to public"""
         # Create private photo via PhotoCreateSchema
         photo_create_data = load_photo_create_schema(
@@ -19,7 +19,7 @@ class TestPhotoVisibilityUpdate:
             
             rating=0,
             visibility="private",
-            import_session_id=import_session.id
+            input_channel_id=input_channel.id
         )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
@@ -44,7 +44,7 @@ class TestPhotoVisibilityUpdate:
         updated_photo = update_response.json()
         assert updated_photo["visibility"] == "public"
     
-    def test_update_visibility_to_authenticated(self, authenticated_client, import_session):
+    def test_update_visibility_to_authenticated(self, authenticated_client, input_channel):
         """Update photo visibility to authenticated"""
         # Create private photo
         photo_create_data = load_photo_create_schema(
@@ -52,7 +52,7 @@ class TestPhotoVisibilityUpdate:
             
             rating=0,
             visibility="private",
-            import_session_id=import_session.id
+            input_channel_id=input_channel.id
         )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
@@ -74,14 +74,14 @@ class TestPhotoVisibilityUpdate:
         assert update_response.status_code == 200
         assert update_response.json()["visibility"] == "authenticated"
     
-    def test_update_visibility_invalid_value(self, authenticated_client, import_session):
+    def test_update_visibility_invalid_value(self, authenticated_client, input_channel):
         """Updating with invalid visibility should fail"""
         photo_create_data = load_photo_create_schema(
             BASIC,
             
             rating=0,
             visibility="private",
-            import_session_id=import_session.id
+            input_channel_id=input_channel.id
         )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
@@ -106,14 +106,14 @@ class TestPhotoVisibilityUpdate:
 class TestPhotoVisibilityAccessControl:
     """Test who can see photos based on visibility level"""
     
-    def test_owner_sees_own_private_photo(self, authenticated_client, import_session):
+    def test_owner_sees_own_private_photo(self, authenticated_client, input_channel):
         """Owner can see their own private photos"""
         photo_create_data = load_photo_create_schema(
             BASIC,
             
             rating=0,
             visibility="private",
-            import_session_id=import_session.id
+            input_channel_id=input_channel.id
         )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
@@ -134,14 +134,14 @@ class TestPhotoVisibilityAccessControl:
         assert get_response.status_code == 200
         assert get_response.json()["visibility"] == "private"
     
-    def test_anonymous_cannot_see_private_photo(self, client, authenticated_client, import_session):
+    def test_anonymous_cannot_see_private_photo(self, client, authenticated_client, input_channel):
         """Anonymous users cannot see private photos"""
         photo_create_data = load_photo_create_schema(
             BASIC,
             
             rating=0,
             visibility="private",
-            import_session_id=import_session.id
+            input_channel_id=input_channel.id
         )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
@@ -157,14 +157,14 @@ class TestPhotoVisibilityAccessControl:
         get_response = client.get(f"/api/v1/photos/{photo_hash}")
         assert get_response.status_code == 404
     
-    def test_anonymous_can_see_public_photo(self, client, authenticated_client, import_session):
+    def test_anonymous_can_see_public_photo(self, client, authenticated_client, input_channel):
         """Anonymous users CAN see public photos"""
         photo_create_data = load_photo_create_schema(
             BASIC,
             
             rating=0,
             visibility="public",
-            import_session_id=import_session.id
+            input_channel_id=input_channel.id
         )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
@@ -181,14 +181,14 @@ class TestPhotoVisibilityAccessControl:
         assert get_response.status_code == 200
         assert get_response.json()["visibility"] == "public"
     
-    def test_anonymous_cannot_see_authenticated_photo(self, client, authenticated_client, import_session):
+    def test_anonymous_cannot_see_authenticated_photo(self, client, authenticated_client, input_channel):
         """Anonymous users cannot see authenticated-only photos"""
         photo_create_data = load_photo_create_schema(
             BASIC,
             
             rating=0,
             visibility="authenticated",
-            import_session_id=import_session.id
+            input_channel_id=input_channel.id
         )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",
@@ -208,14 +208,14 @@ class TestPhotoVisibilityAccessControl:
 class TestPhotoVisibilitySpacePhase1:
     """Test space visibility (Phase 1 - treated as private)"""
     
-    def test_space_visibility_treated_as_private(self, client, authenticated_client, import_session):
+    def test_space_visibility_treated_as_private(self, client, authenticated_client, input_channel):
         """In Phase 1, space visibility behaves like private"""
         photo_create_data = load_photo_create_schema(
             BASIC,
             
             rating=0,
             visibility="space",
-            import_session_id=import_session.id
+            input_channel_id=input_channel.id
         )
         create_response = authenticated_client.post(
             "/api/v1/photos/create",

@@ -13,7 +13,7 @@ from src.database.connection import get_db
 # Service imports
 from src.services.image_file_service import ImageFileService
 from src.services.author_service import AuthorService
-from src.services.import_session_service import ImportSessionService
+from src.services.input_channel_service import InputChannelService
 from src.services.photo_service import PhotoService
 from src.services.photo_stack_service import PhotoStackService
 
@@ -34,10 +34,10 @@ def get_author_service(db: Session = Depends(get_db)) -> AuthorService:
     return AuthorService(db)
 
 
-# Import Service Dependencies
-def get_import_session_service(db: Session = Depends(get_db)) -> ImportSessionService:
-    """Get ImportSessionService instance with database dependency"""
-    return ImportSessionService(db)
+# Input Channel Service Dependencies
+def get_input_channel_service(db: Session = Depends(get_db)) -> InputChannelService:
+    """Get InputChannelService instance with database dependency"""
+    return InputChannelService(db)
 
 
 # Photo Service Dependencies

@@ -32,7 +32,7 @@ def load_photo_create_schema(
     rating: int = 0,
     category: str | None = None,
     visibility: str = "private",
-    import_session_id: int | None = None,
+    input_channel_id: int | None = None,
     author_id: int | None = None,
 ) -> Dict[str, Any]:
     """
@@ -48,7 +48,7 @@ def load_photo_create_schema(
         rating: Star rating 0-5 (default: 0)
         category: Photo category (default: None)
         visibility: Visibility level (default: "private")
-        import_session_id: Import session ID (default: None)
+        input_channel_id: Input channel ID (default: None)
         author_id: Author ID (default: None)
         
     Returns:
@@ -112,7 +112,7 @@ def load_photo_create_schema(
         "rating": rating,
         "category": category,
         "visibility": visibility,
-        "import_session_id": import_session_id,
+        "input_channel_id": input_channel_id,
         "author_id": author_id,
         "stack_id": None,
         "timeloc_correction": None,

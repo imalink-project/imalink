@@ -7,7 +7,7 @@ from .user import User
 from .photo import Photo
 from .image_file import ImageFile
 from .author import Author
-from .import_session import ImportSession
+from .input_channel import InputChannel
 from .photo_stack import PhotoStack
 from .saved_photo_search import SavedPhotoSearch
 from .photo_collection import PhotoCollection
@@ -21,7 +21,7 @@ __all__ = [
     "Photo",
     "ImageFile", 
     "Author",
-    "ImportSession",
+    "InputChannel",
     "PhotoStack",
     "SavedPhotoSearch",
     "PhotoCollection",

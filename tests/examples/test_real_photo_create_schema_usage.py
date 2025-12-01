@@ -23,14 +23,14 @@ class TestPhotoCreationWithRealPhotoCreateSchemas:
     with real hothashes, base64 previews, and metadata.
     """
     
-    def test_create_photo_from_basic_photo_create_schema(self, client, auth_headers, import_session):
+    def test_create_photo_from_basic_photo_create_schema(self, client, auth_headers, input_channel):
         """Basic PhotoCreateSchema → Photo creation flow"""
         
         photo_create_data = load_photo_create_schema(
             BASIC,
             rating=0,
             visibility="private",
-            import_session_id=import_session.id
+            input_channel_id=input_channel.id
         )
         
         # Verify it has expected NEW structure
@@ -59,14 +59,14 @@ class TestPhotoCreationWithRealPhotoCreateSchemas:
         assert photo["hothash"] == photo_create_data["hothash"]
     
     
-    def test_create_landscape_photo(self, client, auth_headers, import_session):
+    def test_create_landscape_photo(self, client, auth_headers, input_channel):
         """Create photo from landscape orientation PhotoCreateSchema"""
         
         photo_create_data = load_photo_create_schema(
             LANDSCAPE,
             rating=4,
             visibility="public",
-            import_session_id=import_session.id
+            input_channel_id=input_channel.id
         )
         
         request_body = {
@@ -90,14 +90,14 @@ class TestPhotoCreationWithRealPhotoCreateSchemas:
         assert photo["visibility"] == "public"
     
     
-    def test_create_photo_with_coldpreview(self, client, auth_headers, import_session):
+    def test_create_photo_with_coldpreview(self, client, auth_headers, input_channel):
         """Create photo that includes coldpreview"""
         
         photo_create_data = load_photo_create_schema(
             FUJI_WITH_COLDPREVIEW,
             rating=5,
             visibility="private",
-            import_session_id=import_session.id
+            input_channel_id=input_channel.id
         )
         
         # This PhotoCreateSchema has coldpreview
@@ -122,7 +122,7 @@ class TestPhotoCreationWithRealPhotoCreateSchemas:
         assert photo["rating"] == 5
     
     
-    def test_create_tiny_image(self, client, auth_headers, import_session):
+    def test_create_tiny_image(self, client, auth_headers, input_channel):
         """Create photo from tiny test image"""
         
         photo_create_data = load_photo_create_schema(TINY)
@@ -132,7 +132,7 @@ class TestPhotoCreationWithRealPhotoCreateSchemas:
             "rating": 0,
             "visibility": "private",
             "tags": [],
-            "import_session_id": import_session.id
+            "import_session_id": input_channel.id
         }
         
         response = client.post(
@@ -149,7 +149,7 @@ class TestPhotoCreationWithRealPhotoCreateSchemas:
         assert photo["height"] == photo_create_data["height"]
     
     
-    def test_duplicate_photo_create_schema_rejected(self, client, auth_headers, import_session):
+    def test_duplicate_photo_create_schema_rejected(self, client, auth_headers, input_channel):
         """Uploading same PhotoCreateSchema twice should detect duplicate"""
         
         photo_create_data = load_photo_create_schema(BASIC)
@@ -159,7 +159,7 @@ class TestPhotoCreationWithRealPhotoCreateSchemas:
             "rating": 0,
             "visibility": "private",
             "tags": [],
-            "import_session_id": import_session.id
+            "import_session_id": input_channel.id
         }
         
         # First upload succeeds
@@ -253,7 +253,7 @@ def landscape_photo_create_schema():
     LANDSCAPE,
     TINY,
 ])
-def test_create_photos_parametrized(fixture_name, client, auth_headers, import_session):
+def test_create_photos_parametrized(fixture_name, client, auth_headers, input_channel):
     """Create photos using different PhotoCreateSchema fixtures"""
     
     photo_create_data = load_photo_create_schema(fixture_name)
@@ -263,7 +263,7 @@ def test_create_photos_parametrized(fixture_name, client, auth_headers, import_s
         "rating": 0,
         "visibility": "private",
         "tags": [],
-        "import_session_id": import_session.id
+        "import_session_id": input_channel.id
     }
     
     response = client.post(

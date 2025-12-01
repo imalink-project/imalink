@@ -12,7 +12,7 @@ from .mixins import TimestampMixin
 
 if TYPE_CHECKING:
     from .photo import Photo
-    from .import_session import ImportSession
+    from .input_channel import InputChannel
 
 
 class Author(Base, TimestampMixin):
@@ -43,7 +43,7 @@ class Author(Base, TimestampMixin):
     
     # Relationships
     photos = relationship("Photo", back_populates="author")
-    imports = relationship("ImportSession", back_populates="default_author")
+    input_channels = relationship("InputChannel", back_populates="default_author")
     
     def __repr__(self):
         return f"<Author(id={self.id}, name='{self.name}', is_self={self.is_self})>"

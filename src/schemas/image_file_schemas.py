@@ -26,7 +26,7 @@ class ImageFileResponse(BaseModel):
     file_size: Optional[int] = Field(None, description="File size in bytes")
     
     # Import tracking
-    import_session_id: Optional[int] = Field(None, description="Import session ID")
+    input_channel_id: Optional[int] = Field(None, description="Input channel ID")
     imported_time: Optional[datetime] = Field(None, description="When this file was imported")
     imported_info: Optional[Dict[str, Any]] = Field(None, description="Import context and original location")
     
@@ -63,7 +63,7 @@ class ImageFileCreateRequest(BaseModel):
     file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")
     
     # Import context
-    import_session_id: Optional[int] = Field(None, description="Import session ID")
+    input_channel_id: Optional[int] = Field(None, description="Input channel ID")
     imported_info: Optional[Dict[str, Any]] = Field(None, description="Import context and original location")
     local_storage_info: Optional[Dict[str, Any]] = Field(None, description="Local storage info")
     cloud_storage_info: Optional[Dict[str, Any]] = Field(None, description="Cloud storage info")

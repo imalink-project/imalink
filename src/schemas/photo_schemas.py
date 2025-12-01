@@ -124,8 +124,8 @@ class PhotoResponse(BaseModel):
     author: Optional[AuthorSummary] = Field(None, description="Photo author/photographer")
     author_id: Optional[int] = Field(None, description="Author ID")
     
-    # Import information - which import session created this Photo
-    import_session_id: Optional[int] = Field(None, description="Import session that created this photo")
+    # Import information - which input channel created this Photo
+    input_channel_id: Optional[int] = Field(None, description="Input channel that created this photo")
     
     # File import times (computed from ImageFiles)
     first_imported: Optional[datetime] = Field(None, description="Earliest file import time")
@@ -185,7 +185,7 @@ class PhotoCreateRequest(BaseModel):
     
     # Relationships
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
-    import_session_id: Optional[int] = Field(None, description="Import session that created this photo")
+    input_channel_id: Optional[int] = Field(None, description="Input channel that created this photo")
 
 
 class PhotoUpdateRequest(BaseModel):
@@ -214,7 +214,7 @@ class PhotoSearchRequest(BaseModel):
     
     # Relationship filters
     author_id: Optional[int] = Field(None, description="Filter by author ID (exact match)")
-    import_session_id: Optional[int] = Field(None, description="Filter by import session ID (exact match)")
+    input_channel_id: Optional[int] = Field(None, description="Filter by input channel ID (exact match)")
     tag_ids: Optional[List[int]] = Field(None, description="Filter by tag IDs (photos with ANY of these tags)")
     
     # Metadata filters

@@ -11,7 +11,7 @@ from .mixins import TimestampMixin
 
 if TYPE_CHECKING:
     from .photo import Photo
-    from .import_session import ImportSession
+    from .input_channel import InputChannel
     from .author import Author
     from .tag import Tag
 
@@ -21,8 +21,8 @@ class User(Base, TimestampMixin):
     User model for authentication and data ownership
     
     Each user has their own isolated data:
-    - Photos they've imported
-    - Import sessions they've created
+    - Photos they've uploaded
+    - Input channels they've created
     - Authors (photographers) they've defined
     
     Self-Author Pattern:
@@ -50,7 +50,7 @@ class User(Base, TimestampMixin):
     
     # Relationships to user-owned data
     photos = relationship("Photo", back_populates="user", cascade="all, delete-orphan")
-    import_sessions = relationship("ImportSession", back_populates="user", cascade="all, delete-orphan")
+    input_channels = relationship("InputChannel", back_populates="user", cascade="all, delete-orphan")
     photo_stacks = relationship("PhotoStack", back_populates="user", cascade="all, delete-orphan")
     tags = relationship("Tag", back_populates="user", cascade="all, delete-orphan")
     saved_photo_searches = relationship("SavedPhotoSearch", back_populates="user", cascade="all, delete-orphan")
@@ -66,6 +66,6 @@ class User(Base, TimestampMixin):
         return len(self.photos) if self.photos else 0
     
     @property
-    def import_sessions_count(self) -> int:
-        """Count of import sessions created by this user"""
-        return len(self.import_sessions) if self.import_sessions else 0
+    def input_channels_count(self) -> int:
+        """Count of input channels for this user"""
+        return len(self.input_channels) if self.input_channels else 0

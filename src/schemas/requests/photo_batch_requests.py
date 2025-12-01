@@ -30,7 +30,7 @@ class PhotoGroupRequest(BaseModel):
     user_rotation: int = Field(0, ge=0, le=3, description="User rotation (0=0°, 1=90°, 2=180°, 3=270°)")
     
     # Import tracking
-    import_session_id: Optional[int] = Field(None, description="Import session ID")
+    input_channel_id: Optional[int] = Field(None, description="Input channel ID")
     
     # Associated image files (RAW, JPEG, etc.)
     images: List[ImageCreateRequest] = Field(..., min_length=1, description="Associated image files")

@@ -629,7 +629,7 @@ class PhotoService:
             ValueError: If required fields missing
         """
         import base64
-        from src.repositories.import_session_repository import ImportSessionRepository
+        from src.repositories.input_channel_repository import InputChannelRepository
         from src.models.image_file import ImageFile
         
         schema = photo_create_request.photo_create_schema
@@ -637,19 +637,19 @@ class PhotoService:
         # Security: user_id is set from authenticated user (NOT from schema)
         # PhotoCreateSchema does NOT contain user_id - backend adds it
         
-        # Resolve import_session_id - use protected default if not provided
-        import_session_id = schema.import_session_id
-        if import_session_id is None:
-            import_repo = ImportSessionRepository(self.db)
-            default_session = import_repo.get_protected_session(user_id)
+        # Resolve input_channel_id - use protected default if not provided
+        input_channel_id = schema.input_channel_id
+        if input_channel_id is None:
+            channel_repo = InputChannelRepository(self.db)
+            default_channel = channel_repo.get_protected_channel(user_id)
             
-            if not default_session:
+            if not default_channel:
                 raise ValueError(
-                    "No import_session_id provided and no protected default session found. "
+                    "No input_channel_id provided and no protected default channel found. "
                     "This should not happen - contact administrator."
                 )
             
-            import_session_id = default_session.id
+            input_channel_id = default_channel.id
         
         # Resolve author_id - use user's default self-author if not provided
         author_id = schema.author_id
@@ -698,7 +698,7 @@ class PhotoService:
             rating=schema.rating,
             category=schema.category,
             visibility=schema.visibility,
-            import_session_id=import_session_id,
+            input_channel_id=input_channel_id,
             author_id=author_id,
             stack_id=schema.stack_id,
             

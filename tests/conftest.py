@@ -206,43 +206,56 @@ def second_user_client(test_client, second_user_headers):
 
 
 @pytest.fixture(scope="function")
-def import_session(test_db_session, test_user):
+def input_channel(test_db_session, test_user):
     """
-    Create a test import session for the test user
+    Create a test input channel for the test user
     
-    ImportSession groups photos by import batch.
-    Every photo MUST belong to an import session.
-    This fixture creates a protected session (like the default Quick Add session).
+    InputChannel groups photos by input channel.
+    Every photo MUST belong to an input channel.
+    This fixture creates a protected channel (like the default Quick Channel).
     """
-    from models.import_session import ImportSession
+    from models.input_channel import InputChannel
     
-    session = ImportSession(
+    channel = InputChannel(
         user_id=test_user.id,
-        title="Test Import Session",
-        description="Test import batch for unit tests",
-        is_protected=True  # Make it protected like default session
+        title="Test Input Channel",
+        description="Test input channel for unit tests",
+        is_protected=True  # Make it protected like default channel
     )
-    test_db_session.add(session)
+    test_db_session.add(channel)
     test_db_session.commit()
-    test_db_session.refresh(session)
+    test_db_session.refresh(channel)
     
-    return session
+    return channel
 
 
 @pytest.fixture(scope="function")
-def second_user_import_session(test_db_session, second_user):
+def second_user_input_channel(test_db_session, second_user):
     """
-    Create a test import session for the second test user
+    Create a test input channel for the second test user
     """
-    from models.import_session import ImportSession
+    from models.input_channel import InputChannel
     
-    session = ImportSession(
+    channel = InputChannel(
         user_id=second_user.id,
-        title="Second User Import Session",
-        description="Test import batch for second user"
+        title="Second User Input Channel",
+        description="Test input channel for second user"
     )
-    test_db_session.add(session)
+    test_db_session.add(channel)
     test_db_session.commit()
-    test_db_session.refresh(session)
+    test_db_session.refresh(channel)
     
-    return session
+    return channel
+
+
+# Backward compatibility aliases (to be removed after test updates)
+@pytest.fixture(scope="function")
+def import_session(input_channel):
+    """Backward compatibility alias for input_channel fixture"""
+    return input_channel
+
+
+@pytest.fixture(scope="function")
+def second_user_import_session(second_user_input_channel):
+    """Backward compatibility alias for second_user_input_channel fixture"""
+    return second_user_input_channel

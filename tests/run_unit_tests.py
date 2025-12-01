@@ -50,7 +50,7 @@ def main():
         ("Authors API", test_dir / "api" / "test_authors_api.py"),
         ("Photos API", test_dir / "api" / "test_photos_api.py"),
         ("Images API", test_dir / "api" / "test_images_api.py"),
-        ("ImportSessions API", test_dir / "api" / "test_import_sessions_api.py"),
+        ("InputChannels API", test_dir / "api" / "test_input_channels_api.py"),
         
         # Service Layer Tests
         ("Author Service", test_dir / "services" / "test_author_service.py"),

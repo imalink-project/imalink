@@ -40,9 +40,9 @@ class ImageFileNewPhotoRequest(BaseModel):
     # Visibility control
     visibility: Optional[str] = Field(default="private", description="Visibility level: private, space, authenticated, or public")
     
-    # Import context (REQUIRED) - every photo must belong to an import session
-    # ImportSession groups photos by when imported and stores user's notes about source/storage
-    import_session_id: int = Field(..., description="Import session ID (required)")
+    # Import context (REQUIRED) - every photo must belong to an input channel
+    # InputChannel groups photos by when imported and stores user's notes about source/storage
+    input_channel_id: int = Field(..., description="Input channel ID (required)")
     imported_info: Optional[Dict[str, Any]] = Field(None, description="Import context and original location")
     local_storage_info: Optional[Dict[str, Any]] = Field(None, description="Local storage info")
     cloud_storage_info: Optional[Dict[str, Any]] = Field(None, description="Cloud storage info")
@@ -94,7 +94,7 @@ class ImageFileAddToPhotoRequest(BaseModel):
     file_size: Optional[int] = Field(None, ge=0, description="File size in bytes")
     
     # Import context
-    import_session_id: Optional[int] = Field(None, description="Import session ID")
+    input_channel_id: Optional[int] = Field(None, description="Input channel ID")
     imported_info: Optional[Dict[str, Any]] = Field(None, description="Import context and original location")
     local_storage_info: Optional[Dict[str, Any]] = Field(None, description="Local storage info")
     cloud_storage_info: Optional[Dict[str, Any]] = Field(None, description="Cloud storage info")

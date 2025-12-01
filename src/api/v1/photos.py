@@ -515,7 +515,7 @@ async def create_photo(
 @router.post("/register-image", response_model=PhotoCreateResponse, status_code=201)
 async def register_image(
     file: UploadFile = File(..., description="Image file to register"),
-    import_session_id: Optional[int] = Query(None, description="Import session ID (uses protected 'Quick Add' if not provided)"),
+    input_channel_id: Optional[int] = Query(None, description="Input channel ID (uses protected 'Quick Channel' if not provided)"),
     rating: int = Query(0, ge=0, le=5, description="Star rating 0-5"),
     visibility: str = Query("private", pattern="^(private|space|authenticated|public)$", description="Visibility level"),
     author_id: Optional[int] = Query(None, description="Author ID"),
@@ -539,7 +539,7 @@ async def register_image(
     
     Args:
         file: Image file (JPEG, PNG, etc.)
-        import_session_id: Optional import session (defaults to protected 'Quick Add')
+        input_channel_id: Optional input channel (defaults to protected 'Quick Channel')
         rating: Star rating 0-5
         visibility: Visibility level (private, space, authenticated, public)
         author_id: Optional photographer/author
@@ -570,7 +570,7 @@ async def register_image(
         photo_create_schema_dict = photo_create_schema.model_dump()
         photo_create_schema_dict["rating"] = rating
         photo_create_schema_dict["visibility"] = visibility
-        photo_create_schema_dict["import_session_id"] = import_session_id
+        photo_create_schema_dict["input_channel_id"] = input_channel_id
         photo_create_schema_dict["author_id"] = author_id
         photo_create_schema = PhotoCreateSchema(**photo_create_schema_dict)
         

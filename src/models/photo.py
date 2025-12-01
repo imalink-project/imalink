@@ -13,7 +13,7 @@ from .mixins import TimestampMixin
 if TYPE_CHECKING:
     from .author import Author
     from .image_file import ImageFile
-    from .import_session import ImportSession
+    from .input_channel import InputChannel
     from .user import User
     from .tag import Tag
 
@@ -84,7 +84,7 @@ class Photo(Base, TimestampMixin):
     # Import tracking - groups photos by import batch
     # ImportSession stores user's notes about when/where photos were imported (passive metadata)
     # Required for production use, but nullable for flexibility (tests, legacy data, etc.)
-    import_session_id = Column(Integer, ForeignKey('import_sessions.id'), nullable=True, index=True)
+    input_channel_id = Column(Integer, ForeignKey('input_channels.id'), nullable=True, index=True)
     
     # Authorship
     author_id = Column(Integer, ForeignKey('authors.id'), nullable=True, index=True)
@@ -111,7 +111,7 @@ class Photo(Base, TimestampMixin):
     image_files = relationship("ImageFile", back_populates="photo", cascade="all, delete-orphan", 
                         foreign_keys="[ImageFile.photo_id]")
     author = relationship("Author", back_populates="photos")
-    import_session = relationship("ImportSession", back_populates="photos")
+    input_channel = relationship("InputChannel", back_populates="photos")
     stack = relationship("PhotoStack", back_populates="photos", foreign_keys=[stack_id])
     tags = relationship("Tag", secondary="photo_tags", back_populates="photos")
     
