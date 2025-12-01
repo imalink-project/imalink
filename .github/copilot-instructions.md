@@ -40,11 +40,11 @@ src/
 **imalink-core** (separate FastAPI server, NOT a library):
 - **Repository**: https://github.com/kjelkols/imalink-core
 - **Architecture**: Separate FastAPI server on localhost:8001 (configurable)
-- **Flow**: Frontend sends image → imalink-core → PhotoEgg JSON → Backend
+- **Flow**: Frontend sends image → imalink-core → PhotoCreateSchema JSON → Backend
 - **Backend role**: Receives pre-processed metadata only, NO image processing
-- **Critical contract**: PhotoEgg schema defined in imalink-core, consumed here
+- **Critical contract**: PhotoCreateSchema defined in imalink-schemas package, used by all components
 
-**PhotoEgg Contract** (defined in imalink-core):
+**PhotoCreateSchema Contract** (from imalink-schemas package):
 ```json
 {
   "hothash": "sha256...",
@@ -52,18 +52,18 @@ src/
   "coldpreview_base64": "..." | null,
   "width": 4000, "height": 3000,
   "metadata": { "taken_at": "...", "camera_make": "...", ... },
-  "exif_dict": { ... }
+  "exif_dict": { ... },
+  "input_channel_id": 1  // optional
 }
 ```
 
-**Backend implementation**: `src/schemas/photoegg_schemas.py` defines Pydantic models that validate incoming PhotoEgg data. This is backend's CONTRACT ENFORCEMENT, not the source definition.
+**Shared schema package**: `imalink-schemas` v3.0.0+ contains PhotoCreateSchema used by backend, imalink-core, and clients.
 
-**For AI agents**: When PhotoEgg schema questions arise:
-1. Use `@github` tool to search `kjelkols/imalink-core` repository
-2. Look for PhotoEgg/CorePhoto definitions in imalink-core codebase
-3. Check `docs/CONTRACTS.md` in THIS repo for contract documentation
-4. PhotoEgg is the SOURCE OF TRUTH - backend adapts to its schema
-5. **Version compatibility**: v2.0+ added optional fields with defaults for backward compatibility
+**For AI agents**: When PhotoCreateSchema questions arise:
+1. Check `imalink-schemas` package repository for authoritative schema
+2. PhotoCreateSchema is in `imalink_schemas.photo` module
+3. Check `docs/CONTRACTS.md` in THIS repo for integration documentation
+4. **Version compatibility**: v3.0.0 uses input_channel_id (was import_session_id in v2.x)
 
 
 ## Development Workflow
@@ -88,7 +88,7 @@ alembic revision --autogenerate -m "description"
 ```
 
 ### Test Strategy
-- **Fixtures**: Use PhotoEgg pattern from `tests/fixtures/photo_eggs.py`
+- **Fixtures**: Use PhotoCreateSchema fixtures from `tests/fixtures/photo_eggs.py`
 - **Database**: SQLite in-memory for tests, PostgreSQL for production
 - **Isolation**: Each test gets fresh database via `test_db_session` fixture
 - **Critical coverage**: User isolation, visibility filtering, timeline aggregation
@@ -146,28 +146,28 @@ def get_photos(self, user_id: Optional[int], ...):
     return query.all()
 ```
 
-### Creating Photos from PhotoEgg
+### Creating Photos from PhotoCreateSchema
 ```python
 # In photo_service.py
-def create_photo_from_photoegg(self, photoegg: PhotoEggRequest, user_id: int):
+def create_photo_from_photo_create_schema(self, photo_create_req: PhotoCreateReq, user_id: int):
     # 1. Decode base64 → bytes
-    hotpreview_bytes = base64.b64decode(photoegg.hotpreview_base64)
+    hotpreview_bytes = base64.b64decode(photo_create_req.photo_create_schema.hotpreview_base64)
     
     # 2. Store ALL metadata in exif_dict JSON (flexible schema)
     exif_dict = {
-        "taken_at": photoegg.metadata.taken_at.isoformat(),
-        "camera_make": photoegg.metadata.camera_make,
-        **photoegg.exif_dict  # Merge all EXIF data
+        "taken_at": photo_create_req.photo_create_schema.metadata.taken_at.isoformat(),
+        "camera_make": photo_create_req.photo_create_schema.metadata.camera_make,
+        **photo_create_req.photo_create_schema.exif_dict  # Merge all EXIF data
     }
     
     # 3. Create Photo with indexed fields extracted
     photo = Photo(
         user_id=user_id,
-        hothash=photoegg.hothash,
+        hothash=photo_create_req.photo_create_schema.hothash,
         hotpreview=hotpreview_bytes,
         exif_dict=exif_dict,  # Complete metadata
-        taken_at=photoegg.metadata.taken_at,  # Indexed for queries
-        gps_latitude=photoegg.metadata.gps_latitude,
+        taken_at=photo_create_req.photo_create_schema.metadata.taken_at,  # Indexed for queries
+        gps_latitude=photo_create_req.photo_create_schema.metadata.gps_latitude,
         visibility="private"  # Default
     )
     self.db.add(photo)
@@ -306,7 +306,7 @@ imalink/
 │   ├── api/             # API endpoint tests
 │   ├── services/        # Service layer tests
 │   ├── repositories/    # Repository tests
-│   └── fixtures/        # Shared test data (PhotoEggs)
+│   └── fixtures/        # Shared test data (PhotoCreateSchema fixtures)
 ├── alembic/             # Database migrations
 ├── docs/                # API reference, architecture docs
 └── scripts/             # Maintenance, migration scripts
@@ -385,7 +385,7 @@ python scripts/reset_database.py
 1. **User isolation**: Always check `user_id` in repositories - easy to forget
 2. **Visibility filtering**: Anonymous users (`user_id=None`) only see public photos
 3. **Hothash vs ID**: Use `hothash` in API paths, `id` only for foreign keys
-4. **PhotoEgg base64**: Must decode before storing in database (`base64.b64decode()`)
+4. **PhotoCreateSchema base64**: Must decode before storing in database (`base64.b64decode()`)
 5. **Timeline indexes**: Required for performance - see `alembic/versions/*timeline_indexes.py`
 6. **Testing database**: Uses in-memory SQLite - different from production PostgreSQL
 7. **CORS in production**: Update `src/main.py` to restrict origins (currently allows all)
@@ -400,8 +400,9 @@ python scripts/reset_database.py
 
 ### External Codebases
 
-When working with PhotoEgg schema or imalink-core integration:
+When working with PhotoCreateSchema or imalink-core integration:
 - **imalink-core repository**: https://github.com/kjelkols/imalink-core
-- Use GitHub search tools to query imalink-core for PhotoEgg/CorePhoto definitions
-- PhotoEgg schema changes in imalink-core require backend migration updates
+- **imalink-schemas repository**: https://github.com/kjelkols/imalink-schemas
+- Use GitHub search tools to query imalink-core for image processing capabilities
+- PhotoCreateSchema changes in imalink-schemas require backend migration updates
 - Check imalink-core's `README.md` and API documentation for processing capabilities
