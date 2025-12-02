@@ -61,6 +61,47 @@ sudo systemctl restart imalink
 sudo systemctl status imalink
 ```
 
+## 🔄 Database Reset (Fresh Start)
+
+Hvis du trenger å starte helt på nytt med tom database:
+
+### 1. Stopp service
+```bash
+sudo systemctl stop imalink
+```
+
+### 2. Drop og gjenskap databasen
+```bash
+# Drop database (enkleste måte)
+sudo -u postgres psql -c "DROP DATABASE IF EXISTS imalink;"
+sudo -u postgres psql -c "CREATE DATABASE imalink OWNER imalink_user;"
+
+# Alternativt: Koble til som postgres-bruker
+sudo -u postgres psql
+# I psql:
+DROP DATABASE IF EXISTS imalink;
+CREATE DATABASE imalink OWNER imalink_user;
+\q
+```
+
+### 3. Kjør migrations på ren database
+```bash
+cd ~/imalink
+~/.local/bin/uv run alembic upgrade head
+```
+
+### 4. Start service
+```bash
+sudo systemctl start imalink
+sudo systemctl status imalink
+```
+
+### 5. Clear frontend cache
+Brukere må cleare localStorage i browser:
+- Åpne Developer Tools (F12) → Application → Local Storage
+- Slett `imalink_token` eller kjør i Console: `localStorage.clear(); location.reload();`
+- Registrer ny bruker og logg inn
+
 ## 🗄️ Database Migrations med Alembic
 
 ### Hva er Alembic?
@@ -252,7 +293,26 @@ psql -U imalink_user -d imalink -h localhost
 # Se database-versjonen i Alembic
 cd ~/imalink
 ~/.local/bin/uv run alembic current
+
+# Se hvilke migrasjoner som er applisert
+~/.local/bin/uv run alembic history
+
+# Hvis du får "column does not exist" feil:
+# 1. Sjekk at migrationen er kjørt: alembic current
+# 2. Hvis ikke: alembic upgrade head
+# 3. Hvis fortsatt problemer: Drop database og kjør migrations på nytt (se "Database Reset" over)
 ```
+
+### Frontend 401 "User not found" etter database reset
+Dette skjer hvis browser har gammelt token fra før database ble slettet:
+
+```javascript
+// I browser Console (F12):
+localStorage.clear();
+location.reload();
+```
+
+Deretter registrer ny bruker og logg inn.
 
 ### Import-feil
 Alle imports må bruke `src.` prefix:
