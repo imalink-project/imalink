@@ -153,7 +153,7 @@ def add_photos_to_event(
     Returns count of photos added.
     """
     service = EventService(db)
-    added_count = service.add_photos_to_event(event_id, request.photo_ids, current_user.id)
+    added_count = service.add_photos_to_event(event_id, request.hothashes, current_user.id)
     return {"event_id": event_id, "photos_added": added_count}
 
 
@@ -171,7 +171,7 @@ def remove_photos_from_event(
     Returns count of photos removed.
     """
     service = EventService(db)
-    removed_count = service.remove_photos_from_event(event_id, request.photo_ids, current_user.id)
+    removed_count = service.remove_photos_from_event(event_id, request.hothashes, current_user.id)
     return {"event_id": event_id, "photos_removed": removed_count}
 
 

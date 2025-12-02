@@ -270,7 +270,7 @@ class EventRepository:
     
     # Photo-Event associations
     
-    def add_photos_to_event(self, event_id: int, photo_ids: List[int], user_id: int) -> int:
+    def add_photos_to_event(self, event_id: int, hothashes: List[str], user_id: int) -> int:
         """
         Add photos to event
         
@@ -283,16 +283,17 @@ class EventRepository:
         
         # Verify all photos exist and belong to user
         photos = self.db.query(Photo).filter(
-            Photo.id.in_(photo_ids),
+            Photo.hothash.in_(hothashes),
             Photo.user_id == user_id
         ).all()
         
-        if len(photos) != len(photo_ids):
-            found_ids = {p.id for p in photos}
-            missing_ids = set(photo_ids) - found_ids
-            raise ValueError(f"Photos not found or access denied: {missing_ids}")
+        if len(photos) != len(hothashes):
+            found_hashes = {p.hothash for p in photos}
+            missing_hashes = set(hothashes) - found_hashes
+            raise ValueError(f"Photos not found or access denied: {missing_hashes}")
         
         # Get existing associations
+        photo_ids = [p.id for p in photos]
         existing = self.db.query(PhotoEvent.photo_id).filter(
             PhotoEvent.event_id == event_id,
             PhotoEvent.photo_id.in_(photo_ids)
@@ -301,16 +302,16 @@ class EventRepository:
         
         # Add new associations
         added_count = 0
-        for photo_id in photo_ids:
-            if photo_id not in existing_ids:
-                photo_event = PhotoEvent(photo_id=photo_id, event_id=event_id)
+        for photo in photos:
+            if photo.id not in existing_ids:
+                photo_event = PhotoEvent(photo_id=photo.id, event_id=event_id)
                 self.db.add(photo_event)
                 added_count += 1
         
         self.db.commit()
         return added_count
     
-    def remove_photos_from_event(self, event_id: int, photo_ids: List[int], user_id: int) -> int:
+    def remove_photos_from_event(self, event_id: int, hothashes: List[str], user_id: int) -> int:
         """
         Remove photos from event
         
@@ -320,6 +321,13 @@ class EventRepository:
         event = self.get_by_id(event_id, user_id)
         if not event:
             raise ValueError(f"Event {event_id} not found")
+        
+        # Get photo IDs from hothashes
+        photos = self.db.query(Photo).filter(
+            Photo.hothash.in_(hothashes),
+            Photo.user_id == user_id
+        ).all()
+        photo_ids = [p.id for p in photos]
         
         deleted = self.db.query(PhotoEvent).filter(
             PhotoEvent.event_id == event_id,

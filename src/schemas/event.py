@@ -79,12 +79,12 @@ class EventMoveRequest(BaseModel):
 
 class AddPhotosToEventRequest(BaseModel):
     """Request to add photos to an event"""
-    photo_ids: List[int] = Field(..., min_length=1, description="List of photo IDs to add")
+    hothashes: List[str] = Field(..., min_length=1, description="List of photo hothashes to add")
 
 
 class RemovePhotosFromEventRequest(BaseModel):
     """Request to remove photos from an event"""
-    photo_ids: List[int] = Field(..., min_length=1, description="List of photo IDs to remove")
+    hothashes: List[str] = Field(..., min_length=1, description="List of photo hothashes to remove")
 
 
 # Allow forward references for recursive EventTreeNode

@@ -293,7 +293,7 @@ class TestEventsAPI:
         
         response = client.post(
             f"/api/v1/events/{event.id}/photos",
-            json={"photo_ids": [photo1.id, photo2.id]},
+            json={"hothashes": [photo1.hothash, photo2.hothash]},
             headers=auth_headers
         )
         
@@ -315,7 +315,7 @@ class TestEventsAPI:
         # Add first time
         response1 = client.post(
             f"/api/v1/events/{event.id}/photos",
-            json={"photo_ids": [photo.id]},
+            json={"hothashes": [photo.hothash]},
             headers=auth_headers
         )
         assert response1.json()["photos_added"] == 1
@@ -323,7 +323,7 @@ class TestEventsAPI:
         # Add second time (duplicate)
         response2 = client.post(
             f"/api/v1/events/{event.id}/photos",
-            json={"photo_ids": [photo.id]},
+            json={"hothashes": [photo.hothash]},
             headers=auth_headers
         )
         assert response2.json()["photos_added"] == 0  # Already added
@@ -348,7 +348,7 @@ class TestEventsAPI:
         response = client.request(
             "DELETE",
             f"/api/v1/events/{event.id}/photos",
-            json={"photo_ids": [photo.id]},
+            json={"hothashes": [photo.hothash]},
             headers=auth_headers
         )
         

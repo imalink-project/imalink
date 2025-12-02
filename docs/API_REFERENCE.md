@@ -2716,7 +2716,7 @@ Authorization: Bearer {token}
 Content-Type: application/json
 
 {
-  "photo_ids": [1, 2, 3]
+  "hothashes": ["abc123...", "def456...", "ghi789..."]
 }
 ```
 
@@ -2731,6 +2731,7 @@ Content-Type: application/json
 **Features:**
 - **Idempotent**: Duplicates skipped, returns count of newly added
 - **Validation**: All photos must exist and belong to user
+- **Design**: Uses hothash (not photo ID) per ImaLink philosophy
 
 ### Remove Photos from Event
 
@@ -2740,7 +2741,7 @@ Authorization: Bearer {token}
 Content-Type: application/json
 
 {
-  "photo_ids": [1, 2]
+  "hothashes": ["abc123...", "def456..."]
 }
 ```
 

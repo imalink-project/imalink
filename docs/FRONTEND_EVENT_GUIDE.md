@@ -203,14 +203,15 @@ const result = await fetch('/api/v1/events/1/photos', {
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    photo_ids: [1, 2, 3]
+    hothashes: ["abc123...", "def456...", "ghi789..."]
   })
 }).then(r => r.json());
 
 // Returns: { event_id: 1, photos_added: 3 }
 ```
 
-**Idempotent:** Duplicates skipped
+**Idempotent:** Duplicates skipped  
+**Important:** Uses `hothashes` (not photo IDs) - ImaLink design philosophy
 
 ### 8. Remove Photos from Event
 
@@ -224,7 +225,7 @@ const result = await fetch('/api/v1/events/1/photos', {
     'Content-Type': 'application/json'
   },
   body: JSON.stringify({
-    photo_ids: [1, 2]
+    hothashes: ["abc123...", "def456..."]
   })
 }).then(r => r.json());
 
@@ -319,10 +320,10 @@ const allPhotos = await api.getEventPhotos(eventId, {
 
 ```typescript
 // User selects photos, then picks event
-const selectedPhotoIds = [1, 2, 3];
+const selectedHothashes = ["abc123...", "def456...", "ghi789..."];
 const targetEventId = 5;
 
-const result = await api.addPhotosToEvent(targetEventId, selectedPhotoIds);
+const result = await api.addPhotosToEvent(targetEventId, selectedHothashes);
 console.log(`Added ${result.photos_added} photos`);
 ```
 
@@ -335,8 +336,8 @@ console.log(`Added ${result.photos_added} photos`);
 
 ```typescript
 // User drags photos onto event
-function onDrop(photoIds: number[], eventId: number) {
-  await api.addPhotosToEvent(eventId, photoIds);
+function onDrop(hothashes: string[], eventId: number) {
+  await api.addPhotosToEvent(eventId, hothashes);
   refreshGallery();
 }
 ```
