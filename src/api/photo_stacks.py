@@ -7,7 +7,8 @@ without modifying the underlying Photo objects.
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from src.core.dependencies import get_current_user, get_photo_stack_service
+from src.api.dependencies import get_current_user
+from src.core.dependencies import get_photo_stack_service
 from src.models.user import User
 from src.services.photo_stack_service import PhotoStackService
 from src.schemas.requests import (

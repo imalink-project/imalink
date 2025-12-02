@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from src.database.connection import get_db
-from src.api.dependencies import get_current_user
+from src.core.dependencies import get_current_user
 from src.models.user import User
 from src.services.event_service import EventService
 from src.schemas.event import (

@@ -5,10 +5,13 @@ Provides clean dependency management for controllers
 from typing import Optional, Any
 from sqlalchemy.orm import Session
 from fastapi import Depends, Header
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 # Database dependency (reuse existing)
 from src.database.connection import get_db
+
+# HTTP Bearer token scheme for extracting JWT from Authorization header
+security = HTTPBearer(auto_error=False)
 
 # Service imports
 from src.services.image_file_service import ImageFileService
@@ -57,13 +60,19 @@ def get_photo_stack_service(db: Session = Depends(get_db)) -> PhotoStackService:
 
 # Utility dependencies
 def get_current_user(
-    token: str = Depends(OAuth2PasswordBearer(tokenUrl="auth/login")),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db)
 ):
     """Get current authenticated user from JWT token"""
     from src.utils.security import get_user_id_from_token
     from src.repositories.user_repository import UserRepository
     from src.core.exceptions import AuthenticationError
+    
+    if not credentials:
+        raise AuthenticationError("Not authenticated")
+    
+    # Extract token from credentials
+    token = credentials.credentials
     
     # Extract user ID from token
     user_id = get_user_id_from_token(token)

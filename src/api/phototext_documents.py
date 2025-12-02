@@ -6,7 +6,7 @@ Provides REST API for managing PhotoText documents - structured photo storytelli
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from src.core.dependencies import get_current_user, get_current_user_optional
+from src.api.dependencies import get_current_user, get_optional_current_user
 from src.models.user import User
 from src.services.phototext_document_service import PhotoTextDocumentService
 from src.database.connection import get_db
@@ -64,7 +64,7 @@ def list_documents(
     offset: int = Query(0, ge=0, description="Number of documents to skip"),
     sort_by: str = Query("created_at", description="Sort field (created_at, updated_at, title)"),
     sort_order: str = Query("desc", description="Sort order (asc, desc)"),
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     service: PhotoTextDocumentService = Depends(get_phototext_service)
 ):
     """
@@ -97,7 +97,7 @@ def list_documents(
 @router.get("/{document_id}", response_model=PhotoTextDocumentResponse)
 def get_document(
     document_id: int,
-    current_user: Optional[User] = Depends(get_current_user_optional),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     service: PhotoTextDocumentService = Depends(get_phototext_service)
 ):
     """
