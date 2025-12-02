@@ -137,33 +137,7 @@ class EventService:
         if not self.repo.delete(event_id, user_id):
             raise NotFoundError("Event", event_id)
     
-    # Photo operations
-    
-    def add_photos_to_event(self, event_id: int, hothashes: List[str], user_id: int) -> int:
-        """
-        Add photos to event
-        
-        Returns:
-            Number of photos added
-        """
-        try:
-            return self.repo.add_photos_to_event(event_id, hothashes, user_id)
-        except ValueError as e:
-            if "not found" in str(e).lower():
-                raise NotFoundError("Event or Photos", event_id)
-            raise ValidationError(str(e))
-    
-    def remove_photos_from_event(self, event_id: int, hothashes: List[str], user_id: int) -> int:
-        """
-        Remove photos from event
-        
-        Returns:
-            Number of photos removed
-        """
-        try:
-            return self.repo.remove_photos_from_event(event_id, hothashes, user_id)
-        except ValueError as e:
-            raise NotFoundError("Event", event_id)
+    # Photo operations (simplified for one-to-many)
     
     def get_event_photos(self, event_id: int, user_id: int, include_descendants: bool = False):
         """Get photos in event (optionally recursive)"""

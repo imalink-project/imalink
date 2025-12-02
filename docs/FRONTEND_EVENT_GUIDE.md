@@ -10,9 +10,10 @@ Events organize photos by hierarchical context (trips, occasions, projects). Unl
 
 **Key Concepts:**
 - **Hierarchical**: Events can have parent-child relationships (e.g., "London 2025" → "Tower of London")
-- **Many-to-many**: Photos can belong to multiple events
+- **One-to-many**: Each photo belongs to at most ONE event (simpler than Collections)
 - **Recursive**: Can query all photos in event + descendants
 - **User-scoped**: Each user has their own event hierarchy
+- **Optional**: Photos can have `event_id=null` (events are optional organization)
 - **Optional metadata**: Dates, location, GPS coordinates
 
 ## Data Model
@@ -189,52 +190,50 @@ await fetch('/api/v1/events/1', {
 
 **Behavior:**
 - Children become root events (parent_event_id → null)
-- Photos remain but lose event association
+- Photos remain but have event_id set to null
 
-### 7. Add Photos to Event
+### 7. Set Photo Event (One-to-Many)
 
-**Endpoint:** `POST /api/v1/events/{event_id}/photos`
+**Endpoint:** `PUT /api/v1/photos/{hothash}/event`
 
 ```typescript
-const result = await fetch('/api/v1/events/1/photos', {
-  method: 'POST',
+// Assign photo to event
+const photo = await fetch('/api/v1/photos/abc123.../event', {
+  method: 'PUT',
   headers: {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
   },
-  body: JSON.stringify({
-    hothashes: ["abc123...", "def456...", "ghi789..."]
-  })
+  body: JSON.stringify(5)  // event_id directly (not wrapped)
 }).then(r => r.json());
 
-// Returns: { event_id: 1, photos_added: 3 }
+// Returns full PhotoResponse with event_id: 5
 ```
 
-**Idempotent:** Duplicates skipped  
-**Important:** Uses `hothashes` (not photo IDs) - ImaLink design philosophy
-
-### 8. Remove Photos from Event
-
-**Endpoint:** `DELETE /api/v1/events/{event_id}/photos`
-
 ```typescript
-const result = await fetch('/api/v1/events/1/photos', {
-  method: 'DELETE',
+// Remove photo from event
+const photo = await fetch('/api/v1/photos/abc123.../event', {
+  method: 'PUT',
   headers: {
     'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json'
   },
-  body: JSON.stringify({
-    hothashes: ["abc123...", "def456..."]
-  })
+  body: JSON.stringify(null)  // null to unset
 }).then(r => r.json());
 
-// Returns: { event_id: 1, photos_removed: 2 }
+// Returns full PhotoResponse with event_id: null
 ```
 
-### 9. Get Event Photos
+**Features:**
+- **Direct assignment**: Each photo has single event_id
+- **Automatic reassignment**: Setting new event removes from old event
+- **Nullable**: Send `null` to remove from all events
+- **Validation**: Event must exist and belong to user
+- **Important:** Uses `hothash` (not photo ID) - ImaLink design philosophy
 
-**Endpoint:** `GET /api/v1/events/{event_id}/photos`
+**Alternative:** You can also use `PUT /api/v1/photos/{hothash}` with `event_id` in the body to update event along with other photo fields.
+
+### 8. Get Event Photos/v1/events/{event_id}/photos`
 
 ```typescript
 // Direct photos only
@@ -316,28 +315,53 @@ const allPhotos = await api.getEventPhotos(eventId, {
 - Toggle "include sub-events"
 - Event info header (name, dates, location)
 
-### Pattern 4: Photo Multi-Select + Add to Event
+### Pattern 4: Photo Multi-Select + Assign to Event
 
 ```typescript
 // User selects photos, then picks event
 const selectedHothashes = ["abc123...", "def456...", "ghi789..."];
 const targetEventId = 5;
 
-const result = await api.addPhotosToEvent(targetEventId, selectedHothashes);
-console.log(`Added ${result.photos_added} photos`);
+// Assign each photo to event (one-to-many)
+const results = await Promise.all(
+  selectedHothashes.map(hothash => 
+    fetch(`/api/v1/photos/${hothash}/event`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(targetEventId)
+    })
+  )
+);
+
+console.log(`Assigned ${results.length} photos to event`);
 ```
 
 **UI Components:**
 - Photo selection checkboxes
-- "Add to Event" button → Event picker modal
+- "Set Event" button → Event picker modal
 - Success toast with count
+- **Note:** Each photo can only be in ONE event (reassignment removes from old event)
 
 ### Pattern 5: Drag-and-Drop to Event
 
 ```typescript
 // User drags photos onto event
-function onDrop(hothashes: string[], eventId: number) {
-  await api.addPhotosToEvent(eventId, hothashes);
+async function onDrop(hothashes: string[], eventId: number) {
+  await Promise.all(
+    hothashes.map(hothash => 
+      fetch(`/api/v1/photos/${hothash}/event`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(eventId)
+      })
+    )
+  );
   refreshGallery();
 }
 ```
@@ -357,7 +381,7 @@ interface EventStore {
   createEvent: (data: CreateEventData) => Promise<Event>;
   updateEvent: (id: number, data: UpdateEventData) => Promise<Event>;
   deleteEvent: (id: number) => Promise<void>;
-  addPhotos: (eventId: number, photoIds: number[]) => Promise<void>;
+  setPhotoEvent: (hothash: string, eventId: number | null) => Promise<void>;
 }
 
 export const useEventStore = create<EventStore>((set, get) => ({
@@ -429,6 +453,7 @@ Backend validates:
 | Feature | Events | Collections |
 |---------|--------|-------------|
 | Structure | Hierarchical (parent-child) | Flat |
+| Photo Relationship | One-to-many (single event) | Many-to-many (multiple collections) |
 | Purpose | Contextual organization | Curated sets |
 | Metadata | Dates, location, GPS | Description only |
 | Hierarchy | Unlimited depth | None |
@@ -450,13 +475,14 @@ Backend validates:
 - [ ] Move event to new parent
 - [ ] Prevent cycle when moving (error handling)
 - [ ] Delete event (children become roots)
-- [ ] Add photos to event
-- [ ] Remove photos from event
+- [ ] Assign photo to event (PUT /photos/{hothash}/event)
+- [ ] Remove photo from event (PUT with null)
+- [ ] Reassign photo to different event
 - [ ] Get event photos (direct)
 - [ ] Get event photos (recursive with descendants)
 - [ ] Display photo counts correctly
 - [ ] Breadcrumb navigation
-- [ ] Drag-and-drop photos to events
+- [ ] Drag-and-drop photos to events (one-to-many assignment)
 
 ## Error Handling
 

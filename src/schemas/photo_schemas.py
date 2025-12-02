@@ -123,6 +123,7 @@ class PhotoResponse(BaseModel):
     # Relationships
     author: Optional[AuthorSummary] = Field(None, description="Photo author/photographer")
     author_id: Optional[int] = Field(None, description="Author ID")
+    event_id: Optional[int] = Field(None, description="Event ID (hierarchical context)")
     
     # Import information - which input channel created this Photo
     input_channel_id: Optional[int] = Field(None, description="Input channel that created this photo")
@@ -196,6 +197,7 @@ class PhotoUpdateRequest(BaseModel):
     rating: Optional[int] = Field(None, ge=0, le=5, description="User rating")
     category: Optional[str] = Field(None, max_length=100, description="User-defined category")
     author_id: Optional[int] = Field(None, description="Author/photographer ID")
+    event_id: Optional[int] = Field(None, description="Event ID (hierarchical context)")
     visibility: Optional[str] = Field(None, pattern=r'^(private|space|authenticated|public)$', description="Photo visibility (optional, backwards compatible)")
 
 

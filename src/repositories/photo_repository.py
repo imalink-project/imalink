@@ -357,3 +357,40 @@ class PhotoRepository:
             query = query.order_by(desc(Photo.created_at))
         
         return query
+    
+    def set_event(self, hothash: str, event_id: Optional[int], user_id: int) -> Photo:
+        """
+        Set photo's event (or unset with None)
+        
+        Args:
+            hothash: Photo identifier
+            event_id: Event ID (None to unset)
+            user_id: User ID for ownership check
+            
+        Returns:
+            Updated photo
+            
+        Raises:
+            ValueError: If photo not found or access denied
+        """
+        photo = self.get_by_hash(hothash, user_id)
+        if not photo:
+            raise ValueError(f"Photo {hothash} not found or access denied")
+        
+        if photo.user_id != user_id:
+            raise ValueError("Cannot modify other user's photo")
+        
+        # Validate event exists and belongs to user (if not None)
+        if event_id is not None:
+            from src.models.event import Event
+            event = self.db.query(Event).filter(
+                Event.id == event_id,
+                Event.user_id == user_id
+            ).first()
+            if not event:
+                raise ValueError(f"Event {event_id} not found or access denied")
+        
+        photo.event_id = event_id
+        self.db.commit()
+        self.db.refresh(photo)
+        return photo

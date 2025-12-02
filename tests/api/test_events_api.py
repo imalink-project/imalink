@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 
-from src.models import User, Photo, Event, PhotoEvent, Author
+from src.models import User, Photo, Event, Author
 from src.utils.security import create_access_token
 
 
@@ -278,83 +278,86 @@ class TestEventsAPI:
         assert child is not None
         assert child.parent_event_id is None
     
-    def test_add_photos_to_event(self, client: TestClient, test_user: User, auth_headers: dict, test_db_session: Session):
-        """Test adding photos to event"""
+    def test_assign_photo_to_event(self, client: TestClient, test_user: User, auth_headers: dict, test_db_session: Session):
+        """Test assigning photo to event via PUT /photos/{hothash}/event"""
         event = Event(user_id=test_user.id, name="Test Event", sort_order=0)
         test_db_session.add(event)
         test_db_session.commit()
         
-        photo1 = Photo(hothash="hash1", hotpreview=b"preview1", user_id=test_user.id, 
+        photo = Photo(hothash="hash1", hotpreview=b"preview1", user_id=test_user.id, 
                        taken_at=datetime.now(timezone.utc), input_channel_id=1)
-        photo2 = Photo(hothash="hash2", hotpreview=b"preview2", user_id=test_user.id,
-                       taken_at=datetime.now(timezone.utc), input_channel_id=1)
-        test_db_session.add_all([photo1, photo2])
+        test_db_session.add(photo)
         test_db_session.commit()
         
-        response = client.post(
-            f"/api/v1/events/{event.id}/photos",
-            json={"hothashes": [photo1.hothash, photo2.hothash]},
+        response = client.put(
+            f"/api/v1/photos/{photo.hothash}/event",
+            json=event.id,
             headers=auth_headers
         )
         
-        assert response.status_code == 200
+        assert response.status_code == 200, f"Expected 200 but got {response.status_code}: {response.json()}"
         data = response.json()
-        assert data["photos_added"] == 2
+        assert data["event_id"] == event.id
+        
+        # Verify in database
+        test_db_session.expire(photo)
+        assert photo.event_id == event.id
     
-    def test_add_photos_to_event_idempotent(self, client: TestClient, test_user: User, auth_headers: dict, test_db_session: Session):
-        """Test that adding same photo twice is idempotent"""
+    def test_reassign_photo_to_different_event(self, client: TestClient, test_user: User, auth_headers: dict, test_db_session: Session):
+        """Test reassigning photo from one event to another"""
+        event1 = Event(user_id=test_user.id, name="Event 1", sort_order=0)
+        event2 = Event(user_id=test_user.id, name="Event 2", sort_order=1)
+        test_db_session.add_all([event1, event2])
+        test_db_session.commit()
+        
+        photo = Photo(hothash="hash1", hotpreview=b"preview1", user_id=test_user.id,
+                      taken_at=datetime.now(timezone.utc), input_channel_id=1, event_id=event1.id)
+        test_db_session.add(photo)
+        test_db_session.commit()
+        
+        # Verify initial assignment
+        assert photo.event_id == event1.id
+        
+        # Reassign to event2
+        response = client.put(
+            f"/api/v1/photos/{photo.hothash}/event",
+            json=event2.id,
+            headers=auth_headers
+        )
+        assert response.status_code == 200, f"Expected 200 but got {response.status_code}: {response.json()}"
+        assert response.json()["event_id"] == event2.id
+        
+        # Verify in database
+        test_db_session.expire(photo)
+        assert photo.event_id == event2.id
+    
+    def test_remove_photo_from_event(self, client: TestClient, test_user: User, auth_headers: dict, test_db_session: Session):
+        """Test removing photo from event (setting event_id to null)"""
         event = Event(user_id=test_user.id, name="Test Event", sort_order=0)
         test_db_session.add(event)
         test_db_session.commit()
         
         photo = Photo(hothash="hash1", hotpreview=b"preview1", user_id=test_user.id,
-                      taken_at=datetime.now(timezone.utc), input_channel_id=1)
+                      taken_at=datetime.now(timezone.utc), input_channel_id=1, event_id=event.id)
         test_db_session.add(photo)
         test_db_session.commit()
         
-        # Add first time
-        response1 = client.post(
-            f"/api/v1/events/{event.id}/photos",
-            json={"hothashes": [photo.hothash]},
-            headers=auth_headers
-        )
-        assert response1.json()["photos_added"] == 1
+        # Verify initial assignment
+        assert photo.event_id == event.id
         
-        # Add second time (duplicate)
-        response2 = client.post(
-            f"/api/v1/events/{event.id}/photos",
-            json={"hothashes": [photo.hothash]},
-            headers=auth_headers
-        )
-        assert response2.json()["photos_added"] == 0  # Already added
-    
-    def test_remove_photos_from_event(self, client: TestClient, test_user: User, auth_headers: dict, test_db_session: Session):
-        """Test removing photos from event"""
-        event = Event(user_id=test_user.id, name="Test Event", sort_order=0)
-        test_db_session.add(event)
-        test_db_session.commit()
-        
-        photo = Photo(hothash="hash1", hotpreview=b"preview1", user_id=test_user.id,
-                      taken_at=datetime.now(timezone.utc), input_channel_id=1)
-        test_db_session.add(photo)
-        test_db_session.commit()
-        
-        # Add photo
-        photo_event = PhotoEvent(photo_id=photo.id, event_id=event.id)
-        test_db_session.add(photo_event)
-        test_db_session.commit()
-        
-        # Remove photo
-        response = client.request(
-            "DELETE",
-            f"/api/v1/events/{event.id}/photos",
-            json={"hothashes": [photo.hothash]},
+        # Remove event assignment (set to null)
+        response = client.put(
+            f"/api/v1/photos/{photo.hothash}/event",
+            json=None,
             headers=auth_headers
         )
         
-        assert response.status_code == 200
-        data = response.json()
-        assert data["photos_removed"] == 1
+        assert response.status_code == 200, f"Expected 200 but got {response.status_code}: {response.json()}"
+        assert response.json()["event_id"] is None
+        
+        # Verify in database
+        test_db_session.expire(photo)
+        assert photo.event_id is None
     
     def test_get_event_photos(self, client: TestClient, test_user: User, auth_headers: dict, test_db_session: Session):
         """Test getting photos in event"""
@@ -363,15 +366,10 @@ class TestEventsAPI:
         test_db_session.commit()
         
         photo1 = Photo(hothash="hash1", hotpreview=b"preview1", user_id=test_user.id,
-                       taken_at=datetime.now(timezone.utc), input_channel_id=1)
+                       taken_at=datetime.now(timezone.utc), input_channel_id=1, event_id=event.id)
         photo2 = Photo(hothash="hash2", hotpreview=b"preview2", user_id=test_user.id,
-                       taken_at=datetime.now(timezone.utc), input_channel_id=1)
+                       taken_at=datetime.now(timezone.utc), input_channel_id=1, event_id=event.id)
         test_db_session.add_all([photo1, photo2])
-        test_db_session.commit()
-        
-        photo_event1 = PhotoEvent(photo_id=photo1.id, event_id=event.id)
-        photo_event2 = PhotoEvent(photo_id=photo2.id, event_id=event.id)
-        test_db_session.add_all([photo_event1, photo_event2])
         test_db_session.commit()
         
         response = client.get(f"/api/v1/events/{event.id}/photos", headers=auth_headers)
@@ -390,15 +388,10 @@ class TestEventsAPI:
         test_db_session.commit()
         
         photo1 = Photo(hothash="hash1", hotpreview=b"preview1", user_id=test_user.id,
-                       taken_at=datetime.now(timezone.utc), input_channel_id=1)
+                       taken_at=datetime.now(timezone.utc), input_channel_id=1, event_id=parent.id)
         photo2 = Photo(hothash="hash2", hotpreview=b"preview2", user_id=test_user.id,
-                       taken_at=datetime.now(timezone.utc), input_channel_id=1)
+                       taken_at=datetime.now(timezone.utc), input_channel_id=1, event_id=child.id)
         test_db_session.add_all([photo1, photo2])
-        test_db_session.commit()
-        
-        # Photo1 in parent, Photo2 in child
-        test_db_session.add(PhotoEvent(photo_id=photo1.id, event_id=parent.id))
-        test_db_session.add(PhotoEvent(photo_id=photo2.id, event_id=child.id))
         test_db_session.commit()
         
         # Get photos without recursion (parent only)
@@ -422,14 +415,10 @@ class TestEventsAPI:
         test_db_session.commit()
         
         photo1 = Photo(hothash="hash1", hotpreview=b"preview1", user_id=test_user.id,
-                       taken_at=datetime.now(timezone.utc), input_channel_id=1)
+                       taken_at=datetime.now(timezone.utc), input_channel_id=1, event_id=event.id)
         photo2 = Photo(hothash="hash2", hotpreview=b"preview2", user_id=test_user.id,
-                       taken_at=datetime.now(timezone.utc), input_channel_id=1)
+                       taken_at=datetime.now(timezone.utc), input_channel_id=1, event_id=event.id)
         test_db_session.add_all([photo1, photo2])
-        test_db_session.commit()
-        
-        test_db_session.add(PhotoEvent(photo_id=photo1.id, event_id=event.id))
-        test_db_session.add(PhotoEvent(photo_id=photo2.id, event_id=event.id))
         test_db_session.commit()
         
         response = client.get("/api/v1/events/", headers=auth_headers)

@@ -17,7 +17,7 @@ This API provides:
 - DELETE: Remove photo and all associated image files (cascade)
 """
 from typing import Optional, List
-from fastapi import APIRouter, Depends, HTTPException, Response, Query, File, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Response, Query, File, UploadFile, Body
 from fastapi.responses import StreamingResponse
 import io
 import logging
@@ -349,6 +349,37 @@ def update_view_correction(
     except Exception as e:
         logger.error(f"Failed to update view correction: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to update view correction: {str(e)}")
+
+
+@router.put("/{hothash}/event", response_model=PhotoResponse)
+def set_photo_event(
+    hothash: str,
+    event_id: Optional[int] = Body(None, description="Event ID (null to unset)"),
+    current_user: User = Depends(get_current_active_user),
+    photo_service: PhotoService = Depends(get_photo_service)
+):
+    """
+    Set or unset photo's event
+    
+    - Send event_id to assign photo to event
+    - Send null to remove photo from event
+    - Each photo can belong to at most ONE event (one-to-many)
+    - For many-to-many relationships, use Collections or Tags
+    """
+    try:
+        updated_photo = photo_service.set_event(
+            hothash=hothash,
+            event_id=event_id,
+            user_id=getattr(current_user, 'id')
+        )
+        return updated_photo
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception as e:
+        logger.error(f"Failed to set event: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to set event: {str(e)}")
 
 
 # Photo Tags Endpoints

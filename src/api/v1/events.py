@@ -10,8 +10,7 @@ from src.models.user import User
 from src.services.event_service import EventService
 from src.schemas.event import (
     EventCreate, EventUpdate, EventResponse, EventTreeResponse,
-    EventWithPhotos, EventMoveRequest, AddPhotosToEventRequest,
-    RemovePhotosFromEventRequest
+    EventWithPhotos, EventMoveRequest
 )
 from src.schemas.photo_schemas import PhotoResponse
 
@@ -137,44 +136,6 @@ def delete_event(
 
 # Photo-Event associations
 
-@router.post("/{event_id}/photos", status_code=200)
-def add_photos_to_event(
-    event_id: int,
-    request: AddPhotosToEventRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Add photos to event
-    
-    Photos can belong to multiple events.
-    Duplicates are skipped (idempotent).
-    
-    Returns count of photos added.
-    """
-    service = EventService(db)
-    added_count = service.add_photos_to_event(event_id, request.hothashes, current_user.id)
-    return {"event_id": event_id, "photos_added": added_count}
-
-
-@router.delete("/{event_id}/photos", status_code=200)
-def remove_photos_from_event(
-    event_id: int,
-    request: RemovePhotosFromEventRequest,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Remove photos from event
-    
-    Photos remain in database, only association is removed.
-    Returns count of photos removed.
-    """
-    service = EventService(db)
-    removed_count = service.remove_photos_from_event(event_id, request.hothashes, current_user.id)
-    return {"event_id": event_id, "photos_removed": removed_count}
-
-
 @router.get("/{event_id}/photos", response_model=List[PhotoResponse])
 def get_event_photos(
     event_id: int,
@@ -187,6 +148,8 @@ def get_event_photos(
     
     - **include_descendants=false**: Only direct photos in this event
     - **include_descendants=true**: Photos in this event + all child events (recursive)
+    
+    Note: To set/change a photo's event, use PUT /photos/{hothash}/event
     """
     service = EventService(db)
     photos = service.get_event_photos(event_id, current_user.id, include_descendants)

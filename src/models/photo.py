@@ -93,6 +93,9 @@ class Photo(Base, TimestampMixin):
     # PhotoStack relationship - each photo can belong to ONE stack (optional)
     stack_id = Column(Integer, ForeignKey('photo_stacks.id'), nullable=True, index=True)
     
+    # Event relationship - each photo can belong to ONE event (optional, hierarchical context)
+    event_id = Column(Integer, ForeignKey('events.id', ondelete='SET NULL'), nullable=True, index=True)
+    
     # Coldpreview - medium-size preview for detail views (800-1200px)
     # SIMPLIFIED: Only store path, metadata is read dynamically from file
     coldpreview_path = Column(String(255), nullable=True)  # Filesystem path to coldpreview file
@@ -115,7 +118,7 @@ class Photo(Base, TimestampMixin):
     input_channel = relationship("InputChannel", back_populates="photos")
     stack = relationship("PhotoStack", back_populates="photos", foreign_keys=[stack_id])
     tags = relationship("Tag", secondary="photo_tags", back_populates="photos")
-    events = relationship("Event", secondary="photo_events", back_populates="photos")
+    event = relationship("Event", back_populates="photos")
     
     # Table constraints
     __table_args__ = (

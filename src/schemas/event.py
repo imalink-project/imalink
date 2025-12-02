@@ -77,15 +77,5 @@ class EventMoveRequest(BaseModel):
     new_parent_id: Optional[int] = Field(None, description="New parent event ID (null for root level)")
 
 
-class AddPhotosToEventRequest(BaseModel):
-    """Request to add photos to an event"""
-    hothashes: List[str] = Field(..., min_length=1, description="List of photo hothashes to add")
-
-
-class RemovePhotosFromEventRequest(BaseModel):
-    """Request to remove photos from an event"""
-    hothashes: List[str] = Field(..., min_length=1, description="List of photo hothashes to remove")
-
-
 # Allow forward references for recursive EventTreeNode
 EventTreeNode.model_rebuild()

@@ -2,7 +2,8 @@
 Event model for hierarchical photo organization
 
 Events represent contextual groupings of photos (trips, occasions, projects).
-Unlike Collections (curated, flat), Events are hierarchical and context-driven.
+Unlike Collections (curated, many-to-many), Events are hierarchical one-to-many.
+Each photo belongs to at most ONE event.
 """
 from datetime import datetime
 from typing import List, Optional
@@ -22,7 +23,8 @@ class Event(Base, TimestampMixin):
       - "Tower of London" (child)
       - "British Museum" (child)
     
-    One photo can belong to multiple events (many-to-many via photo_events).
+    Each photo belongs to at most ONE event (one-to-many).
+    Collections and Tags provide many-to-many functionality.
     """
     __tablename__ = "events"
     
@@ -53,7 +55,7 @@ class Event(Base, TimestampMixin):
     # Relationships
     user = relationship("User", back_populates="events")
     parent = relationship("Event", remote_side=[id], backref="children")
-    photos = relationship("Photo", secondary="photo_events", back_populates="events")
+    photos = relationship("Photo", back_populates="event")
     
     # Constraints
     __table_args__ = (
@@ -91,19 +93,3 @@ class Event(Base, TimestampMixin):
                 return True
             current = current.parent
         return False
-
-
-class PhotoEvent(Base):
-    """
-    Junction table for many-to-many relationship between Photos and Events
-    
-    One photo can belong to multiple events (e.g., overlapping contexts).
-    """
-    __tablename__ = "photo_events"
-    
-    photo_id = Column(Integer, ForeignKey('photos.id', ondelete='CASCADE'), primary_key=True)
-    event_id = Column(Integer, ForeignKey('events.id', ondelete='CASCADE'), primary_key=True, index=True)
-    added_at = Column(DateTime(timezone=True), default=datetime.utcnow, nullable=False)
-    
-    def __repr__(self):
-        return f"<PhotoEvent(photo_id={self.photo_id}, event_id={self.event_id})>"

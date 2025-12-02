@@ -5,7 +5,7 @@ from typing import List, Optional
 from sqlalchemy import text
 from sqlalchemy.orm import Session, joinedload
 
-from src.models.event import Event, PhotoEvent
+from src.models.event import Event
 from src.models.photo import Photo
 
 
@@ -268,74 +268,7 @@ class EventRepository:
         self.db.commit()
         return True
     
-    # Photo-Event associations
-    
-    def add_photos_to_event(self, event_id: int, hothashes: List[str], user_id: int) -> int:
-        """
-        Add photos to event
-        
-        Returns:
-            Number of photos added (duplicates skipped)
-        """
-        event = self.get_by_id(event_id, user_id)
-        if not event:
-            raise ValueError(f"Event {event_id} not found")
-        
-        # Verify all photos exist and belong to user
-        photos = self.db.query(Photo).filter(
-            Photo.hothash.in_(hothashes),
-            Photo.user_id == user_id
-        ).all()
-        
-        if len(photos) != len(hothashes):
-            found_hashes = {p.hothash for p in photos}
-            missing_hashes = set(hothashes) - found_hashes
-            raise ValueError(f"Photos not found or access denied: {missing_hashes}")
-        
-        # Get existing associations
-        photo_ids = [p.id for p in photos]
-        existing = self.db.query(PhotoEvent.photo_id).filter(
-            PhotoEvent.event_id == event_id,
-            PhotoEvent.photo_id.in_(photo_ids)
-        ).all()
-        existing_ids = {row.photo_id for row in existing}
-        
-        # Add new associations
-        added_count = 0
-        for photo in photos:
-            if photo.id not in existing_ids:
-                photo_event = PhotoEvent(photo_id=photo.id, event_id=event_id)
-                self.db.add(photo_event)
-                added_count += 1
-        
-        self.db.commit()
-        return added_count
-    
-    def remove_photos_from_event(self, event_id: int, hothashes: List[str], user_id: int) -> int:
-        """
-        Remove photos from event
-        
-        Returns:
-            Number of photos removed
-        """
-        event = self.get_by_id(event_id, user_id)
-        if not event:
-            raise ValueError(f"Event {event_id} not found")
-        
-        # Get photo IDs from hothashes
-        photos = self.db.query(Photo).filter(
-            Photo.hothash.in_(hothashes),
-            Photo.user_id == user_id
-        ).all()
-        photo_ids = [p.id for p in photos]
-        
-        deleted = self.db.query(PhotoEvent).filter(
-            PhotoEvent.event_id == event_id,
-            PhotoEvent.photo_id.in_(photo_ids)
-        ).delete(synchronize_session=False)
-        
-        self.db.commit()
-        return deleted
+    # Photo-Event associations (one-to-many: photo.event_id)
     
     def get_photos_in_event(self, event_id: int, user_id: int, include_descendants: bool = False) -> List[Photo]:
         """
@@ -356,11 +289,11 @@ class EventRepository:
         else:
             event_ids = [event_id]
         
-        # Query photos
-        photos = self.db.query(Photo).join(PhotoEvent).filter(
-            PhotoEvent.event_id.in_(event_ids),
+        # Query photos directly via event_id column
+        photos = self.db.query(Photo).filter(
+            Photo.event_id.in_(event_ids),
             Photo.user_id == user_id
-        ).distinct().all()
+        ).all()
         
         return photos
     
@@ -375,13 +308,13 @@ class EventRepository:
                     SELECT e.id FROM events e
                     INNER JOIN event_tree et ON e.parent_event_id = et.id
                 )
-                SELECT COUNT(DISTINCT pe.photo_id)
-                FROM photo_events pe
-                INNER JOIN event_tree et ON pe.event_id = et.id
+                SELECT COUNT(p.id)
+                FROM photos p
+                INNER JOIN event_tree et ON p.event_id = et.id
             """)
             result = self.db.execute(cte_query, {"event_id": event_id})
             return result.scalar() or 0
         else:
             # Direct count
-            count = self.db.query(PhotoEvent).filter(PhotoEvent.event_id == event_id).count()
+            count = self.db.query(Photo).filter(Photo.event_id == event_id).count()
             return count

@@ -473,11 +473,13 @@ class PhotoService:
             exif_dict=getattr(photo, 'exif_dict', None),
             rating=getattr(photo, 'rating', 0),
             visibility=getattr(photo, 'visibility', 'private'),  # Phase 1: Include visibility
+            category=getattr(photo, 'category', None),
             created_at=getattr(photo, 'created_at'),
             updated_at=getattr(photo, 'updated_at'),
             author=author,
             author_id=getattr(photo, 'author_id', None),
-            import_session_id=getattr(photo, 'import_session_id', None),
+            event_id=getattr(photo, 'event_id', None),
+            input_channel_id=getattr(photo, 'input_channel_id', None),
             first_imported=photo.first_imported,
             last_imported=photo.last_imported,
             has_gps=has_gps,
@@ -764,3 +766,27 @@ class PhotoService:
         if not photo:
             raise NotFoundError("Photo", hothash)
         return photo
+    
+    def set_event(self, hothash: str, event_id: Optional[int], user_id: int) -> PhotoResponse:
+        """
+        Set or unset photo's event
+        
+        Args:
+            hothash: Photo identifier
+            event_id: Event ID (None to unset)
+            user_id: User ID for ownership
+            
+        Returns:
+            Updated photo response
+            
+        Raises:
+            NotFoundError: If photo or event not found
+            ValidationError: If validation fails
+        """
+        try:
+            photo = self.photo_repo.set_event(hothash, event_id, user_id)
+            return self._convert_to_response(photo)
+        except ValueError as e:
+            if "not found" in str(e).lower():
+                raise NotFoundError("Photo or Event", hothash)
+            raise ValidationError(str(e))

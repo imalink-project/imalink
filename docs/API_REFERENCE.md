@@ -2483,10 +2483,11 @@ Events organize photos by contextual hierarchy (trips, occasions, projects). Unl
 
 **Key Features:**
 - **Hierarchical**: Parent-child relationships (e.g., "London 2025" > "Tower of London")
-- **Many-to-many**: Photos can belong to multiple events
+- **One-to-many**: Each photo belongs to at most ONE event (simpler model)
 - **Recursive queries**: Get all photos in event + descendants
 - **Temporal/Spatial**: Optional dates and GPS coordinates
 - **User-scoped**: Each user has their own event hierarchy
+- **Optional**: Photos can have `event_id=null` (not all photos need events)
 
 ### List Events
 
@@ -2705,55 +2706,8 @@ Authorization: Bearer {token}
 
 **Behavior:**
 - Child events become root events (parent_event_id set to NULL)
-- Photos remain but lose association with this event
-- Cascade: PhotoEvent associations deleted
-
-### Add Photos to Event
-
-```http
-POST /api/v1/events/{event_id}/photos
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "hothashes": ["abc123...", "def456...", "ghi789..."]
-}
-```
-
-**Response** (`200 OK`):
-```json
-{
-  "event_id": 1,
-  "photos_added": 3
-}
-```
-
-**Features:**
-- **Idempotent**: Duplicates skipped, returns count of newly added
-- **Validation**: All photos must exist and belong to user
-- **Design**: Uses hothash (not photo ID) per ImaLink philosophy
-
-### Remove Photos from Event
-
-```http
-DELETE /api/v1/events/{event_id}/photos
-Authorization: Bearer {token}
-Content-Type: application/json
-
-{
-  "hothashes": ["abc123...", "def456..."]
-}
-```
-
-**Response** (`200 OK`):
-```json
-{
-  "event_id": 1,
-  "photos_removed": 2
-}
-```
-
-**Note:** Photos remain in database, only association is removed.
+- Photos remain but have event_id set to NULL (via CASCADE SET NULL)
+- One-to-many: Each photo has single event_id (simpler than junction table)
 
 ### Get Event Photos
 
@@ -2771,11 +2725,11 @@ Authorization: Bearer {token}
 ```json
 [
   {
-    "id": 1,
     "hothash": "abc123...",
     "user_id": 1,
     "taken_at": "2025-07-05T14:30:00Z",
     "visibility": "private",
+    "event_id": 1,
     "width": 4000,
     "height": 3000
     // ... (full PhotoResponse schema)
@@ -2794,6 +2748,58 @@ curl "http://localhost:8000/api/v1/events/1/photos?include_descendants=true" \
 - Display event gallery
 - Export all photos from trip (including sub-events)
 - Count photos in event hierarchy
+
+### Set Photo Event (One-to-Many)
+
+```http
+PUT /api/v1/photos/{hothash}/event
+Authorization: Bearer {token}
+Content-Type: application/json
+```
+
+**Body:** Send event ID directly (not wrapped in object)
+```json
+5
+```
+
+**Or send `null` to remove from event:**
+```json
+null
+```
+
+**Response** (`200 OK`):
+```json
+{
+  "hothash": "abc123...",
+  "event_id": 5,
+  "taken_at": "2025-07-05T14:30:00Z"
+  // ... (full PhotoResponse)
+}
+```
+
+**Features:**
+- **Direct assignment**: Each photo has single event_id
+- **Reassignment**: Setting new event_id automatically removes from old event
+- **Nullable**: Send `null` to remove photo from all events
+- **Validation**: Event must exist and belong to same user
+- **Design**: Uses hothash (not photo ID) per ImaLink philosophy
+
+**Examples:**
+```bash
+# Assign photo to event
+curl -X PUT http://localhost:8000/api/v1/photos/abc123.../event \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '5'
+
+# Remove photo from event
+curl -X PUT http://localhost:8000/api/v1/photos/abc123.../event \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d 'null'
+```
+
+**Alternative:** You can also use `PUT /api/v1/photos/{hothash}` with `event_id` field to update event along with other photo metadata.
 
 ---
 
