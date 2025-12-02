@@ -1,8 +1,8 @@
-"""initial migration with input_channels
+"""initial_schema
 
-Revision ID: ddc4296840f0
+Revision ID: 2ad05d562f3b
 Revises: 
-Create Date: 2025-12-01 18:42:00.177197
+Create Date: 2025-12-02 20:07:16.172607
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = 'ddc4296840f0'
+revision: str = '2ad05d562f3b'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -52,6 +52,29 @@ def upgrade() -> None:
     op.create_index(op.f('ix_users_email'), 'users', ['email'], unique=True)
     op.create_index(op.f('ix_users_id'), 'users', ['id'], unique=False)
     op.create_index(op.f('ix_users_username'), 'users', ['username'], unique=True)
+    op.create_table('events',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('user_id', sa.Integer(), nullable=False),
+    sa.Column('parent_event_id', sa.Integer(), nullable=True),
+    sa.Column('name', sa.String(length=200), nullable=False),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('start_date', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('end_date', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('location_name', sa.String(length=200), nullable=True),
+    sa.Column('gps_latitude', sa.Numeric(precision=10, scale=8), nullable=True),
+    sa.Column('gps_longitude', sa.Numeric(precision=11, scale=8), nullable=True),
+    sa.Column('sort_order', sa.Integer(), nullable=False),
+    sa.Column('created_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('modified_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('updated_at', sa.DateTime(), nullable=False),
+    sa.CheckConstraint('parent_event_id != id', name='valid_parent_event'),
+    sa.ForeignKeyConstraint(['parent_event_id'], ['events.id'], ondelete='SET NULL'),
+    sa.ForeignKeyConstraint(['user_id'], ['users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_events_id'), 'events', ['id'], unique=False)
+    op.create_index(op.f('ix_events_parent_event_id'), 'events', ['parent_event_id'], unique=False)
+    op.create_index(op.f('ix_events_user_id'), 'events', ['user_id'], unique=False)
     op.create_table('input_channels',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
@@ -163,6 +186,7 @@ def upgrade() -> None:
     sa.Column('input_channel_id', sa.Integer(), nullable=True),
     sa.Column('author_id', sa.Integer(), nullable=True),
     sa.Column('stack_id', sa.Integer(), nullable=True),
+    sa.Column('event_id', sa.Integer(), nullable=True),
     sa.Column('coldpreview_path', sa.String(length=255), nullable=True),
     sa.Column('timeloc_correction', sa.JSON(), nullable=True),
     sa.Column('view_correction', sa.JSON(), nullable=True),
@@ -171,6 +195,7 @@ def upgrade() -> None:
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.CheckConstraint("visibility IN ('private', 'space', 'authenticated', 'public')", name='valid_photo_visibility'),
     sa.ForeignKeyConstraint(['author_id'], ['authors.id'], ),
+    sa.ForeignKeyConstraint(['event_id'], ['events.id'], ondelete='SET NULL'),
     sa.ForeignKeyConstraint(['input_channel_id'], ['input_channels.id'], ),
     sa.ForeignKeyConstraint(['stack_id'], ['photo_stacks.id'], ),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
@@ -178,6 +203,7 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_photos_author_id'), 'photos', ['author_id'], unique=False)
     op.create_index(op.f('ix_photos_category'), 'photos', ['category'], unique=False)
+    op.create_index(op.f('ix_photos_event_id'), 'photos', ['event_id'], unique=False)
     op.create_index(op.f('ix_photos_hothash'), 'photos', ['hothash'], unique=True)
     op.create_index(op.f('ix_photos_id'), 'photos', ['id'], unique=False)
     op.create_index(op.f('ix_photos_input_channel_id'), 'photos', ['input_channel_id'], unique=False)
@@ -228,6 +254,7 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_photos_input_channel_id'), table_name='photos')
     op.drop_index(op.f('ix_photos_id'), table_name='photos')
     op.drop_index(op.f('ix_photos_hothash'), table_name='photos')
+    op.drop_index(op.f('ix_photos_event_id'), table_name='photos')
     op.drop_index(op.f('ix_photos_category'), table_name='photos')
     op.drop_index(op.f('ix_photos_author_id'), table_name='photos')
     op.drop_table('photos')
@@ -253,6 +280,10 @@ def downgrade() -> None:
     op.drop_index(op.f('ix_input_channels_id'), table_name='input_channels')
     op.drop_index(op.f('ix_input_channels_default_author_id'), table_name='input_channels')
     op.drop_table('input_channels')
+    op.drop_index(op.f('ix_events_user_id'), table_name='events')
+    op.drop_index(op.f('ix_events_parent_event_id'), table_name='events')
+    op.drop_index(op.f('ix_events_id'), table_name='events')
+    op.drop_table('events')
     op.drop_index(op.f('ix_users_username'), table_name='users')
     op.drop_index(op.f('ix_users_id'), table_name='users')
     op.drop_index(op.f('ix_users_email'), table_name='users')
