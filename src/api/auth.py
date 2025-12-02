@@ -19,7 +19,7 @@ limiter = Limiter(key_func=get_remote_address)
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/hour")  # Limit registrations to prevent abuse
-async def register(
+def register(
     request: Request,
     user_data: UserCreate,
     db: Session = Depends(get_db)
@@ -73,7 +73,7 @@ async def register(
 
 @router.post("/login", response_model=UserToken)
 @limiter.limit("10/minute")  # Protect against brute force attacks
-async def login(
+def login(
     request: Request,
     login_data: UserLogin,
     db: Session = Depends(get_db)
@@ -131,7 +131,7 @@ async def login(
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_current_user_profile(
+def get_current_user_profile(
     current_user: User = Depends(get_current_active_user)
 ):
     """
@@ -147,7 +147,7 @@ async def get_current_user_profile(
 
 
 @router.post("/logout")
-async def logout():
+def logout():
     """
     Logout user (placeholder endpoint)
     

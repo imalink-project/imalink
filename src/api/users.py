@@ -15,7 +15,7 @@ router = APIRouter(prefix="/users", tags=["users"])
 
 
 @router.get("/me", response_model=UserResponse)
-async def get_my_profile(
+def get_my_profile(
     current_user: User = Depends(get_current_active_user)
 ):
     """
@@ -38,7 +38,7 @@ async def get_my_profile(
 
 
 @router.put("/me", response_model=UserResponse)
-async def update_my_profile(
+def update_my_profile(
     user_update: UserUpdate,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -83,7 +83,7 @@ async def update_my_profile(
 
 
 @router.post("/me/change-password")
-async def change_my_password(
+def change_my_password(
     password_data: UserChangePassword,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -123,7 +123,7 @@ async def change_my_password(
 
 
 @router.delete("/me")
-async def deactivate_my_account(
+def deactivate_my_account(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):

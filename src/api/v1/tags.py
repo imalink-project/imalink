@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=TagListResponse)
-async def list_tags(
+def list_tags(
     sort_by: str = Query('name', regex='^(name|count|created_at)$'),
     order: str = Query('asc', regex='^(asc|desc)$'),
     current_user: User = Depends(get_current_user),
@@ -48,7 +48,7 @@ async def list_tags(
 
 
 @router.get("/autocomplete", response_model=TagAutocompleteResponse)
-async def autocomplete_tags(
+def autocomplete_tags(
     q: str = Query(..., min_length=1, description="Search query"),
     limit: int = Query(10, ge=1, le=50, description="Max results"),
     current_user: User = Depends(get_current_user),
@@ -68,7 +68,7 @@ async def autocomplete_tags(
 
 
 @router.put("/{tag_id}", response_model=RenameTagResponse)
-async def rename_tag(
+def rename_tag(
     tag_id: int,
     update_data: TagUpdate,
     current_user: User = Depends(get_current_user),
@@ -93,7 +93,7 @@ async def rename_tag(
 
 
 @router.delete("/{tag_id}", response_model=DeleteTagResponse)
-async def delete_tag(
+def delete_tag(
     tag_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)

@@ -49,7 +49,7 @@ logger = logging.getLogger(__name__)
 
 
 @router.get("/", response_model=PaginatedResponse[PhotoResponse])
-async def list_photos(
+def list_photos(
     offset: int = Query(0, ge=0, description="Number of photos to skip"),
     limit: int = Query(100, ge=1, le=1000, description="Number of photos to return"),
     author_id: Optional[int] = Query(None, description="Filter by author ID"),
@@ -119,7 +119,7 @@ def get_photo_files(
 
 
 @router.get("/{hothash}", response_model=PhotoResponse)
-async def get_photo(
+def get_photo(
     hothash: str,
     current_user: Optional[User] = Depends(get_optional_current_user),
     photo_service: PhotoService = Depends(get_photo_service)
@@ -196,7 +196,7 @@ def get_hotpreview(
 
 
 @router.put("/{hothash}/coldpreview")
-async def upload_coldpreview(
+def upload_coldpreview(
     hothash: str,
     file: UploadFile = File(..., description="Coldpreview image file"),
     photo_service: PhotoService = Depends(get_photo_service),
@@ -208,8 +208,8 @@ async def upload_coldpreview(
         if not file.content_type or not file.content_type.startswith('image/'):
             raise HTTPException(status_code=400, detail="File must be an image")
         
-        # Read file content
-        file_content = await file.read()
+        # Read file content (sync)
+        file_content = file.file.read()
         
         # Validate that content is not empty
         if not file_content:
@@ -480,7 +480,7 @@ def get_photo_stack(
 
 
 @router.post("/create", response_model=PhotoCreateResponse, status_code=201)
-async def create_photo(
+def create_photo(
     request: PhotoCreateReq,
     current_user: User = Depends(get_current_active_user),
     photo_service: PhotoService = Depends(get_photo_service)
@@ -544,7 +544,7 @@ async def create_photo(
 
 
 @router.post("/register-image", response_model=PhotoCreateResponse, status_code=201)
-async def register_image(
+def register_image(
     file: UploadFile = File(..., description="Image file to register"),
     input_channel_id: Optional[int] = Query(None, description="Input channel ID (uses protected 'Quick Channel' if not provided)"),
     rating: int = Query(0, ge=0, le=5, description="Star rating 0-5"),
@@ -586,12 +586,12 @@ async def register_image(
     from src.utils.imalink_core_client import ImalinkCoreClient
     
     try:
-        # Read uploaded file
-        image_bytes = await file.read()
+        # Read uploaded file (sync)
+        image_bytes = file.file.read()
         
-        # Send to imalink-core for processing
+        # Send to imalink-core for processing (sync)
         core_client = ImalinkCoreClient()
-        photo_create_schema = await core_client.process_image(
+        photo_create_schema = core_client.process_image(
             image_bytes=image_bytes,
             filename=file.filename or "uploaded_image.jpg",
             coldpreview_size=coldpreview_size

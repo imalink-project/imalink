@@ -25,7 +25,7 @@ def is_development_mode():
     return any(dev_indicators)
 
 @router.get("/status")
-async def dev_status():
+def dev_status():
     """Get development environment status"""
     return {
         "development_mode": is_development_mode(),
@@ -35,7 +35,7 @@ async def dev_status():
     }
 
 @router.post("/reset-database")
-async def reset_database(
+def reset_database(
     confirm: str = "no",
     db: Session = Depends(get_db)
 ):
@@ -96,7 +96,7 @@ async def reset_database(
         )
 
 @router.delete("/clear-table/{table_name}")
-async def clear_table(
+def clear_table(
     table_name: str,
     confirm: str = "no",
     db: Session = Depends(get_db)
@@ -154,7 +154,7 @@ async def clear_table(
         )
 
 @router.get("/database-stats")
-async def database_stats(db: Session = Depends(get_db)):
+def database_stats(db: Session = Depends(get_db)):
     """Get current database statistics"""
     
     if not is_development_mode():
@@ -187,7 +187,7 @@ async def database_stats(db: Session = Depends(get_db)):
         )
 
 @router.get("/database-schema")
-async def database_schema(db: Session = Depends(get_db)):
+def database_schema(db: Session = Depends(get_db)):
     """Get detailed database schema information"""
     
     if not is_development_mode():
@@ -242,7 +242,7 @@ async def database_schema(db: Session = Depends(get_db)):
         )
 
 @router.post("/clear-database")
-async def clear_database(db: Session = Depends(get_db)):
+def clear_database(db: Session = Depends(get_db)):
     """
     🚨 DANGER: Clear all data from database (development only)
     

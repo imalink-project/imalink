@@ -28,7 +28,7 @@ def get_timeline_service(db: Session = Depends(get_db)) -> TimelineService:
 
 
 @router.get("/", response_model=TimelineResponse)
-async def get_timeline(
+def get_timeline(
     granularity: Literal["year", "month", "day", "hour"] = Query(
         "year",
         description="Time bucket granularity (year/month/day/hour)"

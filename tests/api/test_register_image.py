@@ -6,7 +6,7 @@ imalink-core for processing, then stores the resulting PhotoCreateSchema.
 """
 import json
 from pathlib import Path
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import patch, MagicMock, MagicMock
 import pytest
 from io import BytesIO
 
@@ -35,7 +35,7 @@ class TestRegisterImageEndpoint:
         # Mock the ImalinkCoreClient class
         with patch('src.utils.imalink_core_client.ImalinkCoreClient') as MockClient:
             mock_instance = MockClient.return_value
-            mock_process = AsyncMock(return_value=PhotoCreateSchema(**mock_photo_create_response))
+            mock_process = MagicMock(return_value=PhotoCreateSchema(**mock_photo_create_response))
             mock_instance.process_image = mock_process
             # Prepare upload
             files = {"file": ("test.jpg", BytesIO(fake_image_bytes), "image/jpeg")}
@@ -77,7 +77,7 @@ class TestRegisterImageEndpoint:
         
         with patch('src.utils.imalink_core_client.ImalinkCoreClient') as MockClient:
             mock_instance = MockClient.return_value
-            mock_process = AsyncMock(return_value=PhotoCreateSchema(**mock_photo_create_response))
+            mock_process = MagicMock(return_value=PhotoCreateSchema(**mock_photo_create_response))
             mock_instance.process_image = mock_process
             
             files = {"file": ("test2.jpg", BytesIO(fake_image_bytes), "image/jpeg")}
@@ -101,7 +101,7 @@ class TestRegisterImageEndpoint:
         
         with patch('src.utils.imalink_core_client.ImalinkCoreClient') as MockClient:
             mock_instance = MockClient.return_value
-            mock_process = AsyncMock(return_value=PhotoCreateSchema(**mock_photo_create_response))
+            mock_process = MagicMock(return_value=PhotoCreateSchema(**mock_photo_create_response))
             mock_instance.process_image = mock_process
             
             files = {"file": ("test3.jpg", BytesIO(fake_image_bytes), "image/jpeg")}
@@ -128,7 +128,7 @@ class TestRegisterImageEndpoint:
         
         with patch('src.utils.imalink_core_client.ImalinkCoreClient') as MockClient:
             mock_instance = MockClient.return_value
-            mock_process = AsyncMock(return_value=PhotoCreateSchema(**mock_photo_create_response))
+            mock_process = MagicMock(return_value=PhotoCreateSchema(**mock_photo_create_response))
             mock_instance.process_image = mock_process
             
             files1 = {"file": ("original.jpg", BytesIO(fake_image_bytes), "image/jpeg")}
@@ -163,7 +163,7 @@ class TestRegisterImageEndpoint:
             mock_instance = MockClient.return_value
             # Simulate network error
             import httpx
-            mock_instance.process_image = AsyncMock(side_effect=httpx.RequestError("Connection refused"))
+            mock_instance.process_image = MagicMock(side_effect=httpx.RequestError("Connection refused"))
             
             files = {"file": ("test.jpg", BytesIO(fake_image_bytes), "image/jpeg")}
             
@@ -189,7 +189,7 @@ class TestRegisterImageEndpoint:
             mock_response.status_code = 400
             mock_response.text = "Invalid image format"
             mock_response.json.return_value = {"detail": "Invalid image format"}
-            mock_instance.process_image = AsyncMock(
+            mock_instance.process_image = MagicMock(
                 side_effect=httpx.HTTPStatusError(
                     "Bad Request", 
                     request=MagicMock(), 

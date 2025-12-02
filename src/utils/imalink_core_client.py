@@ -23,7 +23,7 @@ class ImalinkCoreClient:
         """
         self.core_url = core_url or Config.IMALINK_CORE_URL
     
-    async def process_image(
+    def process_image(
         self, 
         image_bytes: bytes, 
         filename: str,
@@ -57,9 +57,9 @@ class ImalinkCoreClient:
         if coldpreview_size is not None:
             data["coldpreview_size"] = str(coldpreview_size)
         
-        # Call imalink-core /v1/process endpoint
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
+        # Call imalink-core /v1/process endpoint (sync)
+        with httpx.Client() as client:
+            response = client.post(
                 f"{self.core_url}/v1/process",
                 files=files,
                 data=data,
