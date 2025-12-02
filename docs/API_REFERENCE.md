@@ -2757,7 +2757,7 @@ Authorization: Bearer {token}
 Content-Type: application/json
 ```
 
-**Body:** Send event ID directly (not wrapped in object)
+**Body:** Send event ID as integer or null (NOT wrapped in object key)
 ```json
 5
 ```
@@ -2772,10 +2772,56 @@ null
 {
   "hothash": "abc123...",
   "event_id": 5,
-  "taken_at": "2025-07-05T14:30:00Z"
+  "user_id": 1,
+  "taken_at": "2025-07-05T14:30:00Z",
+  "visibility": "private",
+  "width": 4000,
+  "height": 3000
   // ... (full PhotoResponse)
 }
 ```
+
+**Behavior:**
+- **One-to-many**: Photo can belong to at most ONE event
+- Setting new event_id **replaces** previous event (if any)
+- Setting `null` removes photo from event
+- Event must exist and belong to same user
+- Returns updated photo with new event_id
+
+**Examples:**
+```bash
+# Assign photo to event
+curl -X PUT http://localhost:8000/api/v1/photos/abc123.../event \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '5'
+
+# Remove photo from event
+curl -X PUT http://localhost:8000/api/v1/photos/abc123.../event \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d 'null'
+```
+
+**Use Cases:**
+- Add photos to event from gallery
+- Move photo from one event to another
+- Organize imported photos into events
+
+**Note:** For many-to-many relationships, use Collections or Tags instead.
+
+---
+
+## 📊 Event Statistics & Queries
+
+### Photo Count
+- Direct count: Query `GET /api/v1/events/` returns `photo_count` field
+- Recursive count: Use `GET /api/v1/events/{id}/photos?include_descendants=true` and count results
+
+### Hierarchy Navigation
+- Root events: `GET /api/v1/events/` (no parent_id)
+- Children: `GET /api/v1/events/?parent_id={id}`
+- Full tree: `GET /api/v1/events/tree`
 
 **Features:**
 - **Direct assignment**: Each photo has single event_id
