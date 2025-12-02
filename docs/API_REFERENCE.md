@@ -2477,6 +2477,325 @@ curl http://localhost:8000/api/v1/database-stats
 
 ---
 
-**Last Updated:** October 24, 2025  
-**API Version:** 2.1 (100% Photo-Centric)  
-**Backend Version:** Fase 1 (Multi-User + PhotoStacks + Photo-Centric API)
+## 📅 Events (Hierarchical Photo Organization)
+
+Events organize photos by contextual hierarchy (trips, occasions, projects). Unlike Collections (flat, curated), Events support parent-child relationships for natural grouping.
+
+**Key Features:**
+- **Hierarchical**: Parent-child relationships (e.g., "London 2025" > "Tower of London")
+- **Many-to-many**: Photos can belong to multiple events
+- **Recursive queries**: Get all photos in event + descendants
+- **Temporal/Spatial**: Optional dates and GPS coordinates
+- **User-scoped**: Each user has their own event hierarchy
+
+### List Events
+
+```http
+GET /api/v1/events/
+Authorization: Bearer {token}
+```
+
+**Query Parameters:**
+- `parent_id` (optional): Filter by parent event ID
+  - If omitted: Returns root events only
+  - If provided: Returns children of that event
+
+**Response** (`200 OK`):
+```json
+[
+  {
+    "id": 1,
+    "user_id": 1,
+    "name": "London Trip 2025",
+    "description": "Summer vacation in London",
+    "parent_event_id": null,
+    "start_date": "2025-07-01T00:00:00Z",
+    "end_date": "2025-07-10T00:00:00Z",
+    "location_name": "London, UK",
+    "gps_latitude": 51.5074,
+    "gps_longitude": -0.1278,
+    "sort_order": 0,
+    "created_at": "2025-12-01T10:00:00Z",
+    "updated_at": "2025-12-01T10:00:00Z",
+    "photo_count": 42
+  }
+]
+```
+
+**Examples:**
+```bash
+# List root events
+curl http://localhost:8000/api/v1/events/ \
+  -H "Authorization: Bearer {token}"
+
+# List children of specific event
+curl "http://localhost:8000/api/v1/events/?parent_id=1" \
+  -H "Authorization: Bearer {token}"
+```
+
+### Get Event Tree
+
+```http
+GET /api/v1/events/tree
+Authorization: Bearer {token}
+```
+
+**Query Parameters:**
+- `root_id` (optional): Root event ID to start from
+  - If omitted: Returns all root events with full tree
+  - If provided: Returns that event + descendants
+
+**Response** (`200 OK`):
+```json
+{
+  "events": [
+    {
+      "id": 1,
+      "name": "London Trip 2025",
+      "parent_event_id": null,
+      "photo_count": 15,
+      "children": [
+        {
+          "id": 2,
+          "name": "Tower of London",
+          "parent_event_id": 1,
+          "photo_count": 8,
+          "children": []
+        },
+        {
+          "id": 3,
+          "name": "British Museum",
+          "parent_event_id": 1,
+          "photo_count": 7,
+          "children": []
+        }
+      ]
+    }
+  ],
+  "total_events": 3
+}
+```
+
+**Use Cases:**
+- Display hierarchical event browser
+- Navigation breadcrumbs
+- Event tree visualization
+
+### Create Event
+
+```http
+POST /api/v1/events/
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "name": "London Trip 2025",
+  "description": "Summer vacation in London",
+  "parent_event_id": null,
+  "start_date": "2025-07-01T00:00:00Z",
+  "end_date": "2025-07-10T00:00:00Z",
+  "location_name": "London, UK",
+  "gps_latitude": 51.5074,
+  "gps_longitude": -0.1278,
+  "sort_order": 0
+}
+```
+
+**Required Fields:**
+- `name`: Event name (1-200 characters)
+
+**Optional Fields:**
+- `description`: Event description (max 2000 characters)
+- `parent_event_id`: Parent event for hierarchy (null = root level)
+- `start_date`, `end_date`: Temporal context
+- `location_name`: Location name (max 200 characters)
+- `gps_latitude`, `gps_longitude`: GPS coordinates
+- `sort_order`: Order among siblings (default 0)
+
+**Response** (`201 Created`):
+```json
+{
+  "id": 1,
+  "user_id": 1,
+  "name": "London Trip 2025",
+  "description": "Summer vacation in London",
+  "parent_event_id": null,
+  "start_date": "2025-07-01T00:00:00Z",
+  "end_date": "2025-07-10T00:00:00Z",
+  "location_name": "London, UK",
+  "gps_latitude": 51.5074,
+  "gps_longitude": -0.1278,
+  "sort_order": 0,
+  "created_at": "2025-12-02T10:00:00Z",
+  "updated_at": "2025-12-02T10:00:00Z"
+}
+```
+
+**Validation:**
+- Parent event must exist and belong to same user
+- Cannot create cycle (parent cannot be own descendant)
+
+### Get Event by ID
+
+```http
+GET /api/v1/events/{event_id}
+Authorization: Bearer {token}
+```
+
+**Response** (`200 OK`): Same as Create response
+**Error** (`404 Not Found`): Event not found or access denied
+
+### Update Event
+
+```http
+PUT /api/v1/events/{event_id}
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "name": "Updated Event Name",
+  "description": "New description",
+  "start_date": "2025-07-05T00:00:00Z"
+}
+```
+
+**All fields optional** - only provided fields will be updated.
+
+**Note:** To change parent, use `parent_event_id` field (validated to prevent cycles) or use Move Event endpoint.
+
+### Move Event
+
+```http
+POST /api/v1/events/{event_id}/move
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "new_parent_id": 5
+}
+```
+
+**Body:**
+- `new_parent_id`: New parent event ID (null to move to root level)
+
+**Response** (`200 OK`): Updated event with new parent
+
+**Validation:**
+- Cannot move event to itself
+- Cannot move event to its own descendant (prevents cycles)
+- New parent must belong to same user
+
+**Example:**
+```bash
+# Move event to root level
+curl -X POST http://localhost:8000/api/v1/events/3/move \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{"new_parent_id": null}'
+```
+
+### Delete Event
+
+```http
+DELETE /api/v1/events/{event_id}
+Authorization: Bearer {token}
+```
+
+**Response** (`204 No Content`)
+
+**Behavior:**
+- Child events become root events (parent_event_id set to NULL)
+- Photos remain but lose association with this event
+- Cascade: PhotoEvent associations deleted
+
+### Add Photos to Event
+
+```http
+POST /api/v1/events/{event_id}/photos
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "photo_ids": [1, 2, 3]
+}
+```
+
+**Response** (`200 OK`):
+```json
+{
+  "event_id": 1,
+  "photos_added": 3
+}
+```
+
+**Features:**
+- **Idempotent**: Duplicates skipped, returns count of newly added
+- **Validation**: All photos must exist and belong to user
+
+### Remove Photos from Event
+
+```http
+DELETE /api/v1/events/{event_id}/photos
+Authorization: Bearer {token}
+Content-Type: application/json
+
+{
+  "photo_ids": [1, 2]
+}
+```
+
+**Response** (`200 OK`):
+```json
+{
+  "event_id": 1,
+  "photos_removed": 2
+}
+```
+
+**Note:** Photos remain in database, only association is removed.
+
+### Get Event Photos
+
+```http
+GET /api/v1/events/{event_id}/photos
+Authorization: Bearer {token}
+```
+
+**Query Parameters:**
+- `include_descendants` (optional, default: false)
+  - `false`: Only photos directly in this event
+  - `true`: Photos in this event + all child events (recursive)
+
+**Response** (`200 OK`):
+```json
+[
+  {
+    "id": 1,
+    "hothash": "abc123...",
+    "user_id": 1,
+    "taken_at": "2025-07-05T14:30:00Z",
+    "visibility": "private",
+    "width": 4000,
+    "height": 3000
+    // ... (full PhotoResponse schema)
+  }
+]
+```
+
+**Example:**
+```bash
+# Get photos in event + all descendants
+curl "http://localhost:8000/api/v1/events/1/photos?include_descendants=true" \
+  -H "Authorization: Bearer {token}"
+```
+
+**Use Cases:**
+- Display event gallery
+- Export all photos from trip (including sub-events)
+- Count photos in event hierarchy
+
+---
+
+**Last Updated:** December 2, 2025  
+**API Version:** 3.1 (Events + PhotoCreateSchema Architecture)  
+**Backend Version:** Fase 1 (Multi-User + Events + PhotoStacks + Photo-Centric API)

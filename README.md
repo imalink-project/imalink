@@ -14,6 +14,7 @@ Et enkelt og intuitivt verktøy for organisering av store bildematerialer.
 ### ✅ Implementerte funksjoner:
 - **🔐 Multi-User Authentication**: JWT-basert autentisering med brukerregistrering og innlogging
 - **🔒 User Data Isolation**: Komplett dataseparasjon - brukere ser kun egne bilder
+- **📅 Events (Hierarchical Organization)**: Organiser bilder hierarkisk (f.eks. "London 2025" > "Tower of London")
 - **🖼️ Crystal Clear Upload API**: Separate endepunkter for nye bilder vs companion-filer
 - **Desktop Client**: Python/Flet desktop application med direkte database-tilgang
 - **Import System**: Frontend-styrt import med API-baserte operasjoner
@@ -25,7 +26,7 @@ Et enkelt og intuitivt verktøy for organisering av store bildematerialer.
   - Coldpreview (800-1200px) lagret på disk for detaljvisning
 - **Similarity Search**: Find lignende bilder basert på perceptual hash
 - **Fotograf-admin**: Fullstendig CRUD med email og bio (bruker-scoped)
-- **Modern arkitektur**: FastAPI + SQLite + JWT + Multi-user support
+- **Modern arkitektur**: FastAPI + PostgreSQL (prod) / SQLite (test) + JWT + Multi-user support
 
 ## 🧠 Designfilosofi
 
