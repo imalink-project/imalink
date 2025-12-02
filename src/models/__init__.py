@@ -13,6 +13,7 @@ from .saved_photo_search import SavedPhotoSearch
 from .photo_collection import PhotoCollection
 from .tag import Tag, PhotoTag
 from .phototext_document import PhotoTextDocument
+from .event import Event, PhotoEvent
 
 __all__ = [
     "Base",
@@ -27,5 +28,7 @@ __all__ = [
     "PhotoCollection",
     "Tag",
     "PhotoTag",
-    "PhotoTextDocument"
+    "PhotoTextDocument",
+    "Event",
+    "PhotoEvent"
 ]

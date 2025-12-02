@@ -24,6 +24,7 @@ from src.api.v1.database_stats import router as database_stats_router
 from src.api.v1.photo_searches import router as photo_searches_router
 from src.api.v1.photo_collections import router as photo_collections_router
 from src.api.v1.timeline import router as timeline_router
+from src.api.v1.events import router as events_router
 from src.api.photo_stacks import router as photo_stacks_router
 from src.api.phototext_documents import router as phototext_router
 from src.api.auth import router as auth_router
@@ -71,6 +72,7 @@ app.include_router(photo_searches_router, prefix="/api/v1/photo-searches", tags=
 app.include_router(photo_collections_router, prefix="/api/v1")  # Photo collections endpoints
 app.include_router(tags_router, prefix="/api/v1")  # Tag endpoints
 app.include_router(timeline_router, prefix="/api/v1/timeline", tags=["timeline"])  # Timeline endpoints
+app.include_router(events_router, prefix="/api/v1")  # Event endpoints (hierarchical organization)
 app.include_router(photo_stacks_router, prefix="/api/v1")  # PhotoStack endpoints
 app.include_router(phototext_router, prefix="/api/v1")  # PhotoText document endpoints
 app.include_router(database_stats_router, prefix="/api/v1")  # Database statistics (no auth required)

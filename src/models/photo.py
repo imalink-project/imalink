@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from .input_channel import InputChannel
     from .user import User
     from .tag import Tag
+    from .event import Event
 
 
 class Photo(Base, TimestampMixin):
@@ -114,6 +115,7 @@ class Photo(Base, TimestampMixin):
     input_channel = relationship("InputChannel", back_populates="photos")
     stack = relationship("PhotoStack", back_populates="photos", foreign_keys=[stack_id])
     tags = relationship("Tag", secondary="photo_tags", back_populates="photos")
+    events = relationship("Event", secondary="photo_events", back_populates="photos")
     
     # Table constraints
     __table_args__ = (
