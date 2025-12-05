@@ -27,6 +27,9 @@ from src.schemas.common import PaginatedResponse, create_paginated_response
 from src.core.exceptions import NotFoundError, DuplicatePhotoError, DuplicateImageError, ValidationError
 from src.models import Photo, ImageFile
 
+import logging
+logger = logging.getLogger(__name__)
+
 
 class PhotoService:
     """Service layer for Photo operations"""
